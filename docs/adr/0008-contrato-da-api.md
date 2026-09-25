@@ -1,0 +1,3 @@
+# Contrato da API: /api/v1, erros com código estável e datas ISO 8601
+
+Como os Sites precisam ser alterados de qualquer forma na migração, aproveitamos para fixar um contrato novo. As rotas ficam sob `/api/v1`, para permitir uma V2 sem quebrar os Sites. Respostas de sucesso mantêm `{ data }`, e erros passam de `{ errors: "mensagem" }` para `{ error: { code, message, details? } }`, com `code` estável (ex.: `EVENT_ARCHIVED`), para que o Site escolha o texto mostrado ao Guest sem depender da mensagem. Datas saem em ISO 8601 UTC acompanhadas do `timezone` do evento, e entram em ISO 8601 com offset; o formato `dd/mm/aaaa` da API antiga deixa de ser aceito, porque agora o início do evento tem hora e fuso.

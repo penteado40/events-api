@@ -1,0 +1,9 @@
+.env
+.env.local
+/node_modules
+/dist
+/.vercel
+/.cursor
+/.claude
+/.agents
+.DS_Store

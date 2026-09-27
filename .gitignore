@@ -6,6 +6,7 @@
 /coverage
 /.vercel
 /.cursor
-/.claude
+/.claude/*
+!/.claude/skills/
 /.agents
 .DS_Store

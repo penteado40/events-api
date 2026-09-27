@@ -71,7 +71,7 @@ export class Email {
   private constructor(readonly value: string) {}
   static create(raw: string): Email {
     const value = raw.trim().toLowerCase()
-    if (!EMAIL_REGEX.test(value)) throw new AppError('INVALID_EMAIL')
+    if (!EMAIL_REGEX.test(value)) throw new AppError('VALIDATION_ERROR')
     return new Email(value)
   }
 }
@@ -90,6 +90,7 @@ A regra "email é sempre minúsculo" (decidida para o login) passa a morar num l
 export abstract class UserRepository {
   abstract findByEmail(email: Email): Promise<User | null>
   abstract findById(id: number): Promise<User | null>
+  abstract create(props: NewUserProps): Promise<User>  // o banco gera o id (ADR-0002)
   abstract save(user: User): Promise<void>
 }
 ```
@@ -150,7 +151,7 @@ Se o use case precisa gerar hash de senha, mas não pode importar o bcrypt, como
 // identity/application/ports/password-hasher.ts  (PORT: camada interna)
 export abstract class PasswordHasher {
   abstract hash(plain: string): Promise<string>
-  abstract compare(plain: string, hash: string): Promise<boolean>
+  abstract compare(plain: string, hash: string | null): Promise<boolean>  // null: User inexistente, ainda gasta o tempo de um compare
 }
 
 // identity/infrastructure/bcrypt-password-hasher.ts  (ADAPTER: camada externa)
@@ -226,8 +227,9 @@ test/
 
 ### 5.2 Convenções de nomes
 
-- Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`.
-- Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`.
+- Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`, e os papéis do Nest `.service`, `.strategy`, `.guard`, `.filter`, `.decorator`.
+- Arquivos sem um papel único ficam sem sufixo, com nome do que fazem: `app-config.ts`, `error-catalog.ts`, `security.ts`, `docs.ts`, `password-policy.ts`.
+- Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`. Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-password-hasher.ts`), e ficam em `application/testing/`.
 - Classes com os termos do `CONTEXT.md`: `Contribution`, `RegistryItem`, `EventMember`. Nunca os termos da lista "_Avoid_".
 
 ### 5.3 O caminho de uma requisição: `POST /api/v1/auth/login`
@@ -331,7 +333,7 @@ A regra da dependência não depende de disciplina: o ESLint barra as violaçõe
 
 - **Camadas** (`eslint-plugin-boundaries`): `domain` → só `domain` e `shared/domain`; `application` → + `domain`; `infrastructure` → + `application`; `presentation` → `application` (não `infrastructure`). O `*.module.ts` é a exceção, por ser o composition root.
 - **Bibliotecas** (`no-restricted-imports` por pasta): em `domain/` e `application/` são proibidos `@prisma/*`, `@nestjs/*`, `zod`, `bcryptjs`, `resend`, `cloudinary` e afins. Por isso entidades, domain services e use cases **não têm `@Injectable()`**: o `*.module.ts` os registra com `useFactory` ou `useClass`.
-- **Fronteira entre módulos**: cada módulo tem um `index.ts` que é a sua API pública (o módulo Nest, o que ele oferece para consulta e os seus domain events). Outros módulos importam só de `@/modules/<nome>`, nunca de uma pasta interna.
+- **Fronteira entre módulos**: cada módulo tem um `index.ts` que é a sua API pública (o módulo Nest, o que ele oferece para consulta e os seus domain events). Outros módulos importam só o `index.ts` (`../../<nome>/index.js`), nunca uma pasta interna.
 
 Se o lint reclamar, a pergunta não é "como calo o lint?", e sim "em que camada esse código deveria estar?".
 

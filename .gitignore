@@ -2,8 +2,11 @@
 .env.local
 /node_modules
 /dist
+/src/generated
+/coverage
 /.vercel
 /.cursor
-/.claude
+/.claude/*
+!/.claude/skills/
 /.agents
 .DS_Store

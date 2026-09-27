@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JWT_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (inclui a entrada da Vercel)
+        run: npm run typecheck
+      - name: ESLint (regras de arquitetura) + Prettier
+        run: npm run lint
+      - run: npx prisma validate
+      - run: npm run test:unit
+      - run: npm run build
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: events_api
+          POSTGRES_PASSWORD: events_api123
+          POSTGRES_DB: events_api_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U events_api"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://events_api:events_api123@localhost:5432/events_api_test
+      DATABASE_URL_TEST: postgresql://events_api:events_api123@localhost:5432/events_api_test
+      SHADOW_DATABASE_URL: postgresql://events_api:events_api123@localhost:5432/events_api_shadow
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx prisma migrate deploy
+      - name: Shadow database para a checagem de drift
+        run: psql postgresql://events_api:events_api123@localhost:5432/events_api_test -c 'CREATE DATABASE events_api_shadow'
+      - name: Drift entre schema.prisma e migrations
+        run: |
+          if ! npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema prisma/schema.prisma \
+            --exit-code; then
+            echo "::error::schema.prisma mudou sem migration. Rode \`npm run prisma:migrate\` e commite a migration."
+            exit 1
+          fi
+      - run: npm run test:integration
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

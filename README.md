@@ -6,6 +6,7 @@ API multi-evento (casamentos, aniversários, eventos corporativos...) que susten
 
 - [`CONTEXT.md`](CONTEXT.md): glossário do domínio
 - [`docs/adr/`](docs/adr): decisões de arquitetura
-- Issues: o PRD da V1 e as fatias de implementação (milestone **V1 — evento 4**)
+- [`docs/arquitetura.md`](docs/arquitetura.md): Clean Architecture, DDD e SOLID, e como se aplicam aqui
+- Tarefas: no Jira, épico [PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51); o PRD da V1 é a [issue #1](https://github.com/penteado40/events-api/issues/1)
 
-Stack planejada: TypeScript, Hono, Zod + OpenAPI, Prisma + Postgres (Neon), Vercel Functions, Upstash Redis, Resend + React Email, Cloudinary.
+Stack planejada: TypeScript, NestJS, Zod (`nestjs-zod`) + OpenAPI/Scalar, Prisma + Postgres (Neon), Vercel Functions, Upstash Redis, Resend + React Email, Cloudinary.

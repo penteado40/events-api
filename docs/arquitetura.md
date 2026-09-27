@@ -71,7 +71,7 @@ export class Email {
   private constructor(readonly value: string) {}
   static create(raw: string): Email {
     const value = raw.trim().toLowerCase()
-    if (!EMAIL_REGEX.test(value)) throw new AppError('INVALID_EMAIL')
+    if (!EMAIL_REGEX.test(value)) throw new AppError('VALIDATION_ERROR')
     return new Email(value)
   }
 }
@@ -150,7 +150,7 @@ Se o use case precisa gerar hash de senha, mas não pode importar o bcrypt, como
 // identity/application/ports/password-hasher.ts  (PORT: camada interna)
 export abstract class PasswordHasher {
   abstract hash(plain: string): Promise<string>
-  abstract compare(plain: string, hash: string): Promise<boolean>
+  abstract compare(plain: string, hash: string | null): Promise<boolean>  // null: User inexistente, ainda gasta o tempo de um compare
 }
 
 // identity/infrastructure/bcrypt-password-hasher.ts  (ADAPTER: camada externa)
@@ -331,7 +331,7 @@ A regra da dependência não depende de disciplina: o ESLint barra as violaçõe
 
 - **Camadas** (`eslint-plugin-boundaries`): `domain` → só `domain` e `shared/domain`; `application` → + `domain`; `infrastructure` → + `application`; `presentation` → `application` (não `infrastructure`). O `*.module.ts` é a exceção, por ser o composition root.
 - **Bibliotecas** (`no-restricted-imports` por pasta): em `domain/` e `application/` são proibidos `@prisma/*`, `@nestjs/*`, `zod`, `bcryptjs`, `resend`, `cloudinary` e afins. Por isso entidades, domain services e use cases **não têm `@Injectable()`**: o `*.module.ts` os registra com `useFactory` ou `useClass`.
-- **Fronteira entre módulos**: cada módulo tem um `index.ts` que é a sua API pública (o módulo Nest, o que ele oferece para consulta e os seus domain events). Outros módulos importam só de `@/modules/<nome>`, nunca de uma pasta interna.
+- **Fronteira entre módulos**: cada módulo tem um `index.ts` que é a sua API pública (o módulo Nest, o que ele oferece para consulta e os seus domain events). Outros módulos importam só o `index.ts` (`../../<nome>/index.js`), nunca uma pasta interna.
 
 Se o lint reclamar, a pergunta não é "como calo o lint?", e sim "em que camada esse código deveria estar?".
 

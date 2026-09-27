@@ -22,7 +22,7 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
     const useCase = new CreateSuperAdminUseCase(
       new PrismaUserRepository(prisma),
       new BcryptPasswordHasher(),
-      { minPasswordLength: process.env.NODE_ENV === 'production' ? 12 : 0 },
+      { enforceStrongPassword: process.env.NODE_ENV === 'production' },
     )
     return await useCase.execute(input)
   } finally {

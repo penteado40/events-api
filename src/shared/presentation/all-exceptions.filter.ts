@@ -11,7 +11,7 @@ import { ZodError } from 'zod'
 import { AppError, type ErrorCode } from '../domain/app-error.js'
 import { CODE_BY_HTTP_STATUS, ERROR_CATALOG } from './error-catalog.js'
 
-export interface ValidationDetail {
+interface ValidationDetail {
   path: string
   message: string
 }

@@ -15,8 +15,4 @@ export class Email {
   equals(other: Email): boolean {
     return this.value === other.value
   }
-
-  toString(): string {
-    return this.value
-  }
 }

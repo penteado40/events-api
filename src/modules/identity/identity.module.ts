@@ -8,7 +8,11 @@ import { GetCurrentUserUseCase } from './application/use-cases/get-current-user.
 import { LoginUseCase } from './application/use-cases/login.use-case.js'
 import { UserRepository } from './domain/user.repository.js'
 import { BcryptPasswordHasher } from './infrastructure/bcrypt-password-hasher.js'
-import { JwtTokenIssuer, TOKEN_TTL_SECONDS } from './infrastructure/jwt-token-issuer.js'
+import {
+  JWT_ALGORITHM,
+  JwtTokenIssuer,
+  TOKEN_TTL_SECONDS,
+} from './infrastructure/jwt-token-issuer.js'
 import { JwtStrategy } from './infrastructure/jwt.strategy.js'
 import { PrismaUserRepository } from './infrastructure/prisma-user.repository.js'
 import { AuthController } from './presentation/auth.controller.js'
@@ -32,8 +36,8 @@ export class IdentityModule {
           inject: [AppConfig],
           useFactory: (config: AppConfig) => ({
             secret: config.jwtSecret,
-            signOptions: { algorithm: 'HS256', expiresIn: TOKEN_TTL_SECONDS },
-            verifyOptions: { algorithms: ['HS256'] },
+            signOptions: { algorithm: JWT_ALGORITHM, expiresIn: TOKEN_TTL_SECONDS },
+            verifyOptions: { algorithms: [JWT_ALGORITHM] },
           }),
         }),
       ],

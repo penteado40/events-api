@@ -77,14 +77,21 @@ describe('CreateSuperAdminUseCase', () => {
     expect(result.user.passwordChangedAt).toBeInstanceOf(Date)
   })
 
-  it('refuses a password shorter than the configured minimum', async () => {
+  it('refuses a password shorter than 12 characters when strong passwords are enforced', async () => {
     const strict = new CreateSuperAdminUseCase(users, new FakePasswordHasher(), {
-      minPasswordLength: 12,
+      enforceStrongPassword: true,
     })
 
     await expect(
-      strict.execute({ email: 'admin@local.test', name: 'Admin', password: 'admin123' }),
+      strict.execute({ email: 'admin@local.test', name: 'Admin', password: '12345678901' }),
     ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
     expect(users.all()).toHaveLength(0)
+
+    const created = await strict.execute({
+      email: 'admin@local.test',
+      name: 'Admin',
+      password: '123456789012',
+    })
+    expect(created.outcome).toBe('created')
   })
 })

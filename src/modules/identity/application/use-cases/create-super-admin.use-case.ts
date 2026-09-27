@@ -1,5 +1,6 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
+import { PasswordPolicy } from '../../domain/password-policy.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 import type { PasswordHasher } from '../ports/password-hasher.js'
@@ -19,7 +20,8 @@ export interface CreateSuperAdminOutput {
 }
 
 export interface CreateSuperAdminOptions {
-  minPasswordLength?: number
+  /** Requires a strong password (PasswordPolicy); on in production. */
+  enforceStrongPassword?: boolean
 }
 
 /**
@@ -34,7 +36,7 @@ export class CreateSuperAdminUseCase {
   ) {}
 
   async execute(input: CreateSuperAdminInput): Promise<CreateSuperAdminOutput> {
-    if (input.password.length < (this.options.minPasswordLength ?? 0)) {
+    if (this.options.enforceStrongPassword && !PasswordPolicy.isStrong(input.password)) {
       throw new AppError('VALIDATION_ERROR')
     }
     const email = Email.create(input.email)

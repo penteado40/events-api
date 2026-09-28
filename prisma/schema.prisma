@@ -19,11 +19,27 @@ model User {
   id                Int       @id @default(autoincrement())
   name              String
   email             String    @unique
-  passwordHash      String
+  passwordHash      String? // null while the User is a Pending user
   role              Role      @default(USER)
   passwordChangedAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  activationLinks ActivationLink[]
+
   @@map("users")
+}
+
+model ActivationLink {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique // SHA-256 of the token; the token is never stored
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("activation_links")
 }

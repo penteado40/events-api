@@ -12,6 +12,29 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   UNAUTHENTICATED: { status: 401, message: 'Autenticação necessária.' },
   FORBIDDEN: { status: 403, message: 'Você não tem permissão para esta ação.' },
   NOT_FOUND: { status: 404, message: 'Recurso não encontrado.' },
+  WEAK_PASSWORD: {
+    status: 400,
+    message: 'A senha precisa ter pelo menos 12 caracteres e no máximo 72 bytes.',
+  },
+  INVALID_CURRENT_PASSWORD: { status: 400, message: 'A senha atual está incorreta.' },
+  EMAIL_ALREADY_IN_USE: { status: 409, message: 'Já existe um usuário com este email.' },
+  USER_ALREADY_ACTIVE: { status: 409, message: 'Este usuário já está ativo.' },
+  USER_PENDING: {
+    status: 403,
+    message: 'Conta ainda não ativada. Use o link de ativação que você recebeu.',
+  },
+  ACTIVATION_LINK_INVALID: {
+    status: 400,
+    message: 'Link de ativação inválido. Peça um novo a quem criou sua conta.',
+  },
+  ACTIVATION_LINK_USED: {
+    status: 409,
+    message: 'Este link de ativação já foi usado. Faça login com sua senha.',
+  },
+  ACTIVATION_LINK_EXPIRED: {
+    status: 410,
+    message: 'Link de ativação expirado. Peça um novo a quem criou sua conta.',
+  },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

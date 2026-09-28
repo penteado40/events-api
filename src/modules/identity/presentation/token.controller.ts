@@ -36,7 +36,10 @@ export class TokenController {
       })
       return { access_token: token, token_type: 'bearer', expires_in: expiresIn }
     } catch (error) {
-      if (error instanceof AppError && error.code === 'INVALID_CREDENTIALS') {
+      if (
+        error instanceof AppError &&
+        (error.code === 'INVALID_CREDENTIALS' || error.code === 'USER_PENDING')
+      ) {
         return fail(res, 'invalid_grant')
       }
       throw error

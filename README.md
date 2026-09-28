@@ -86,7 +86,11 @@ Each one is recorded as an ADR in [`docs/adr/`](docs/adr).
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/v1/auth/login` | public | Email + password → JWT (12h) and the User |
+| `POST` | `/api/v1/auth/activate` | public | Activation token + new password → JWT and the User |
 | `GET` | `/api/v1/me` | JWT | The authenticated User |
+| `PATCH` | `/api/v1/me/password` | JWT | Current + new password → new JWT; older sessions are revoked |
+| `POST` | `/api/v1/users` | Super admin | Creates a Pending user; returns the Activation token (valid 7 days) |
+| `POST` | `/api/v1/users/:id/activation-link` | Super admin | New Activation token for a Pending user; the previous one stops working |
 
 Every other route requires a JWT by default (a global guard; public routes opt out explicitly). The full, always-current reference is generated from the code: Scalar at `/api/v1/docs` and the OpenAPI document at `/api/v1/openapi`, both enabled with `DOCS_ENABLED=true` (off in production).
 
@@ -132,6 +136,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `SHADOW_DATABASE_URL` | Optional; only for the migration drift check |
 | `JWT_SECRET` | At least 32 characters (`openssl rand -base64 48`) |
 | `DOCS_ENABLED` | `true` registers the docs, the OpenAPI document and `POST /auth/token` |
+| `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
 
 ## Development
 

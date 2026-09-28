@@ -17,11 +17,19 @@ Um Event encerrado: continua visível para os membros, mas não aceita mais nenh
 _Avoid_: evento finalizado, inativo, deletado
 
 **User** (usuário):
-Uma pessoa com login na plataforma. Só o Super admin cria Users; não há cadastro aberto.
+Uma pessoa com login na plataforma, única por email e independente de quantos Events ela participa. Nasce pelas mãos do Super admin ou implicitamente quando um Owner adiciona como Event member um email que ainda não tem User; não há cadastro aberto.
 _Avoid_: conta, cliente, admin
 
+**Pending user** (usuário pendente):
+Um User que ainda não definiu a própria senha e por isso não consegue fazer login. Ninguém além dele define a senha de um User.
+_Avoid_: usuário inativo, desativado, convidado
+
+**Activation link** (link de ativação):
+Link de uso único pelo qual um Pending user define a própria senha e passa a poder fazer login. Quem cria o User o entrega à pessoa.
+_Avoid_: convite, link de setup, senha inicial
+
 **Super admin**:
-O papel de plataforma com acesso total a todos os Events e o único que cria Users e Events.
+O papel de plataforma com acesso total a todos os Events e o único que cria Events. Concedido só pela configuração da plataforma, nunca pela API.
 _Avoid_: root, admin geral
 
 **Event member** (membro do evento):

@@ -16,6 +16,12 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: '@nestjs/*'
         update-types: [version-update:semver-major]
+      # TypeScript 7 espera o typescript-eslint suportá-lo (peer atual: <6.1.0).
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # @types/node acompanha o runtime (engines/.nvmrc: Node 22); sobe junto com ele.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /

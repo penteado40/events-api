@@ -19,26 +19,19 @@ export interface CreateSuperAdminOutput {
   user: User
 }
 
-export interface CreateSuperAdminOptions {
-  /** Requires a strong password (PasswordPolicy); on in production. */
-  enforceStrongPassword?: boolean
-}
-
 /**
  * Idempotent: creates the User as Super admin, or promotes an existing one
- * without touching the password unless `resetPassword` is set.
+ * without touching the password unless `resetPassword` is set. Refuses a
+ * Pending user: nobody else sets their password.
  */
 export class CreateSuperAdminUseCase {
   constructor(
     private readonly users: UserRepository,
     private readonly hasher: PasswordHasher,
-    private readonly options: CreateSuperAdminOptions = {},
   ) {}
 
   async execute(input: CreateSuperAdminInput): Promise<CreateSuperAdminOutput> {
-    if (this.options.enforceStrongPassword && !PasswordPolicy.isStrong(input.password)) {
-      throw new AppError('VALIDATION_ERROR')
-    }
+    if (!PasswordPolicy.isStrong(input.password)) throw new AppError('WEAK_PASSWORD')
     const email = Email.create(input.email)
     const existing = await this.users.findByEmail(email)
 
@@ -51,6 +44,8 @@ export class CreateSuperAdminUseCase {
       })
       return { outcome: 'created', passwordReset: false, user }
     }
+
+    if (existing.isPending) throw new AppError('USER_PENDING')
 
     const promote = !existing.isSuperAdmin
     const passwordReset = input.resetPassword === true

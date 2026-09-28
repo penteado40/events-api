@@ -8,17 +8,25 @@ describe('docs with DOCS_ENABLED=true', () => {
   beforeAll(async () => {
     t = await createTestApp({ env: { DOCS_ENABLED: 'true' } })
     await createUser({ email: 'docs@example.com', password: 'correct-password' })
+    await createUser({ email: 'pending@example.com', password: null })
   })
 
   afterAll(() => t.close())
 
-  it('serves the OpenAPI document with the login and me routes', async () => {
+  it('serves the OpenAPI document with the auth, me and users routes', async () => {
     const res = await t.http().get('/api/v1/openapi')
 
     expect(res.status).toBe(200)
     expect(res.body.openapi).toMatch(/^3\./)
     expect(Object.keys(res.body.paths)).toEqual(
-      expect.arrayContaining(['/api/v1/auth/login', '/api/v1/me']),
+      expect.arrayContaining([
+        '/api/v1/auth/login',
+        '/api/v1/auth/activate',
+        '/api/v1/me',
+        '/api/v1/me/password',
+        '/api/v1/users',
+        '/api/v1/users/{id}/activation-link',
+      ]),
     )
     expect(res.body.components.securitySchemes.oauth2.flows.password.tokenUrl).toBe(
       '/api/v1/auth/token',
@@ -61,6 +69,17 @@ describe('docs with DOCS_ENABLED=true', () => {
       grant_type: 'password',
       username: 'docs@example.com',
       password: 'wrong-password',
+    })
+
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'invalid_grant' })
+  })
+
+  it('answers a Pending user with 400 invalid_grant too', async () => {
+    const res = await t.http().post('/api/v1/auth/token').type('form').send({
+      grant_type: 'password',
+      username: 'pending@example.com',
+      password: 'anything',
     })
 
     expect(res.status).toBe(400)

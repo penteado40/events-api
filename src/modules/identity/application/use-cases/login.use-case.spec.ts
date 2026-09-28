@@ -53,6 +53,19 @@ describe('LoginUseCase', () => {
     expect(result.user.id).toBe(1)
   })
 
+  it('refuses a Pending user with USER_PENDING, whatever the password', async () => {
+    await users.create({
+      name: 'Pedro',
+      email: Email.create('pedro@example.com'),
+      passwordHash: null,
+      role: 'USER',
+    })
+
+    await expect(
+      login.execute({ email: 'pedro@example.com', password: 'anything' }),
+    ).rejects.toEqual(new AppError('USER_PENDING'))
+  })
+
   it('treats a malformed email as INVALID_CREDENTIALS', async () => {
     await expect(login.execute({ email: 'not-an-email', password: 'x' })).rejects.toEqual(
       new AppError('INVALID_CREDENTIALS'),

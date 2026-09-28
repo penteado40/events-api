@@ -26,6 +26,8 @@ export class LoginUseCase {
   async execute(input: LoginInput): Promise<LoginOutput> {
     const email = parseEmail(input.email)
     const user = email ? await this.users.findByEmail(email) : null
+    // Accepted trade-off: this reveals that the email belongs to a Pending user.
+    if (user?.isPending) throw new AppError('USER_PENDING')
     // Unknown email still pays for a comparison (constant time).
     const valid = await this.hasher.compare(input.password, user?.passwordHash ?? null)
     if (!user || !valid) throw new AppError('INVALID_CREDENTIALS')

@@ -4,7 +4,8 @@
  *   npm run create-super-admin -- --email=a@b.com --name="Ana" --password=... [--reset-password]
  *
  * Each option can also come from ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD.
- * In production the password needs at least 12 characters.
+ * The password follows the PasswordPolicy (12 characters to 72 bytes). The
+ * email of a Pending user is refused: they set their own password.
  */
 import { parseArgs } from 'node:util'
 import {
@@ -22,12 +23,17 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
     const useCase = new CreateSuperAdminUseCase(
       new PrismaUserRepository(prisma),
       new BcryptPasswordHasher(),
-      { enforceStrongPassword: process.env.NODE_ENV === 'production' },
     )
     return await useCase.execute(input)
   } finally {
     await prisma.$disconnect()
   }
+}
+
+const REFUSAL: Partial<Record<string, string>> = {
+  VALIDATION_ERROR: 'email inválido.',
+  WEAK_PASSWORD: 'a senha precisa ter de 12 caracteres a 72 bytes.',
+  USER_PENDING: 'o email é de um usuário pendente; ele ativa pelo Activation link.',
 }
 
 async function main(): Promise<void> {
@@ -59,7 +65,7 @@ async function main(): Promise<void> {
     console.log(`Super admin ${result.user.email.value}: ${result.outcome}${reset}.`)
   } catch (error) {
     if (error instanceof AppError) {
-      console.error(`Recusado (${error.code}): email inválido ou senha curta demais.`)
+      console.error(`Recusado (${error.code}): ${REFUSAL[error.code] ?? 'dados inválidos.'}`)
       process.exit(1)
     }
     throw error

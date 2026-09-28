@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
-import type { User as PrismaUser } from '../../../generated/prisma/client.js'
+import { Prisma, type User as PrismaUser } from '../../../generated/prisma/client.js'
+import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { type NewUserProps, User } from '../domain/user.entity.js'
@@ -22,15 +23,24 @@ export class PrismaUserRepository extends UserRepository {
   }
 
   async create(props: NewUserProps): Promise<User> {
-    const row = await this.prisma.user.create({
-      data: {
-        name: props.name,
-        email: props.email.value,
-        passwordHash: props.passwordHash,
-        role: props.role,
-      },
-    })
-    return toDomain(row)
+    try {
+      const row = await this.prisma.user.create({
+        data: {
+          name: props.name,
+          email: props.email.value,
+          passwordHash: props.passwordHash,
+          role: props.role,
+        },
+      })
+      return toDomain(row)
+    } catch (error) {
+      // The use case checks first; this covers two concurrent creations. The
+      // email is the only unique column a new User can collide on.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError('EMAIL_ALREADY_IN_USE')
+      }
+      throw error
+    }
   }
 
   async save(user: User): Promise<void> {

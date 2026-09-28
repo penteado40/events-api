@@ -1,9 +1,13 @@
-/** Rules a User password must follow. */
+/** Rules every User password follows (no composition rules, NIST 800-63B). */
 export const PasswordPolicy = {
-  /** Minimum length of a strong password (required for the Super admin in production). */
-  STRONG_MIN_LENGTH: 12,
+  MIN_LENGTH: 12,
+  /** bcrypt ignores everything past 72 bytes. */
+  MAX_BYTES: 72,
 
   isStrong(plain: string): boolean {
-    return plain.length >= PasswordPolicy.STRONG_MIN_LENGTH
+    return (
+      plain.length >= PasswordPolicy.MIN_LENGTH &&
+      new TextEncoder().encode(plain).length <= PasswordPolicy.MAX_BYTES
+    )
   },
 }

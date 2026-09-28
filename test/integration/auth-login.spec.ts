@@ -56,6 +56,18 @@ describe('POST /api/v1/auth/login', () => {
     expect(unknownEmail.body).toEqual(wrongPassword.body)
   })
 
+  it('answers 403 USER_PENDING for a Pending user, whatever the password', async () => {
+    await createUser({ email: 'pedro@example.com', password: null })
+
+    const res = await t
+      .http()
+      .post('/api/v1/auth/login')
+      .send({ email: 'pedro@example.com', password: 'anything' })
+
+    expect(res.status).toBe(403)
+    expect(res.body).toEqual({ error: { code: 'USER_PENDING', message: expect.any(String) } })
+  })
+
   it('rejects an invalid body with 400 VALIDATION_ERROR and { path, message } details', async () => {
     const res = await t
       .http()

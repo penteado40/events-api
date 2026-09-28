@@ -5,6 +5,12 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres'),
+  /** Activation link lifetime, in seconds (default 7 days). */
+  ACTIVATION_LINK_TTL: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7 * 24 * 60 * 60),
   DOCS_ENABLED: z
     .enum(['true', 'false'])
     .default('false')
@@ -18,6 +24,7 @@ export class AppConfig {
   readonly databaseUrl: string
   readonly jwtSecret: string
   readonly docsEnabled: boolean
+  readonly activationLinkTtlSeconds: number
 
   private constructor(env: z.output<typeof EnvSchema>) {
     this.nodeEnv = env.NODE_ENV
@@ -25,6 +32,7 @@ export class AppConfig {
     this.databaseUrl = env.DATABASE_URL
     this.jwtSecret = env.JWT_SECRET
     this.docsEnabled = env.DOCS_ENABLED
+    this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
   }
 
   get isProduction(): boolean {

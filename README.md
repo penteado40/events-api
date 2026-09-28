@@ -102,7 +102,7 @@ Node 22 · TypeScript (ESM, `strict`) · NestJS 11 · Zod (`nestjs-zod`) + `@nes
 
 ## Getting started
 
-**Prerequisites:** Node 22 (`.nvmrc`) and a local PostgreSQL 16 with a role that can create databases (Prisma's `migrate dev` needs a shadow database):
+**Prerequisites:** Node 22 (`.nvmrc`) and a local PostgreSQL 16 or newer (CI and production run 17) with a role that can create databases (Prisma's `migrate dev` needs a shadow database):
 
 ```sql
 CREATE USER events_api WITH PASSWORD 'events_api123' CREATEDB;
@@ -147,7 +147,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 
 **Tests.** Use cases are unit-tested with in-memory fakes of their ports (no database). Integration tests boot the real app with `@nestjs/testing` and hit it through supertest against PostgreSQL, running migrations once and truncating every table before each file.
 
-**CI** runs three parallel jobs on every PR and on pushes to `main`: `checks` (typecheck, lint, `prisma validate`, unit tests, build), `integration` (Postgres 16 service, migrations, schema-vs-migrations drift check, integration tests) and `gitleaks` (secret scanning over the full history). Dependabot groups minor and patch updates.
+**CI** runs three parallel jobs on every PR and on pushes to `main`: `checks` (typecheck, lint, `prisma validate`, unit tests, build), `integration` (Postgres 17 service, migrations, schema-vs-migrations drift check, integration tests) and `gitleaks` (secret scanning over the full history). Dependabot groups minor and patch updates.
 
 **Adding a feature.** Follow the `identity` module. The repo ships a Claude Code skill, [`new-use-case`](.claude/skills/new-use-case/SKILL.md), that walks through a use case from domain to endpoint, test first.
 
@@ -169,4 +169,6 @@ docs/                   # architecture guide, ADRs
 
 ## Deployment
 
-`api/index.ts` runs the same `AppModule` as `src/main.ts` on Vercel Functions (Node.js runtime), creating the app once per instance and reusing it across invocations. Infrastructure provisioning (Neon, Vercel, Upstash, Resend, Cloudinary) is tracked in [PROJ-53](https://flpenteado.atlassian.net/browse/PROJ-53).
+Pushes to `main` deploy to production on Vercel Functions (Node.js runtime, `iad1`); every other branch and PR gets a preview deployment, sharing a separate database branch (`dev`) and with the docs enabled. `api/index.ts` runs the same `AppModule` as `src/main.ts`, creating the app once per instance and reusing it across invocations.
+
+Environments, services (Neon, Upstash, Resend, Cloudinary), how to run migrations and known limitations: [`docs/infra.md`](docs/infra.md) (in Portuguese).

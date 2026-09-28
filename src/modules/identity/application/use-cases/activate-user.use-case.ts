@@ -47,13 +47,11 @@ export class ActivateUserUseCase {
 
     const user = await this.users.findById(link.userId)
     if (!user) throw new AppError('ACTIVATION_LINK_INVALID')
-    // Activated some other way (e.g. the create-super-admin script): the link is spent.
-    if (!user.isPending) throw new AppError('ACTIVATION_LINK_USED')
 
     user.activate(await this.hasher.hash(input.password), now)
-    if (!(await this.links.completeActivation(link, user, now))) {
-      throw new AppError('ACTIVATION_LINK_USED')
-    }
+    const outcome = await this.links.completeActivation(link, user, now)
+    if (outcome === 'used') throw new AppError('ACTIVATION_LINK_USED')
+    if (outcome === 'replaced') throw new AppError('ACTIVATION_LINK_INVALID')
     const { token, expiresIn } = await this.sessions.issue(user)
     return { token, expiresIn, user }
   }

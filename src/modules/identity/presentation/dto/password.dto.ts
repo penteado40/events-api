@@ -5,7 +5,7 @@ import { z } from 'zod'
 // bounds the input.
 const password = z.string().min(1).max(1024)
 
-export class ActivateDto extends createZodDto(
+export class ActivateUserDto extends createZodDto(
   z.object({ token: z.string().min(1).max(200), password }),
 ) {}
 

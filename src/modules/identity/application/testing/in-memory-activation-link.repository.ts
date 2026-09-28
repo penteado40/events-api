@@ -1,5 +1,8 @@
 import { ActivationLink, type NewActivationLinkProps } from '../../domain/activation-link.entity.js'
-import { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
+import {
+  ActivationLinkRepository,
+  type ActivationOutcome,
+} from '../../domain/activation-link.repository.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 
@@ -29,12 +32,13 @@ export class InMemoryActivationLinkRepository extends ActivationLinkRepository {
     return [...this.links.values()].find((l) => l.tokenHash === tokenHash) ?? null
   }
 
-  async completeActivation(link: ActivationLink, user: User, at: Date): Promise<boolean> {
+  async completeActivation(link: ActivationLink, user: User, at: Date): Promise<ActivationOutcome> {
     const stored = this.links.get(link.id)
-    if (!stored || stored.isUsed) return false
+    if (!stored) return 'replaced'
+    if (stored.isUsed) return 'used'
     this.links.set(link.id, ActivationLink.restore({ ...snapshot(stored), usedAt: at }))
     await this.users.save(user)
-    return true
+    return 'activated'
   }
 
   /** Marks a link used, as a concurrent activation would. */

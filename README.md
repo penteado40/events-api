@@ -119,7 +119,7 @@ nvm use
 cp .env.example .env
 npm install                  # also runs prisma generate
 npx prisma migrate deploy
-npx prisma db seed           # local Super admin: admin@local.test / admin123
+npx prisma db seed           # local Super admin: admin@local.test / admin-local-123
 npm run dev                  # http://localhost:3000/api/v1
 ```
 

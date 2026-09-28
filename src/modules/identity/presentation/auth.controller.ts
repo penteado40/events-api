@@ -4,7 +4,7 @@ import { Public } from '../../../shared/presentation/public.decorator.js'
 import { ActivateUserUseCase } from '../application/use-cases/activate-user.use-case.js'
 import { LoginUseCase } from '../application/use-cases/login.use-case.js'
 import { LoginDto, LoginResponseDto } from './dto/login.dto.js'
-import { ActivateDto } from './dto/password.dto.js'
+import { ActivateUserDto } from './dto/password.dto.js'
 import { UserPresenter } from './user.presenter.js'
 
 @ApiTags('auth')
@@ -12,7 +12,7 @@ import { UserPresenter } from './user.presenter.js'
 export class AuthController {
   constructor(
     private readonly loginUseCase: LoginUseCase,
-    private readonly activateUser: ActivateUserUseCase,
+    private readonly activateUserUseCase: ActivateUserUseCase,
   ) {}
 
   @Public()
@@ -29,8 +29,8 @@ export class AuthController {
   @Post('activate')
   @HttpCode(200)
   @ApiOkResponse({ type: LoginResponseDto })
-  async activate(@Body() body: ActivateDto): Promise<LoginResponseDto> {
-    const { token, user } = await this.activateUser.execute(body)
+  async activateUser(@Body() body: ActivateUserDto): Promise<LoginResponseDto> {
+    const { token, user } = await this.activateUserUseCase.execute(body)
     return { data: { token, user: UserPresenter.toJson(user) } }
   }
 }

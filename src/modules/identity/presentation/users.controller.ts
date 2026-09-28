@@ -17,18 +17,21 @@ import { UserPresenter } from './user.presenter.js'
 @Controller('users')
 export class UsersController {
   constructor(
-    private readonly createUser: CreateUserUseCase,
-    private readonly issueActivationLink: IssueActivationLinkUseCase,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly issueActivationLinkUseCase: IssueActivationLinkUseCase,
   ) {}
 
   @Post()
   @HttpCode(201)
   @ApiCreatedResponse({ type: CreateUserResponseDto })
-  async create(
+  async createUser(
     @CurrentUser() actor: User,
     @Body() body: CreateUserDto,
   ): Promise<CreateUserResponseDto> {
-    const { user, activationToken, expiresAt } = await this.createUser.execute({ actor, ...body })
+    const { user, activationToken, expiresAt } = await this.createUserUseCase.execute({
+      actor,
+      ...body,
+    })
     return {
       data: {
         user: UserPresenter.toJson(user),
@@ -41,11 +44,11 @@ export class UsersController {
   @Post(':id/activation-link')
   @HttpCode(201)
   @ApiCreatedResponse({ type: ActivationLinkResponseDto })
-  async reissueActivationLink(
+  async issueActivationLink(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) userId: number,
   ): Promise<ActivationLinkResponseDto> {
-    const { activationToken, expiresAt } = await this.issueActivationLink.execute({
+    const { activationToken, expiresAt } = await this.issueActivationLinkUseCase.execute({
       actor,
       userId,
     })

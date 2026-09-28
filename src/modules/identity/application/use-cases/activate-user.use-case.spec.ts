@@ -107,6 +107,27 @@ describe('ActivateUserUseCase', () => {
     )
   })
 
+  it('answers USER_ALREADY_ACTIVE when the User got a password some other way', async () => {
+    pedro.changePassword('hashed:set-elsewhere')
+
+    await expect(activate.execute({ token: 'pedro-token', password: STRONG })).rejects.toEqual(
+      new AppError('USER_ALREADY_ACTIVE'),
+    )
+    expect(links.all()[0]?.isUsed).toBe(false)
+  })
+
+  it('answers ACTIVATION_LINK_INVALID when the link is reissued during the activation', async () => {
+    const original = links.completeActivation.bind(links)
+    links.completeActivation = async (link, user, at) => {
+      await links.replaceForUser({ userId: user.id, tokenHash: 'hash:new', expiresAt: NOW })
+      return original(link, user, at)
+    }
+
+    await expect(activate.execute({ token: 'pedro-token', password: STRONG })).rejects.toEqual(
+      new AppError('ACTIVATION_LINK_INVALID'),
+    )
+  })
+
   it('answers ACTIVATION_LINK_USED when a concurrent activation consumed the link first', async () => {
     const original = links.completeActivation.bind(links)
     links.completeActivation = async (link, user, at) => {

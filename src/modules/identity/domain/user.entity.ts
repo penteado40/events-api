@@ -1,3 +1,4 @@
+import { AppError } from '../../../shared/domain/app-error.js'
 import type { Email } from '../../../shared/domain/email.vo.js'
 
 export const ROLES = ['SUPER_ADMIN', 'USER'] as const
@@ -71,8 +72,9 @@ export class User {
     this.props.role = 'SUPER_ADMIN'
   }
 
-  /** A Pending user sets their own first password. */
+  /** A Pending user sets their own first password; only a Pending user can. */
   activate(passwordHash: string, at: Date = new Date()): void {
+    if (!this.isPending) throw new AppError('USER_ALREADY_ACTIVE')
     this.changePassword(passwordHash, at)
   }
 

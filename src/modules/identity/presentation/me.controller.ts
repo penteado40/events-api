@@ -13,7 +13,7 @@ import { UserPresenter } from './user.presenter.js'
 @ApiOAuth2([], 'oauth2')
 @Controller('me')
 export class MeController {
-  constructor(private readonly changePassword: ChangePasswordUseCase) {}
+  constructor(private readonly changePasswordUseCase: ChangePasswordUseCase) {}
 
   @Get()
   @ApiOkResponse({ type: MeResponseDto })
@@ -25,11 +25,11 @@ export class MeController {
   @Patch('password')
   @HttpCode(200)
   @ApiOkResponse({ type: LoginResponseDto })
-  async updatePassword(
+  async changePassword(
     @CurrentUser() user: User,
     @Body() body: ChangePasswordDto,
   ): Promise<LoginResponseDto> {
-    const result = await this.changePassword.execute({ user, ...body })
+    const result = await this.changePasswordUseCase.execute({ user, ...body })
     return { data: { token: result.token, user: UserPresenter.toJson(result.user) } }
   }
 }

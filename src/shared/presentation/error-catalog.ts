@@ -21,11 +21,11 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   USER_ALREADY_ACTIVE: { status: 409, message: 'Este usuário já está ativo.' },
   USER_PENDING: {
     status: 403,
-    message: 'Conta ainda não ativada. Use o link de ativação que você recebeu.',
+    message: 'Usuário ainda não ativado. Use o link de ativação que você recebeu.',
   },
   ACTIVATION_LINK_INVALID: {
     status: 400,
-    message: 'Link de ativação inválido. Peça um novo a quem criou sua conta.',
+    message: 'Link de ativação inválido. Peça um novo a quem criou seu usuário.',
   },
   ACTIVATION_LINK_USED: {
     status: 409,
@@ -33,7 +33,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   },
   ACTIVATION_LINK_EXPIRED: {
     status: 410,
-    message: 'Link de ativação expirado. Peça um novo a quem criou sua conta.',
+    message: 'Link de ativação expirado. Peça um novo a quem criou seu usuário.',
   },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }

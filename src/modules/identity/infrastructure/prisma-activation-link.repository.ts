@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common'
 import type { ActivationLink as PrismaActivationLink } from '../../../generated/prisma/client.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { ActivationLink, type NewActivationLinkProps } from '../domain/activation-link.entity.js'
-import { ActivationLinkRepository } from '../domain/activation-link.repository.js'
+import {
+  ActivationLinkRepository,
+  type ActivationOutcome,
+} from '../domain/activation-link.repository.js'
 import type { User } from '../domain/user.entity.js'
 
 @Injectable()
@@ -24,7 +27,8 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
     return row ? toDomain(row) : null
   }
 
-  async completeActivation(link: ActivationLink, user: User, at: Date): Promise<boolean> {
+  /** Touches two aggregates on purpose: see the port. */
+  async completeActivation(link: ActivationLink, user: User, at: Date): Promise<ActivationOutcome> {
     return this.prisma.$transaction(async (tx) => {
       // The row lock taken by this conditional update makes a concurrent
       // activation wait, then match nothing.
@@ -32,12 +36,15 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
         where: { id: link.id, usedAt: null },
         data: { usedAt: at },
       })
-      if (count === 0) return false
+      if (count === 0) {
+        const stillThere = await tx.activationLink.count({ where: { id: link.id } })
+        return stillThere ? 'used' : 'replaced'
+      }
       await tx.user.update({
         where: { id: user.id },
         data: { passwordHash: user.passwordHash, passwordChangedAt: user.passwordChangedAt },
       })
-      return true
+      return 'activated'
     })
   }
 }

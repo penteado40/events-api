@@ -9,6 +9,11 @@ describe('Slug', () => {
     }
   })
 
+  it('is equal to another Slug with the same value', () => {
+    expect(Slug.create('casamento').equals(Slug.restore('casamento'))).toBe(true)
+    expect(Slug.create('casamento').equals(Slug.create('aniversario'))).toBe(false)
+  })
+
   it('refuses anything else with VALIDATION_ERROR', () => {
     for (const value of [
       'ab',

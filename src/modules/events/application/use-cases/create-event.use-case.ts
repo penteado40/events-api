@@ -63,7 +63,7 @@ export class CreateEventUseCase {
       city: input.city ?? null,
       mapsUrl: input.mapsUrl ?? null,
     }
-    Event.validateNew(props)
+    Event.assertValidNew(props)
 
     const primaryOwnerUserId = input.primaryOwnerUserId ?? null
     if (primaryOwnerUserId !== null) {

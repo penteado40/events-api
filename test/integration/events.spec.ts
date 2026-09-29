@@ -257,6 +257,7 @@ describe('Events', () => {
         .send({ siteUrl: 'https://outro.com' })
 
       expect(asManager.status).toBe(403)
+      // The refused request saved nothing: the Owner's response still has the old name.
       expect(asOwner.status).toBe(200)
       expect(asOwner.body.data.siteUrl).toBe('https://outro.com')
       expect(asOwner.body.data.name).toBe(event.name)

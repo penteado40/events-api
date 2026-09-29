@@ -17,7 +17,7 @@ export class InMemoryEventRepository extends EventRepository {
   }
 
   async findBySlug(slug: Slug): Promise<Event | null> {
-    return [...this.events.values()].find((e) => e.slug.value === slug.value) ?? null
+    return [...this.events.values()].find((e) => e.slug.equals(slug)) ?? null
   }
 
   async create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event> {

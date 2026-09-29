@@ -24,4 +24,8 @@ export class Slug {
   static restore(value: string): Slug {
     return new Slug(value)
   }
+
+  equals(other: Slug): boolean {
+    return this.value === other.value
+  }
 }

@@ -63,8 +63,8 @@ export class Event {
     return new Event({ ...props })
   }
 
-  /** Checks the rules of a new Event before it is stored. */
-  static validateNew(props: NewEventProps): void {
+  /** Throws VALIDATION_ERROR when the props of a new Event break its rules. */
+  static assertValidNew(props: NewEventProps): void {
     validateDetails(props)
   }
 

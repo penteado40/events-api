@@ -44,6 +44,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Port → adaptador: `{ provide: UserRepository, useClass: PrismaUserRepository }`.
 - Use case (sem `@Injectable`): `{ provide: XUseCase, useFactory: (a, b) => new XUseCase(a, b), inject: [A, B] }`.
 - `index.ts` exporta o módulo Nest e o que outros contextos podem consumir (tipos, serviços de consulta, domain events).
+- Consulta oferecida a outro contexto mora num módulo estático `<nome>-queries.module.ts`, sem controllers, que exporta só a classe de consulta (`identity/identity-queries.module.ts` → `UserLookup`). Quem consome importa esse módulo no próprio `imports` e depende dele por um port seu em `application/ports/`. Nunca torne um módulo `global` para compartilhar consultas: a dependência entre contextos precisa aparecer no `*.module.ts`.
 
 ## Módulo novo
 

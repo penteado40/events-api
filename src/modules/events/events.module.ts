@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
+import { IdentityQueriesModule } from '../identity/index.js'
 import { UserDirectory } from './application/ports/user-directory.js'
 import { ArchiveEventUseCase } from './application/use-cases/archive-event.use-case.js'
 import { CreateEventUseCase } from './application/use-cases/create-event.use-case.js'
@@ -15,6 +16,7 @@ import { EventsController } from './presentation/events.controller.js'
 
 /** Composition root of the events context: Events, members and the AccessPolicy. */
 @Module({
+  imports: [IdentityQueriesModule],
   controllers: [EventsController],
   providers: [
     { provide: EventRepository, useClass: PrismaEventRepository },

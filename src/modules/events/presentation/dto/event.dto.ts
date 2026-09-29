@@ -1,6 +1,7 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 import { EVENT_ROLES } from '../../domain/event-member.js'
+import { SLUG_MAX_LENGTH, SLUG_MIN_LENGTH, SLUG_PATTERN } from '../../domain/slug.vo.js'
 import { CURRENCIES, EVENT_STATUSES, EVENT_TYPES, LOCALES } from '../../domain/event.entity.js'
 
 /** ISO 8601 with an explicit offset (ADR-0008); `Z` counts as one. */
@@ -31,11 +32,7 @@ const siteUrl = z.string().trim().min(1).max(2048)
 export class CreateEventDto extends createZodDto(
   EventDetailsSchema.extend({
     /** Permanent: kebab-case, 3 to 60 characters. */
-    slug: z
-      .string()
-      .min(3)
-      .max(60)
-      .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+    slug: z.string().min(SLUG_MIN_LENGTH).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN),
     siteUrl,
     timezone: EventDetailsSchema.shape.timezone.optional(),
     locale: EventDetailsSchema.shape.locale.optional(),

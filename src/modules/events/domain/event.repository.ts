@@ -1,5 +1,6 @@
 import type { Event, EventStatus, NewEventProps } from './event.entity.js'
 import type { Membership } from './event-member.js'
+import type { Slug } from './slug.vo.js'
 
 export interface EventListFilter {
   status?: EventStatus
@@ -13,7 +14,7 @@ export interface EventWithMembership {
 
 export abstract class EventRepository {
   abstract findById(id: number): Promise<Event | null>
-  abstract findBySlug(slug: string): Promise<Event | null>
+  abstract findBySlug(slug: Slug): Promise<Event | null>
   /** Creates the Event and, when given, its Primary owner, in one transaction. */
   abstract create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event>
   abstract save(event: Event): Promise<void>

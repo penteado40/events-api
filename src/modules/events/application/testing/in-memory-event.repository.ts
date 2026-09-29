@@ -1,5 +1,6 @@
 import { Event, type NewEventProps } from '../../domain/event.entity.js'
 import type { Membership } from '../../domain/event-member.js'
+import type { Slug } from '../../domain/slug.vo.js'
 import {
   type EventListFilter,
   EventRepository,
@@ -15,8 +16,8 @@ export class InMemoryEventRepository extends EventRepository {
     return this.events.get(id) ?? null
   }
 
-  async findBySlug(slug: string): Promise<Event | null> {
-    return [...this.events.values()].find((e) => e.slug === slug) ?? null
+  async findBySlug(slug: Slug): Promise<Event | null> {
+    return [...this.events.values()].find((e) => e.slug.value === slug.value) ?? null
   }
 
   async create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event> {

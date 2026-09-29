@@ -8,7 +8,7 @@ export const EventPresenter = {
       type: event.type,
       status: event.status,
       name: event.name,
-      slug: event.slug,
+      slug: event.slug.value,
       siteUrl: event.siteUrl.value,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt?.toISOString() ?? null,

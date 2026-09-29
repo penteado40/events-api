@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { SiteUrl } from './site-url.vo.js'
+import type { Slug } from './slug.vo.js'
 
 export const EVENT_TYPES = [
   'WEDDING',
@@ -37,7 +38,7 @@ export interface EventDetails {
 }
 
 export interface NewEventProps extends EventDetails {
-  slug: string
+  slug: Slug
   siteUrl: SiteUrl
   currency: Currency
 }
@@ -79,7 +80,7 @@ export class Event {
   get name(): string {
     return this.props.name
   }
-  get slug(): string {
+  get slug(): Slug {
     return this.props.slug
   }
   get siteUrl(): SiteUrl {

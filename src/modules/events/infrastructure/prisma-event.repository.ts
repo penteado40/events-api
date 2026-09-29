@@ -21,6 +21,7 @@ import {
   type EventWithMembership,
 } from '../domain/event.repository.js'
 import { SiteUrl } from '../domain/site-url.vo.js'
+import { Slug } from '../domain/slug.vo.js'
 
 const NEWEST_FIRST = [
   { startsAt: 'desc' },
@@ -38,8 +39,8 @@ export class PrismaEventRepository extends EventRepository {
     return row ? toDomain(row) : null
   }
 
-  async findBySlug(slug: string): Promise<Event | null> {
-    const row = await this.prisma.event.findUnique({ where: { slug } })
+  async findBySlug(slug: Slug): Promise<Event | null> {
+    const row = await this.prisma.event.findUnique({ where: { slug: slug.value } })
     return row ? toDomain(row) : null
   }
 
@@ -48,7 +49,7 @@ export class PrismaEventRepository extends EventRepository {
       const row = await this.prisma.event.create({
         data: {
           ...toRow(props),
-          slug: props.slug,
+          slug: props.slug.value,
           currency: props.currency,
           members:
             primaryOwnerUserId === null
@@ -125,7 +126,7 @@ function toDomain(row: PrismaEvent): Event {
     type: row.type,
     status: row.status,
     name: row.name,
-    slug: row.slug,
+    slug: Slug.create(row.slug),
     siteUrl: SiteUrl.restore(row.siteUrl),
     startsAt: row.startsAt,
     endsAt: row.endsAt,

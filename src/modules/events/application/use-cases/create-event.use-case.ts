@@ -10,6 +10,7 @@ import {
 } from '../../domain/event.entity.js'
 import type { EventRepository, EventWithMembership } from '../../domain/event.repository.js'
 import { SiteUrl, type SiteUrlOptions } from '../../domain/site-url.vo.js'
+import { Slug } from '../../domain/slug.vo.js'
 import type { UserDirectory } from '../ports/user-directory.js'
 import type { Requester } from '../requester.js'
 
@@ -50,7 +51,7 @@ export class CreateEventUseCase {
     const props: NewEventProps = {
       type: input.type,
       name: input.name.trim(),
-      slug: input.slug,
+      slug: Slug.create(input.slug),
       siteUrl: SiteUrl.create(input.siteUrl, this.siteUrlOptions),
       startsAt: input.startsAt,
       endsAt: input.endsAt ?? null,

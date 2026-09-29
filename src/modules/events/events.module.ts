@@ -10,7 +10,7 @@ import { UnarchiveEventUseCase } from './application/use-cases/unarchive-event.u
 import { UpdateEventUseCase } from './application/use-cases/update-event.use-case.js'
 import type { SiteUrlOptions } from './domain/site-url.vo.js'
 import { EventRepository } from './domain/event.repository.js'
-import { IdentityUserDirectory } from './infrastructure/identity-user-directory.js'
+import { InProcessUserDirectory } from './infrastructure/in-process-user-directory.js'
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
 import { EventsController } from './presentation/events.controller.js'
 
@@ -20,7 +20,7 @@ import { EventsController } from './presentation/events.controller.js'
   controllers: [EventsController],
   providers: [
     { provide: EventRepository, useClass: PrismaEventRepository },
-    { provide: UserDirectory, useClass: IdentityUserDirectory },
+    { provide: UserDirectory, useClass: InProcessUserDirectory },
     {
       provide: CreateEventUseCase,
       useFactory: (events: EventRepository, users: UserDirectory, config: AppConfig) =>

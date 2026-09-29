@@ -37,7 +37,7 @@ describe('CreateEventUseCase', () => {
     const { event, membership } = await createEvent.execute(input())
 
     expect(event.status).toBe('ACTIVE')
-    expect(event.slug).toBe('aniversario-da-ana')
+    expect(event.slug.value).toBe('aniversario-da-ana')
     expect(event.siteUrl.value).toBe('https://festa-da-ana.com')
     expect(event.timezone).toBe('America/Sao_Paulo')
     expect(event.locale).toBe('pt-BR')
@@ -75,6 +75,12 @@ describe('CreateEventUseCase', () => {
 
     await expect(createEvent.execute(input({ siteUrl: 'https://outra.com' }))).rejects.toEqual(
       new AppError('SLUG_ALREADY_IN_USE'),
+    )
+  })
+
+  it('refuses a slug that is not kebab-case with VALIDATION_ERROR, even without the DTO', async () => {
+    await expect(createEvent.execute(input({ slug: 'Casamento da Ana' }))).rejects.toEqual(
+      new AppError('VALIDATION_ERROR'),
     )
   })
 

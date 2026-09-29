@@ -229,7 +229,7 @@ test/
 
 - Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`, e os papéis do Nest `.service`, `.strategy`, `.guard`, `.filter`, `.decorator`.
 - Arquivos sem um papel único ficam sem sufixo, com nome do que fazem: `app-config.ts`, `error-catalog.ts`, `security.ts`, `docs.ts`, `password-policy.ts`.
-- Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`. Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-password-hasher.ts`), e ficam em `application/testing/`.
+- Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`, e `in-process-` para o que chama outro contexto (ou código) dentro do mesmo processo (`in-process-user-directory.ts`, `InProcessEventPublisher`). Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-password-hasher.ts`), e ficam em `application/testing/`.
 - Classes com os termos do `CONTEXT.md`: `Contribution`, `RegistryItem`, `EventMember`. Nunca os termos da lista "_Avoid_".
 
 ### 5.3 O caminho de uma requisição: `POST /api/v1/auth/login`

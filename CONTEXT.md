@@ -40,6 +40,10 @@ _Avoid_: root, admin geral
 O vínculo entre um User e um Event, com um papel: Owner, Manager ou Viewer.
 _Avoid_: gerente, manager (quando se refere ao vínculo em geral), colaborador
 
+**Membership** (vínculo):
+O Event member de quem está fazendo a requisição, visto a partir dele: o papel e se é o Primary owner. O Super admin não tem Membership, porque nunca é Event member.
+_Avoid_: viewer (Viewer é um papel), papel do usuário, acesso
+
 **Owner**:
 Membro com controle total do Event, incluindo membros e API tokens. Um Owner que não é o Primary owner é chamado de Owner organizador.
 _Avoid_: dono (sem qualificador), admin do evento

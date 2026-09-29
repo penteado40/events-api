@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "prisma migrate deploy",
+  "buildCommand": "",
   "regions": ["iad1"],
   "rewrites": [
     {

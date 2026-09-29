@@ -43,7 +43,9 @@ DATABASE_URL="$(npx neonctl connection-string dev --project-id patient-bar-43479
   --role-name events_api --database-name events_api)" npx prisma migrate deploy
 ```
 
-Troque `dev` por `main` para produção. Automatizar (build da Vercel ou GitHub Actions) é decisão da PROJ-71.
+Troque `dev` por `main` para produção.
+
+A automação vai rodar no GitHub Actions, não no build da Vercel: lá a migration seria aplicada no banco mesmo quando o deploy falhasse depois, e com `framework: null` qualquer `buildCommand` faz a Vercel exigir um diretório `public`. O job precisa da URL **direta**. A implementação e a estratégia para os previews (migrar o `dev`, um branch do Neon por PR ou nada) ficam na PROJ-71.
 
 ## Super admin
 

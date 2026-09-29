@@ -10,7 +10,7 @@ import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { ActivateUserUseCase } from './activate-user.use-case.js'
 
 const NOW = new Date('2026-09-28T12:00:00.000Z')
-const STRONG = 'a-strong-password'
+const STRONG = 'A-strong-password-1'
 
 describe('ActivateUserUseCase', () => {
   let users: InMemoryUserRepository
@@ -66,7 +66,7 @@ describe('ActivateUserUseCase', () => {
     await activate.execute({ token: 'pedro-token', password: STRONG })
 
     await expect(
-      activate.execute({ token: 'pedro-token', password: 'another-strong-password' }),
+      activate.execute({ token: 'pedro-token', password: 'another-Strong-password-1' }),
     ).rejects.toEqual(new AppError('ACTIVATION_LINK_USED'))
     expect((await users.findById(pedro.id))?.passwordHash).toBe(`hashed:${STRONG}`)
   })
@@ -89,13 +89,13 @@ describe('ActivateUserUseCase', () => {
     )
   })
 
-  it('answers WEAK_PASSWORD for a short password and keeps the link usable', async () => {
-    await expect(
-      activate.execute({ token: 'pedro-token', password: '12345678901' }),
-    ).rejects.toEqual(new AppError('WEAK_PASSWORD'))
+  it('answers WEAK_PASSWORD for a password outside the PasswordPolicy and keeps the link usable', async () => {
+    await expect(activate.execute({ token: 'pedro-token', password: 'Abcde1!' })).rejects.toEqual(
+      new AppError('WEAK_PASSWORD'),
+    )
     expect(links.all()[0]?.isUsed).toBe(false)
 
-    const result = await activate.execute({ token: 'pedro-token', password: '123456789012' })
+    const result = await activate.execute({ token: 'pedro-token', password: 'Abcdef1!' })
     expect(result.user.isPending).toBe(false)
   })
 

@@ -30,7 +30,8 @@ describe('completeOpenApiDocument', () => {
               value: {
                 error: {
                   code: 'WEAK_PASSWORD',
-                  message: 'A senha precisa ter pelo menos 12 caracteres e no máximo 72 bytes.',
+                  message:
+                    'A senha precisa ter de 8 caracteres a 72 bytes, com ao menos uma letra maiúscula, uma minúscula, um número e um símbolo.',
                 },
               },
             },

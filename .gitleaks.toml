@@ -6,7 +6,7 @@ useDefault = true
 description = "Credenciais de desenvolvimento (docker-local, CI e seed local)"
 regexes = [
   '''events_api123''',
-  '''admin-local-123''',
+  '''Admin-local-123''',
   '''dev-only-secret-change-me-0123456789abcdef''',
   '''ci-only-secret-not-used-anywhere-else-0123456789''',
   '''\$2b\$10\$Iklldu0YrOqwFb93nfkp3OEhG\.X2Q85juONeAgt5DOJVqIryst/fK''',

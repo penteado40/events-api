@@ -18,24 +18,24 @@ describe('CreateSuperAdminUseCase', () => {
     const result = await createSuperAdmin.execute({
       email: ' Admin@Local.test ',
       name: 'Admin',
-      password: 'admin-password-123',
+      password: 'Admin-password-123',
     })
 
     expect(result.outcome).toBe('created')
     expect(users.all()).toHaveLength(1)
     expect(result.user.role).toBe('SUPER_ADMIN')
     expect(result.user.email.value).toBe('admin@local.test')
-    expect(result.user.passwordHash).toBe('hashed:admin-password-123')
+    expect(result.user.passwordHash).toBe('hashed:Admin-password-123')
   })
 
   it('is idempotent: running twice keeps one User and the first password', async () => {
-    const input = { email: 'admin@local.test', name: 'Admin', password: 'admin-password-123' }
+    const input = { email: 'admin@local.test', name: 'Admin', password: 'Admin-password-123' }
     await createSuperAdmin.execute(input)
-    const second = await createSuperAdmin.execute({ ...input, password: 'other-password' })
+    const second = await createSuperAdmin.execute({ ...input, password: 'Other-password-1' })
 
     expect(second.outcome).toBe('unchanged')
     expect(users.all()).toHaveLength(1)
-    expect(second.user.passwordHash).toBe('hashed:admin-password-123')
+    expect(second.user.passwordHash).toBe('hashed:Admin-password-123')
   })
 
   it('promotes an existing User without touching the password', async () => {
@@ -49,7 +49,7 @@ describe('CreateSuperAdminUseCase', () => {
     const result = await createSuperAdmin.execute({
       email: 'ana@example.com',
       name: 'Ana',
-      password: 'ignored-password',
+      password: 'Ignored-password-1',
     })
 
     expect(result.outcome).toBe('promoted')
@@ -62,18 +62,18 @@ describe('CreateSuperAdminUseCase', () => {
     await createSuperAdmin.execute({
       email: 'admin@local.test',
       name: 'Admin',
-      password: 'admin-password-123',
+      password: 'Admin-password-123',
     })
 
     const result = await createSuperAdmin.execute({
       email: 'admin@local.test',
       name: 'Admin',
-      password: 'brand-new-password',
+      password: 'Brand-new-password-1',
       resetPassword: true,
     })
 
     expect(result.passwordReset).toBe(true)
-    expect(result.user.passwordHash).toBe('hashed:brand-new-password')
+    expect(result.user.passwordHash).toBe('hashed:Brand-new-password-1')
     expect(result.user.passwordChangedAt).toBeInstanceOf(Date)
   })
 
@@ -82,7 +82,7 @@ describe('CreateSuperAdminUseCase', () => {
       createSuperAdmin.execute({
         email: 'admin@local.test',
         name: 'Admin',
-        password: '12345678901',
+        password: 'Abcde1!',
       }),
     ).rejects.toEqual(new AppError('WEAK_PASSWORD'))
     expect(users.all()).toHaveLength(0)
@@ -90,7 +90,7 @@ describe('CreateSuperAdminUseCase', () => {
     const created = await createSuperAdmin.execute({
       email: 'admin@local.test',
       name: 'Admin',
-      password: '123456789012',
+      password: 'Abcdef1!',
     })
     expect(created.outcome).toBe('created')
   })
@@ -107,7 +107,7 @@ describe('CreateSuperAdminUseCase', () => {
       createSuperAdmin.execute({
         email: 'pedro@example.com',
         name: 'Pedro',
-        password: 'admin-password-123',
+        password: 'Admin-password-123',
         resetPassword: true,
       }),
     ).rejects.toEqual(new AppError('USER_PENDING'))

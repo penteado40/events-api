@@ -305,6 +305,21 @@ Arquivos: `shared/domain/domain-event.ts` (tipo base e `AggregateRoot` com `reco
 | infrastructure | Coberto pelos testes de integração | Postgres real |
 | presentation + tudo junto | Integração HTTP (`test/integration/`) | Postgres real, Resend/Cloudinary com dublês |
 
+### 5.8 Autoria dos registros (toda tabela)
+
+**Toda tabela guarda quem criou e quem editou por último cada registro, e quando.** Isso vale para as tabelas que já existem e é o padrão de toda tabela nova: um model sem autoria é incompleto.
+
+| Coluna | O que guarda |
+|---|---|
+| `createdAt` | Quando o registro foi criado |
+| `updatedAt` | Quando foi editado pela última vez |
+| `createdById` | Quem o criou (User) |
+| `updatedById` | Quem o editou por último (User) |
+
+- Guardamos só o **último** editor, não o histórico de alterações. Uma tabela de auditoria, com uma linha por mudança, só entra se a dúvida "quem mudou o quê" aparecer na prática.
+- Autor e hora são responsabilidade do domínio: o use case recebe quem está agindo e a entidade marca autor e hora juntos a cada mudança. O banco não adivinha o autor.
+- Ainda a decidir na PROJ-96 (e registrado no ADR que ela cria): o autor de escritas sem User logado (Guest pelo Site, LegacyMigration, scripts), a nulidade das colunas e se a API expõe a autoria. Até lá, siga a PROJ-96 e atualize esta seção com a forma final.
+
 ---
 
 ## 6. Nossa escolha pragmática ("DDD pragmático")

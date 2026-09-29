@@ -68,6 +68,16 @@ describe('AccessPolicy', () => {
     })
   })
 
+  // UpdateEventUseCase asks only for event:update-site when a siteUrl is sent,
+  // so whoever may change the site must also be allowed the plain update.
+  it('never grants event:update-site to an actor it refuses event:update', () => {
+    for (const [name, actor] of Object.entries(ACTORS)) {
+      const site = AccessPolicy.decide(actor, 'event:update-site', { status: 'ACTIVE' })
+      const update = AccessPolicy.decide(actor, 'event:update', { status: 'ACTIVE' })
+      if (site.allowed) expect(update, name).toEqual(ALLOWED)
+    }
+  })
+
   it('lets only the Super admin create events', () => {
     expect(AccessPolicy.decide(superAdmin, 'event:create')).toEqual(ALLOWED)
     expect(AccessPolicy.decide(nonMember, 'event:create')).toEqual(FORBIDDEN)

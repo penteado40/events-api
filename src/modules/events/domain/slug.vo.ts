@@ -19,4 +19,9 @@ export class Slug {
     }
     return new Slug(value)
   }
+
+  /** A value already stored, trusted as is: the rule guards input, not reads. */
+  static restore(value: string): Slug {
+    return new Slug(value)
+  }
 }

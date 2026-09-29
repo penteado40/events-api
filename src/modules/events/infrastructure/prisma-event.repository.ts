@@ -126,7 +126,7 @@ function toDomain(row: PrismaEvent): Event {
     type: row.type,
     status: row.status,
     name: row.name,
-    slug: Slug.create(row.slug),
+    slug: Slug.restore(row.slug),
     siteUrl: SiteUrl.restore(row.siteUrl),
     startsAt: row.startsAt,
     endsAt: row.endsAt,

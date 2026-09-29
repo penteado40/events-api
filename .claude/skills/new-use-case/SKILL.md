@@ -25,7 +25,7 @@ O módulo `src/modules/identity` é o **gabarito**: antes de escrever cada arqui
    _Pronto quando_ `npm run prisma:migrate -- --name <nome>` gerou a migration e `npm run typecheck` passa.
 
 6. **Presentation e composição.** DTO Zod, presenter, controller e o registro no `*.module.ts` com `useFactory`.
-   _Pronto quando_ o endpoint aparece em `/api/v1/openapi` com `DOCS_ENABLED=true`.
+   _Pronto quando_ o endpoint tem resumo (`@ApiOperation`), os erros de negócio em `@ApiErrors(...)` (vazio se não houver) e exemplo em todo campo do body (seção presentation do REFERENCE), e `npx vitest run --project integration test/integration/docs.spec.ts` passa.
 
 7. **Integração.** Teste HTTP em `test/integration/<recurso>.spec.ts` com `createTestApp` e as factories, cobrindo sucesso, cada código de erro novo e o acesso (401 sem token, 403 quando couber).
    _Pronto quando_ cada critério de aceite do ticket tem um teste de integração verde.

@@ -9,13 +9,8 @@ import {
   Post,
   Query,
 } from '@nestjs/common'
-import {
-  ApiBearerAuth,
-  ApiCreatedResponse,
-  ApiOAuth2,
-  ApiOkResponse,
-  ApiTags,
-} from '@nestjs/swagger'
+import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import type { User } from '../../identity/index.js'
 import { ArchiveEventUseCase } from '../application/use-cases/archive-event.use-case.js'
@@ -33,9 +28,10 @@ import {
 } from './dto/event.dto.js'
 import { EventPresenter } from './event.presenter.js'
 
+/** What `loadEventFor` refuses: a non-member, or a missing Event for the Super admin. */
+const EVENT_ACCESS_ERRORS = ['FORBIDDEN', 'NOT_FOUND'] as const
+
 @ApiTags('events')
-@ApiBearerAuth()
-@ApiOAuth2([], 'oauth2')
 @Controller('events')
 export class EventsController {
   constructor(
@@ -49,7 +45,12 @@ export class EventsController {
 
   @Post()
   @HttpCode(201)
+  @ApiOperation({
+    summary: 'Criar um Event',
+    description: 'Só o Super admin, opcionalmente já indicando o Primary owner.',
+  })
   @ApiCreatedResponse({ type: EventResponseDto })
+  @ApiErrors('FORBIDDEN', 'SLUG_ALREADY_IN_USE', 'PRIMARY_OWNER_INVALID')
   async create(
     @CurrentUser() actor: User,
     @Body() body: CreateEventDto,
@@ -64,7 +65,12 @@ export class EventsController {
   }
 
   @Get()
+  @ApiOperation({
+    summary: 'Listar Events',
+    description: 'Os Events de que o User é Event member; o Super admin vê todos.',
+  })
   @ApiOkResponse({ type: EventListResponseDto })
+  @ApiErrors()
   async list(
     @CurrentUser() actor: User,
     @Query() query: ListEventsQueryDto,
@@ -74,7 +80,9 @@ export class EventsController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Ver um Event' })
   @ApiOkResponse({ type: EventResponseDto })
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async get(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -83,7 +91,13 @@ export class EventsController {
   }
 
   @Patch(':id')
+  @ApiOperation({
+    summary: 'Editar um Event',
+    description:
+      'Owners, Managers e o Super admin; mudar o `siteUrl` é só para Owners e o Super admin. Um Archived event não aceita edição de Event members.',
+  })
   @ApiOkResponse({ type: EventResponseDto })
+  @ApiErrors(...EVENT_ACCESS_ERRORS, 'EVENT_ARCHIVED')
   async update(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -104,7 +118,9 @@ export class EventsController {
 
   @Post(':id/archive')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Arquivar um Event', description: 'Owners e o Super admin.' })
   @ApiOkResponse({ type: EventResponseDto })
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async archive(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -116,7 +132,9 @@ export class EventsController {
 
   @Post(':id/unarchive')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Desarquivar um Event', description: 'Só o Super admin.' })
   @ApiOkResponse({ type: EventResponseDto })
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async unarchive(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,

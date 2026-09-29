@@ -11,6 +11,7 @@ import { CreateUserUseCase } from './application/use-cases/create-user.use-case.
 import { GetCurrentUserUseCase } from './application/use-cases/get-current-user.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
 import { LoginUseCase } from './application/use-cases/login.use-case.js'
+import { UserLookup } from './application/user-lookup.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
 import { BcryptPasswordHasher } from './infrastructure/bcrypt-password-hasher.js'
@@ -39,6 +40,8 @@ export class IdentityModule {
   static register(options: IdentityModuleOptions): DynamicModule {
     return {
       module: IdentityModule,
+      // Registered once by AppModule; global so other contexts can inject its exports.
+      global: true,
       imports: [
         PassportModule,
         JwtModule.registerAsync({
@@ -122,8 +125,14 @@ export class IdentityModule {
           useFactory: (users: UserRepository) => new GetCurrentUserUseCase(users),
           inject: [UserRepository],
         },
+        {
+          provide: UserLookup,
+          useFactory: (users: UserRepository) => new UserLookup(users),
+          inject: [UserRepository],
+        },
         JwtStrategy,
       ],
+      exports: [UserLookup],
     }
   }
 }

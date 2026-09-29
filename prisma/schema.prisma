@@ -26,6 +26,7 @@ model User {
   updatedAt         DateTime  @updatedAt
 
   activationLinks ActivationLink[]
+  memberships     EventMember[]
 
   @@map("users")
 }
@@ -42,4 +43,66 @@ model ActivationLink {
 
   @@index([userId])
   @@map("activation_links")
+}
+
+enum EventType {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  BABY_SHOWER
+  PARTY
+  OTHER
+}
+
+enum EventStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum EventRole {
+  OWNER
+  MANAGER
+  VIEWER
+}
+
+model Event {
+  id           Int         @id @default(autoincrement())
+  type         EventType
+  status       EventStatus @default(ACTIVE)
+  name         String
+  slug         String      @unique // never changes
+  siteUrl      String // origin only (scheme + host + port)
+  startsAt     DateTime // UTC
+  endsAt       DateTime?
+  timezone     String      @default("America/Sao_Paulo")
+  locale       String      @default("pt-BR")
+  currency     String      @default("BRL")
+  venueName    String?
+  venueAddress String?
+  city         String?
+  mapsUrl      String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  members EventMember[]
+
+  @@map("events")
+}
+
+model EventMember {
+  id             Int       @id @default(autoincrement())
+  eventId        Int
+  userId         Int
+  role           EventRole
+  // At most one per Event: partial unique index created in the migration SQL (ADR-0003).
+  isPrimaryOwner Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("event_members")
 }

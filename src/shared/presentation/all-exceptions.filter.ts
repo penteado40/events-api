@@ -9,16 +9,8 @@ import type { Response } from 'express'
 import { ZodValidationException } from 'nestjs-zod'
 import { ZodError } from 'zod'
 import { AppError, type ErrorCode } from '../domain/app-error.js'
+import type { ErrorResponse, ValidationDetail } from './dto/error-response.dto.js'
 import { CODE_BY_HTTP_STATUS, ERROR_CATALOG } from './error-catalog.js'
-
-interface ValidationDetail {
-  path: string
-  message: string
-}
-
-interface ErrorBody {
-  error: { code: ErrorCode; message: string; details?: unknown }
-}
 
 export interface AllExceptionsFilterOptions {
   /** Outside production, 500s carry the original message to ease debugging. */
@@ -38,7 +30,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).json(body)
   }
 
-  private toResponse(exception: unknown): { status: number; body: ErrorBody } {
+  private toResponse(exception: unknown): { status: number; body: ErrorResponse } {
     if (exception instanceof AppError) return fromCode(exception.code)
 
     if (exception instanceof ZodValidationException) {
@@ -65,9 +57,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 }
 
-function fromCode(code: ErrorCode, details?: unknown): { status: number; body: ErrorBody } {
+function fromCode(
+  code: ErrorCode,
+  details?: ValidationDetail[],
+): { status: number; body: ErrorResponse } {
   const { status, message } = ERROR_CATALOG[code]
-  const error: ErrorBody['error'] = { code, message }
+  const error: ErrorResponse['error'] = { code, message }
   if (details !== undefined) error.details = details
   return { status, body: { error } }
 }

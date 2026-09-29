@@ -328,13 +328,14 @@ O Scalar (`/api/v1/docs`, com `DOCS_ENABLED=true`) é gerado do código e é a i
 | O que | Onde | Exemplo |
 |---|---|---|
 | Resumo (e descrição, quando houver regra de acesso ou efeito colateral) | `@ApiOperation` no método do controller | `@ApiOperation({ summary: 'Criar um User', description: 'Só o Super admin. ...' })` |
-| Erros de negócio | `@ApiErrors(...)` no método, com os códigos que o use case e a AccessPolicy lançam | `@ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')` |
+| Erros de negócio | `@ApiErrors(...)` em **todo** método, com os códigos que o use case e a AccessPolicy lançam; `@ApiErrors()` quando não há nenhum | `@ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')` |
 | Exemplo de cada campo do request body | `.meta({ example })` no schema Zod do DTO | `email: z.email().meta({ example: 'maria@local.test' })` |
 | Descrição de campo, quando o nome não basta | `.meta({ description })` (comentário JSDoc não vira doc) | `siteUrl: ... .meta({ description: 'Origem do Site: ...' })` |
 
 - 401 `UNAUTHENTICATED` (rota sem `@Public()`) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
 - O status e a mensagem de cada código vêm do `ERROR_CATALOG`. Código novo aparece na doc sem editar nada além do catálogo.
-- Textos em português, termos do glossário em inglês. Exemplos que funcionam contra o seed local, nunca uma credencial real.
+- Textos em português, termos do glossário em inglês.
+- Exemplos que funcionam contra o seed local, sem que executar um quebre outro (a troca de senha usa a mesma senha do seed como nova). Valor que só existe em tempo de execução (token de ativação) usa um placeholder descritivo. Nunca uma credencial real.
 - Rota que não deve aparecer na doc (`@ApiExcludeController`) entra na allowlist `UNDOCUMENTED_ROUTES` do `docs.spec.ts`, com o motivo.
 
 ---

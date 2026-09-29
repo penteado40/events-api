@@ -28,6 +28,9 @@ import {
 } from './dto/event.dto.js'
 import { EventPresenter } from './event.presenter.js'
 
+/** What `loadEventFor` refuses: a non-member, or a missing Event for the Super admin. */
+const EVENT_ACCESS_ERRORS = ['FORBIDDEN', 'NOT_FOUND'] as const
+
 @ApiTags('events')
 @Controller('events')
 export class EventsController {
@@ -67,6 +70,7 @@ export class EventsController {
     description: 'Os Events de que o User é Event member; o Super admin vê todos.',
   })
   @ApiOkResponse({ type: EventListResponseDto })
+  @ApiErrors()
   async list(
     @CurrentUser() actor: User,
     @Query() query: ListEventsQueryDto,
@@ -78,7 +82,7 @@ export class EventsController {
   @Get(':id')
   @ApiOperation({ summary: 'Ver um Event' })
   @ApiOkResponse({ type: EventResponseDto })
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async get(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -90,10 +94,10 @@ export class EventsController {
   @ApiOperation({
     summary: 'Editar um Event',
     description:
-      'Owners e Managers. Mudar o `siteUrl` é só para Owners. Um Archived event não aceita edição.',
+      'Owners, Managers e o Super admin; mudar o `siteUrl` é só para Owners e o Super admin. Um Archived event não aceita edição de Event members.',
   })
   @ApiOkResponse({ type: EventResponseDto })
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'EVENT_ARCHIVED')
+  @ApiErrors(...EVENT_ACCESS_ERRORS, 'EVENT_ARCHIVED')
   async update(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -116,7 +120,7 @@ export class EventsController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Arquivar um Event', description: 'Owners e o Super admin.' })
   @ApiOkResponse({ type: EventResponseDto })
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async archive(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,
@@ -130,7 +134,7 @@ export class EventsController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Desarquivar um Event', description: 'Só o Super admin.' })
   @ApiOkResponse({ type: EventResponseDto })
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors(...EVENT_ACCESS_ERRORS)
   async unarchive(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) eventId: number,

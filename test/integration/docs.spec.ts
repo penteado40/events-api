@@ -1,6 +1,14 @@
+import type {
+  OpenAPIObject,
+  OperationObject,
+  ReferenceObject,
+  RequestBodyObject,
+  SchemaObject,
+} from '@nestjs/swagger'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
 import { createUser } from './support/factories.js'
+import { registeredRoutes } from './support/routes.js'
 
 describe('docs with DOCS_ENABLED=true', () => {
   let t: TestApp
@@ -26,7 +34,7 @@ describe('docs with DOCS_ENABLED=true', () => {
   // The docs are the manual test interface of the API, so they are a tested
   // contract (ADR-0009): these fail when a new route skips them.
   describe('every route of the API is documented', () => {
-    let doc: OpenApiDoc
+    let doc: OpenAPIObject
 
     beforeAll(async () => {
       doc = (await t.http().get('/api/v1/openapi')).body
@@ -51,11 +59,13 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(missing).toEqual([])
     })
 
-    it('documents the error responses of every operation', () => {
+    // 401 and 400 are added on their own, so only an explicit @ApiErrors(...),
+    // even an empty one, shows the business errors were thought through.
+    it('declares the business errors of every operation with @ApiErrors', () => {
       const missing = operationsOf(doc)
         .filter(
           ({ operation }) =>
-            !Object.keys(operation.responses).some((status) => Number(status) >= 400),
+            !Array.isArray((operation as unknown as Record<string, unknown>)['x-error-codes']),
         )
         .map(({ key }) => key)
 
@@ -73,12 +83,9 @@ describe('docs with DOCS_ENABLED=true', () => {
 
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
-        const ref = operation.requestBody?.content['application/json']?.schema.$ref
-        if (!ref) return []
-        const schema = doc.components.schemas[ref.split('/').pop()!]!
-        return Object.entries(schema.properties ?? {})
-          .filter(([, field]) => field.example === undefined)
-          .map(([name]) => `${key} ${name}`)
+        const body = operation.requestBody as RequestBodyObject | undefined
+        const schema = body?.content['application/json']?.schema
+        return schema ? fieldsWithoutExample(doc, schema, key) : []
       })
 
       expect(missing).toEqual([])
@@ -158,47 +165,31 @@ const UNDOCUMENTED_ROUTES = [
   'POST /api/v1/auth/token',
 ]
 
-interface OpenApiSchema {
-  properties?: Record<string, { example?: unknown }>
-}
-
-interface OpenApiOperation {
-  summary?: string
-  security?: unknown[]
-  responses: Record<string, unknown>
-  requestBody?: { content: Record<string, { schema: { $ref?: string } } | undefined> }
-}
-
-interface OpenApiDoc {
-  security: unknown[]
-  paths: Record<string, Record<string, OpenApiOperation>>
-  components: { schemas: Record<string, OpenApiSchema | undefined> }
-}
-
-function operationsOf(doc: OpenApiDoc) {
+function operationsOf(doc: OpenAPIObject) {
   return Object.entries(doc.paths).flatMap(([path, item]) =>
-    Object.entries(item).map(([method, operation]) => ({
+    Object.entries(item as Record<string, OperationObject>).map(([method, operation]) => ({
       key: `${method.toUpperCase()} ${path}`,
       operation,
     })),
   )
 }
 
-interface ExpressLayer {
-  route?: { path: string; methods: Record<string, boolean> }
-}
-
-/** `METHOD /path` of every route Express knows, with `:id` written as `{id}`. */
-function registeredRoutes(t: TestApp): string[] {
-  const stack = (t.app.getHttpAdapter().getInstance() as { router: { stack: ExpressLayer[] } })
-    .router.stack
-  return stack.flatMap(({ route }) =>
-    route
-      ? Object.keys(route.methods).map(
-          (method) => `${method.toUpperCase()} ${route.path.replace(/:(\w+)/g, '{$1}')}`,
-        )
-      : [],
-  )
+/** Fields without `example`, walking `$ref`s and nested objects. */
+function fieldsWithoutExample(
+  doc: OpenAPIObject,
+  schemaOrRef: SchemaObject | ReferenceObject,
+  prefix: string,
+): string[] {
+  const schema =
+    '$ref' in schemaOrRef
+      ? (doc.components!.schemas![schemaOrRef.$ref.split('/').pop()!] as SchemaObject)
+      : schemaOrRef
+  return Object.entries(schema.properties ?? {}).flatMap(([name, field]) => {
+    const path = `${prefix} ${name}`
+    const nested = '$ref' in field || field.properties ? fieldsWithoutExample(doc, field, path) : []
+    const lacksExample = !('$ref' in field) && !field.properties && field.example === undefined
+    return lacksExample ? [path, ...nested] : nested
+  })
 }
 
 describe('docs with DOCS_ENABLED=false', () => {

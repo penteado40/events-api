@@ -17,6 +17,7 @@ export class MeController {
   @Get()
   @ApiOperation({ summary: 'Ver o User logado' })
   @ApiOkResponse({ type: MeResponseDto })
+  @ApiErrors()
   me(@CurrentUser() user: User): MeResponseDto {
     return { data: UserPresenter.toJson(user) }
   }

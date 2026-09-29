@@ -39,7 +39,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Controller só traduz HTTP ↔ use case: sem regra de negócio. Sucesso sai como `{ data }`.
 - Toda rota exige JWT pelo guard global; `@Public()` só para acesso anônimo de fato. `@CurrentUser()` entrega o `User`.
 - Presenter converte entidade → JSON (datas com `toISOString()`, nada sensível).
-- Doc no Scalar (§5.9 da arquitetura): `@ApiOperation({ summary })` em português em todo método, `@ApiErrors(...)` com os códigos de negócio que o use case lança (401 e 400 `VALIDATION_ERROR` entram sozinhos) e `.meta({ example })` em todo campo de entrada, com valores que funcionam contra o seed local.
+- Doc no Scalar (§5.9 da arquitetura): `@ApiOperation({ summary })` em português em todo método, `@ApiErrors(...)` em todo método com os códigos de negócio que o use case lança, `@ApiErrors()` se não houver (401 e 400 `VALIDATION_ERROR` entram sozinhos) e `.meta({ example })` em todo campo de entrada, com valores que funcionam contra o seed local.
 
 ## Composição — `identity/identity.module.ts` e `index.ts`
 

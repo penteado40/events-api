@@ -1,6 +1,6 @@
 import type { OpenAPIObject } from '@nestjs/swagger'
 import { describe, expect, it } from 'vitest'
-import { documentErrors } from './openapi-errors.js'
+import { completeOpenApiDocument } from './openapi-document.js'
 
 function docWith(operation: Record<string, unknown>): OpenAPIObject {
   return {
@@ -12,9 +12,9 @@ function docWith(operation: Record<string, unknown>): OpenAPIObject {
 
 const op = (doc: OpenAPIObject) => doc.paths['/x']!.post!
 
-describe('documentErrors', () => {
+describe('completeOpenApiDocument', () => {
   it('groups the declared codes by the status of the catalog, one example each', () => {
-    const doc = documentErrors(
+    const doc = completeOpenApiDocument(
       docWith({ 'x-public': true, 'x-error-codes': ['WEAK_PASSWORD', 'EMAIL_ALREADY_IN_USE'] }),
     )
 
@@ -41,25 +41,27 @@ describe('documentErrors', () => {
   })
 
   it('adds 401 UNAUTHENTICATED to every route that is not public', () => {
-    const doc = documentErrors(docWith({}))
+    const doc = completeOpenApiDocument(docWith({}))
 
     expect(op(doc).responses['401']).toMatchObject({ description: '`UNAUTHENTICATED`' })
     expect(op(doc).security).toBeUndefined()
   })
 
   it('clears the global security of a public route and adds no 401', () => {
-    const doc = documentErrors(docWith({ 'x-public': true }))
+    const doc = completeOpenApiDocument(docWith({ 'x-public': true }))
 
     expect(op(doc).security).toEqual([])
     expect(op(doc).responses['401']).toBeUndefined()
   })
 
   it('adds 400 VALIDATION_ERROR to routes with a body or parameters, next to declared codes', () => {
-    const withBody = documentErrors(
+    const withBody = completeOpenApiDocument(
       docWith({ 'x-public': true, 'x-error-codes': ['WEAK_PASSWORD'], requestBody: {} }),
     )
-    const withParams = documentErrors(docWith({ 'x-public': true, parameters: [{ name: 'id' }] }))
-    const bare = documentErrors(docWith({ 'x-public': true }))
+    const withParams = completeOpenApiDocument(
+      docWith({ 'x-public': true, parameters: [{ name: 'id' }] }),
+    )
+    const bare = completeOpenApiDocument(docWith({ 'x-public': true }))
 
     expect(op(withBody).responses['400']).toMatchObject({
       description: '`VALIDATION_ERROR`, `WEAK_PASSWORD`',
@@ -68,11 +70,25 @@ describe('documentErrors', () => {
     expect(op(bare).responses['400']).toBeUndefined()
   })
 
-  it('declares the error envelope once and removes the extensions', () => {
-    const doc = documentErrors(docWith({ 'x-error-codes': ['FORBIDDEN'] }))
+  it('declares the error envelope once, from the schema the exception filter follows', () => {
+    const doc = completeOpenApiDocument(docWith({ 'x-error-codes': ['FORBIDDEN'] }))
 
-    expect(doc.components?.schemas?.ErrorResponse).toBeDefined()
-    expect(op(doc)).not.toHaveProperty('x-error-codes')
+    expect(doc.components?.schemas?.ErrorResponse).toMatchObject({
+      type: 'object',
+      required: ['error'],
+      properties: {
+        error: {
+          required: ['code', 'message'],
+          properties: { code: { enum: expect.arrayContaining(['FORBIDDEN']) } },
+        },
+      },
+    })
+  })
+
+  it('keeps the declared codes, so the docs test can require them, and drops x-public', () => {
+    const doc = completeOpenApiDocument(docWith({ 'x-public': true, 'x-error-codes': [] }))
+
+    expect(op(doc)).toHaveProperty('x-error-codes', [])
     expect(op(doc)).not.toHaveProperty('x-public')
   })
 })

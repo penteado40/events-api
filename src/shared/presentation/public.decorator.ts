@@ -1,6 +1,6 @@
 import { applyDecorators, SetMetadata } from '@nestjs/common'
 import { ApiExtension } from '@nestjs/swagger'
-import { PUBLIC_EXTENSION } from './openapi-errors.js'
+import { PUBLIC_EXTENSION } from './openapi-document.js'
 
 export const IS_PUBLIC_KEY = 'isPublic'
 

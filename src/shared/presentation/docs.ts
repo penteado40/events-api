@@ -5,7 +5,7 @@ import { apiReference } from '@scalar/nestjs-api-reference'
 import type { Request, Response } from 'express'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import { API_PREFIX } from './api-prefix.js'
-import { documentErrors } from './openapi-errors.js'
+import { completeOpenApiDocument } from './openapi-document.js'
 
 export const DOCS_PATH = `/${API_PREFIX}/docs`
 export const OPENAPI_PATH = `/${API_PREFIX}/openapi`
@@ -27,11 +27,13 @@ export function setupDocs(app: INestApplication): void {
       { type: 'oauth2', flows: { password: { tokenUrl: TOKEN_PATH, scopes: {} } } },
       'oauth2',
     )
-    // Every route takes a token unless it is @Public() (see documentErrors).
+    // Every route takes a token unless it is @Public() (see completeOpenApiDocument).
     .addSecurityRequirements('oauth2')
     .addSecurityRequirements('bearer')
     .build()
-  const document = documentErrors(cleanupOpenApiDoc(SwaggerModule.createDocument(app, config)))
+  const document = completeOpenApiDocument(
+    cleanupOpenApiDoc(SwaggerModule.createDocument(app, config)),
+  )
 
   const http = app.getHttpAdapter()
   http.get(OPENAPI_PATH, (_req: Request, res: Response) => res.json(document))

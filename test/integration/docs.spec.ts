@@ -13,24 +13,76 @@ describe('docs with DOCS_ENABLED=true', () => {
 
   afterAll(() => t.close())
 
-  it('serves the OpenAPI document with the auth, me and users routes', async () => {
+  it('serves the OpenAPI document with the OAuth2 login of Scalar', async () => {
     const res = await t.http().get('/api/v1/openapi')
 
     expect(res.status).toBe(200)
     expect(res.body.openapi).toMatch(/^3\./)
-    expect(Object.keys(res.body.paths)).toEqual(
-      expect.arrayContaining([
-        '/api/v1/auth/login',
-        '/api/v1/auth/activate',
-        '/api/v1/me',
-        '/api/v1/me/password',
-        '/api/v1/users',
-        '/api/v1/users/{id}/activation-link',
-      ]),
-    )
     expect(res.body.components.securitySchemes.oauth2.flows.password.tokenUrl).toBe(
       '/api/v1/auth/token',
     )
+  })
+
+  // The docs are the manual test interface of the API, so they are a tested
+  // contract (ADR-0009): these fail when a new route skips them.
+  describe('every route of the API is documented', () => {
+    let doc: OpenApiDoc
+
+    beforeAll(async () => {
+      doc = (await t.http().get('/api/v1/openapi')).body
+    })
+
+    it('lists every registered route', () => {
+      const registered = registeredRoutes(t)
+      const documented = operationsOf(doc).map(({ key }) => key)
+      const undocumented = registered.filter(
+        (key) => !documented.includes(key) && !UNDOCUMENTED_ROUTES.includes(key),
+      )
+
+      expect(registered).toContain('POST /api/v1/auth/login')
+      expect(undocumented).toEqual([])
+    })
+
+    it('gives every operation a summary', () => {
+      const missing = operationsOf(doc)
+        .filter(({ operation }) => !operation.summary?.trim())
+        .map(({ key }) => key)
+
+      expect(missing).toEqual([])
+    })
+
+    it('documents the error responses of every operation', () => {
+      const missing = operationsOf(doc)
+        .filter(
+          ({ operation }) =>
+            !Object.keys(operation.responses).some((status) => Number(status) >= 400),
+        )
+        .map(({ key }) => key)
+
+      expect(missing).toEqual([])
+    })
+
+    it('shows the protected routes with a lock and the public ones without', () => {
+      expect(doc.security).toEqual([{ oauth2: [] }, { bearer: [] }])
+      const publicOnes = operationsOf(doc)
+        .filter(({ operation }) => operation.security?.length === 0)
+        .map(({ key }) => key)
+
+      expect(publicOnes.sort()).toEqual(['POST /api/v1/auth/activate', 'POST /api/v1/auth/login'])
+    })
+
+    it('gives every field of a request body an example', () => {
+      const missing = operationsOf(doc).flatMap(({ key, operation }) => {
+        const ref = operation.requestBody?.content['application/json']?.schema.$ref
+        if (!ref) return []
+        const schema = doc.components.schemas[ref.split('/').pop()!]!
+        return Object.entries(schema.properties ?? {})
+          .filter(([, field]) => field.example === undefined)
+          .map(([name]) => `${key} ${name}`)
+      })
+
+      expect(missing).toEqual([])
+    })
   })
 
   it('serves Scalar with a CSP relaxed only for its CDN', async () => {
@@ -97,6 +149,57 @@ describe('docs with DOCS_ENABLED=true', () => {
     expect(res.body).toEqual({ error: 'unsupported_grant_type' })
   })
 })
+
+/** Routes left out of the docs on purpose. */
+const UNDOCUMENTED_ROUTES = [
+  'GET /api/v1/docs',
+  'GET /api/v1/openapi',
+  // OAuth2 grant behind the Authorize button of Scalar, outside the API contract.
+  'POST /api/v1/auth/token',
+]
+
+interface OpenApiSchema {
+  properties?: Record<string, { example?: unknown }>
+}
+
+interface OpenApiOperation {
+  summary?: string
+  security?: unknown[]
+  responses: Record<string, unknown>
+  requestBody?: { content: Record<string, { schema: { $ref?: string } } | undefined> }
+}
+
+interface OpenApiDoc {
+  security: unknown[]
+  paths: Record<string, Record<string, OpenApiOperation>>
+  components: { schemas: Record<string, OpenApiSchema | undefined> }
+}
+
+function operationsOf(doc: OpenApiDoc) {
+  return Object.entries(doc.paths).flatMap(([path, item]) =>
+    Object.entries(item).map(([method, operation]) => ({
+      key: `${method.toUpperCase()} ${path}`,
+      operation,
+    })),
+  )
+}
+
+interface ExpressLayer {
+  route?: { path: string; methods: Record<string, boolean> }
+}
+
+/** `METHOD /path` of every route Express knows, with `:id` written as `{id}`. */
+function registeredRoutes(t: TestApp): string[] {
+  const stack = (t.app.getHttpAdapter().getInstance() as { router: { stack: ExpressLayer[] } })
+    .router.stack
+  return stack.flatMap(({ route }) =>
+    route
+      ? Object.keys(route.methods).map(
+          (method) => `${method.toUpperCase()} ${route.path.replace(/:(\w+)/g, '{$1}')}`,
+        )
+      : [],
+  )
+}
 
 describe('docs with DOCS_ENABLED=false', () => {
   let t: TestApp

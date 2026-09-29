@@ -257,6 +257,7 @@ Se algo lança `AppError`, o filter global (presentation) consulta o catálogo, 
 - `AppError` mora em `shared/domain` e carrega **só o código** (`new AppError('CONTRIBUTION_NOT_PENDING')`). O domínio não sabe o que é HTTP.
 - O catálogo que traduz código → status HTTP + mensagem fica em `shared/presentation`, e é usado pelo filter global.
 - Contrato de resposta: ADR-0008.
+- Na doc, cada rota lista os códigos que pode responder com `@ApiErrors(...)` (ver §5.9).
 
 ### 5.5 Comunicação entre contextos
 
@@ -319,6 +320,22 @@ Arquivos: `shared/domain/domain-event.ts` (tipo base e `AggregateRoot` com `reco
 - Guardamos só o **último** editor, não o histórico de alterações. Uma tabela de auditoria, com uma linha por mudança, só entra se a dúvida "quem mudou o quê" aparecer na prática.
 - Autor e hora são responsabilidade do domínio: o use case recebe quem está agindo e a entidade marca autor e hora juntos a cada mudança. O banco não adivinha o autor.
 - Ainda a decidir na PROJ-96 (e registrado no ADR que ela cria): o autor de escritas sem User logado (Guest pelo Site, LegacyMigration, scripts), a nulidade das colunas e se a API expõe a autoria. Até lá, siga a PROJ-96 e atualize esta seção com a forma final.
+
+### 5.9 Documentação da API (Scalar)
+
+O Scalar (`/api/v1/docs`, com `DOCS_ENABLED=true`) é gerado do código e é a interface de teste manual da API. Toda rota entra nele completa, e o `test/integration/docs.spec.ts` barra o PR que esquecer algo (emenda do ADR-0009):
+
+| O que | Onde | Exemplo |
+|---|---|---|
+| Resumo (e descrição, quando houver regra de acesso ou efeito colateral) | `@ApiOperation` no método do controller | `@ApiOperation({ summary: 'Criar um User', description: 'Só o Super admin. ...' })` |
+| Erros de negócio | `@ApiErrors(...)` no método, com os códigos que o use case e a AccessPolicy lançam | `@ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')` |
+| Exemplo de cada campo do request body | `.meta({ example })` no schema Zod do DTO | `email: z.email().meta({ example: 'maria@local.test' })` |
+| Descrição de campo, quando o nome não basta | `.meta({ description })` (comentário JSDoc não vira doc) | `siteUrl: ... .meta({ description: 'Origem do Site: ...' })` |
+
+- 401 `UNAUTHENTICATED` (rota sem `@Public()`) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
+- O status e a mensagem de cada código vêm do `ERROR_CATALOG`. Código novo aparece na doc sem editar nada além do catálogo.
+- Textos em português, termos do glossário em inglês. Exemplos que funcionam contra o seed local, nunca uma credencial real.
+- Rota que não deve aparecer na doc (`@ApiExcludeController`) entra na allowlist `UNDOCUMENTED_ROUTES` do `docs.spec.ts`, com o motivo.
 
 ---
 

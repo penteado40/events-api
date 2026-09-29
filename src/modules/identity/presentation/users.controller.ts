@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, Param, ParseIntPipe, Post } from '@nestjs/common'
-import { ApiBearerAuth, ApiCreatedResponse, ApiOAuth2, ApiTags } from '@nestjs/swagger'
+import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import { CreateUserUseCase } from '../application/use-cases/create-user.use-case.js'
 import { IssueActivationLinkUseCase } from '../application/use-cases/issue-activation-link.use-case.js'
@@ -12,8 +13,6 @@ import {
 import { UserPresenter } from './user.presenter.js'
 
 @ApiTags('users')
-@ApiBearerAuth()
-@ApiOAuth2([], 'oauth2')
 @Controller('users')
 export class UsersController {
   constructor(
@@ -23,7 +22,13 @@ export class UsersController {
 
   @Post()
   @HttpCode(201)
+  @ApiOperation({
+    summary: 'Criar um User',
+    description:
+      'Só o Super admin. O User nasce Pending user, sem senha; entregue o `activationToken` para ele se ativar.',
+  })
   @ApiCreatedResponse({ type: CreateUserResponseDto })
+  @ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')
   async createUser(
     @CurrentUser() actor: User,
     @Body() body: CreateUserDto,
@@ -43,7 +48,12 @@ export class UsersController {
 
   @Post(':id/activation-link')
   @HttpCode(201)
+  @ApiOperation({
+    summary: 'Reemitir o Activation link',
+    description: 'Só o Super admin, para um Pending user. O link anterior deixa de valer.',
+  })
   @ApiCreatedResponse({ type: ActivationLinkResponseDto })
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')
   async issueActivationLink(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) userId: number,

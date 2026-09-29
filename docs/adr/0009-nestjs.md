@@ -12,3 +12,13 @@ Para não perder a regra do PRD de que validação e documentação saem do mesm
 - A regra da dependência e as fronteiras entre módulos (cada módulo só é importado pelo seu `index.ts`) são fiscalizadas por ESLint (`eslint-plugin-boundaries` + `no-restricted-imports`), no editor e no CI.
 - Testes de integração usam `@nestjs/testing` + supertest contra um Postgres real.
 - O cold start na Vercel é maior que o do Hono (bootstrap da injeção de dependências). É aceitável para o tráfego dos Sites; se incomodar, o plano B é cachear a instância do app entre invocações e, em último caso, um servidor sempre ligado.
+
+## Emenda (PROJ-97): a documentação é contrato testado
+
+O Scalar é a interface visual de teste manual da API, então uma rota sem resumo, sem os erros possíveis ou com o body preenchido com `"string"` é uma rota mal documentada, mesmo aparecendo na doc. Como a doc é gerada do código, não há arquivo para "lembrar de atualizar": o que se esquece é a qualidade. Por isso ela é fiscalizada por teste, e não por disciplina, como a regra da dependência é fiscalizada pelo lint.
+
+- `test/integration/docs.spec.ts` falha se uma rota registrada no Express não aparece no OpenAPI (fora uma allowlist explícita), se uma operação não tem resumo ou resposta de erro, ou se um campo de request body não tem exemplo.
+- Os erros de cada rota saem do `ERROR_CATALOG` (ADR-0008) pelo decorator `@ApiErrors(...códigos)`, e não por `@ApiResponse` escrito à mão, que repetiria status e mensagem e divergiria do catálogo. 401 em toda rota sem `@Public()` e 400 `VALIDATION_ERROR` em toda rota com body ou parâmetros entram sozinhos; o método declara só os erros de negócio.
+- `@Public()` também tira a rota da segurança global da doc, para que o cadeado do Scalar e o guard nunca divirjam.
+- **Os textos da doc são em português** (resumos, descrições de operação e de campo), embora o código e os comentários sejam em inglês. O Scalar é interface de produto e já mostra as mensagens de erro do catálogo em português; os termos do glossário ficam em inglês, como no `CONTEXT.md`. Não "corrija" esses textos para inglês.
+- Os exemplos dos request bodies funcionam contra o seed local (login do Super admin `admin@local.test`). Nunca use como exemplo uma credencial que exista fora do ambiente local: o OpenAPI dos previews é público.

@@ -4,8 +4,8 @@
  *   npm run create-super-admin -- --email=a@b.com --name="Ana" --password=... [--reset-password]
  *
  * Each option can also come from ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD.
- * The password follows the PasswordPolicy (12 characters to 72 bytes). The
- * email of a Pending user is refused: they set their own password.
+ * The password follows the PasswordPolicy (ADR-0012). The email of a Pending
+ * user is refused: they set their own password.
  */
 import { parseArgs } from 'node:util'
 import {
@@ -32,7 +32,8 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
 
 const REFUSAL: Partial<Record<string, string>> = {
   VALIDATION_ERROR: 'email inválido.',
-  WEAK_PASSWORD: 'a senha precisa ter de 12 caracteres a 72 bytes.',
+  WEAK_PASSWORD:
+    'a senha precisa ter de 8 caracteres a 72 bytes, com ao menos uma letra maiúscula, uma minúscula, um número e um símbolo.',
   USER_PENDING: 'o email é de um usuário pendente; ele ativa pelo Activation link.',
 }
 

@@ -34,12 +34,12 @@ describe('ChangePasswordUseCase', () => {
     const result = await changePassword.execute({
       user: ana,
       currentPassword: 'current-password',
-      newPassword: 'brand-new-password',
+      newPassword: 'Brand-new-password-1',
     })
 
     expect(result.token).toBe('token-for-1')
     const stored = await users.findById(ana.id)
-    expect(stored?.passwordHash).toBe('hashed:brand-new-password')
+    expect(stored?.passwordHash).toBe('hashed:Brand-new-password-1')
     expect(stored?.passwordChangedAt).toEqual(NOW)
   })
 
@@ -48,7 +48,7 @@ describe('ChangePasswordUseCase', () => {
       changePassword.execute({
         user: ana,
         currentPassword: 'wrong-password',
-        newPassword: 'brand-new-password',
+        newPassword: 'Brand-new-password-1',
       }),
     ).rejects.toEqual(new AppError('INVALID_CURRENT_PASSWORD'))
     expect((await users.findById(ana.id))?.passwordHash).toBe('hashed:current-password')

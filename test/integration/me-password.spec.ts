@@ -35,7 +35,7 @@ describe('PATCH /api/v1/me/password', () => {
       .http()
       .patch('/api/v1/me/password')
       .auth(oldToken, { type: 'bearer' })
-      .send({ currentPassword: 'current-password', newPassword: 'brand-new-password' })
+      .send({ currentPassword: 'current-password', newPassword: 'Brand-new-password-1' })
 
     expect(res.status).toBe(200)
     expect(res.body.data).toEqual({
@@ -55,7 +55,7 @@ describe('PATCH /api/v1/me/password', () => {
     const newPassword = await t
       .http()
       .post('/api/v1/auth/login')
-      .send({ email: 'ana@example.com', password: 'brand-new-password' })
+      .send({ email: 'ana@example.com', password: 'Brand-new-password-1' })
     expect(oldPassword.status).toBe(401)
     expect(newPassword.status).toBe(200)
   })
@@ -68,7 +68,7 @@ describe('PATCH /api/v1/me/password', () => {
       .http()
       .patch('/api/v1/me/password')
       .auth(token, { type: 'bearer' })
-      .send({ currentPassword: 'wrong-password', newPassword: 'brand-new-password' })
+      .send({ currentPassword: 'wrong-password', newPassword: 'Brand-new-password-1' })
 
     expect(res.status).toBe(400)
     expect(res.body).toEqual(error('INVALID_CURRENT_PASSWORD'))
@@ -76,7 +76,7 @@ describe('PATCH /api/v1/me/password', () => {
     expect(me.status).toBe(200)
   })
 
-  it('answers 400 WEAK_PASSWORD for a new password under 12 characters', async () => {
+  it('answers 400 WEAK_PASSWORD for a new password outside the PasswordPolicy', async () => {
     const user = await createUser({ password: 'current-password' })
     const token = await sessionIssuedEarlier(user.id)
 
@@ -84,7 +84,7 @@ describe('PATCH /api/v1/me/password', () => {
       .http()
       .patch('/api/v1/me/password')
       .auth(token, { type: 'bearer' })
-      .send({ currentPassword: 'current-password', newPassword: '12345678901' })
+      .send({ currentPassword: 'current-password', newPassword: 'Abcde1!' })
 
     expect(res.status).toBe(400)
     expect(res.body).toEqual(error('WEAK_PASSWORD'))
@@ -94,7 +94,7 @@ describe('PATCH /api/v1/me/password', () => {
     const res = await t
       .http()
       .patch('/api/v1/me/password')
-      .send({ currentPassword: 'current-password', newPassword: 'brand-new-password' })
+      .send({ currentPassword: 'current-password', newPassword: 'Brand-new-password-1' })
 
     expect(res.status).toBe(401)
   })

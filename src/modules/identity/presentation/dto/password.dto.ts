@@ -6,7 +6,7 @@ import { PasswordPolicy } from '../../domain/password-policy.js'
 // bounds the input.
 const password = z.string().min(1).max(1024)
 const strongPassword = password.meta({
-  description: `Pelo menos ${PasswordPolicy.MIN_LENGTH} caracteres e no máximo ${PasswordPolicy.MAX_BYTES} bytes.`,
+  description: `De ${PasswordPolicy.MIN_LENGTH} caracteres a ${PasswordPolicy.MAX_BYTES} bytes, com ao menos uma letra maiúscula (A–Z), uma minúscula (a–z), um número (0–9) e um símbolo da pontuação ASCII (sem o espaço).`,
 })
 
 export class ActivateUserDto extends createZodDto(
@@ -16,7 +16,7 @@ export class ActivateUserDto extends createZodDto(
       // Only exists at runtime, so the example is a placeholder to replace.
       example: 'cole-aqui-o-activationToken',
     }),
-    password: strongPassword.meta({ example: 'senha-local-123' }),
+    password: strongPassword.meta({ example: 'Senha-local-123' }),
   }),
 ) {}
 
@@ -24,7 +24,7 @@ export class ActivateUserDto extends createZodDto(
 // itself, so running them keeps the login example working.
 export class ChangePasswordDto extends createZodDto(
   z.object({
-    currentPassword: password.meta({ example: 'admin-local-123' }),
-    newPassword: strongPassword.meta({ example: 'admin-local-123' }),
+    currentPassword: password.meta({ example: 'Admin-local-123' }),
+    newPassword: strongPassword.meta({ example: 'Admin-local-123' }),
   }),
 ) {}

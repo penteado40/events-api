@@ -7,7 +7,7 @@ import { UserJsonSchema } from './user.dto.js'
 export class LoginDto extends createZodDto(
   z.object({
     email: z.string().trim().pipe(z.email()).meta({ example: 'admin@local.test' }),
-    password: z.string().min(1).max(200).meta({ example: 'admin-local-123' }),
+    password: z.string().min(1).max(200).meta({ example: 'Admin-local-123' }),
   }),
 ) {}
 

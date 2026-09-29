@@ -7,6 +7,8 @@ describe('POST /api/v1/auth/login', () => {
 
   beforeAll(async () => {
     t = await createTestApp()
+    // Outside the PasswordPolicy on purpose: login never checks it, so passwords
+    // set under an older rule keep working (ADR-0012).
     await createUser({ name: 'Ana', email: 'ana@example.com', password: 'correct-password' })
   })
 

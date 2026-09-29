@@ -119,9 +119,11 @@ nvm use
 cp .env.example .env
 npm install                  # also runs prisma generate
 npx prisma migrate deploy
-npx prisma db seed           # local Super admin: admin@local.test / admin-local-123
+npx prisma db seed           # local Super admin: admin@local.test / Admin-local-123
 npm run dev                  # http://localhost:3000/api/v1
 ```
+
+A database seeded before PROJ-98 keeps the old `admin-local-123`, since the seed never overwrites a password. Reset it once with `npm run create-super-admin -- --email=admin@local.test --name="Super admin local" --password=Admin-local-123 --reset-password`.
 
 With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in with the seeded Super admin through the Authorize button.
 
@@ -148,7 +150,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `npm run test:unit` | Unit tests and the architecture lint tests, no database |
 | `npm run test:integration` | HTTP tests against the real Postgres in `DATABASE_URL_TEST` |
 | `npm run prisma:migrate` | Creates a migration from `prisma/schema.prisma` |
-| `npm run create-super-admin -- --email=... --name=... --password=... [--reset-password]` | Creates or promotes the Super admin (idempotent; 12+ character password in production) |
+| `npm run create-super-admin -- --email=... --name=... --password=... [--reset-password]` | Creates or promotes the Super admin (idempotent; the password follows the PasswordPolicy, ADR-0012) |
 
 **Tests.** Use cases are unit-tested with in-memory fakes of their ports (no database). Integration tests boot the real app with `@nestjs/testing` and hit it through supertest against PostgreSQL, running migrations once and truncating every table before each file.
 

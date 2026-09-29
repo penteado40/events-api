@@ -5,7 +5,7 @@ import { testPrisma } from './support/database.js'
 import { createActivationLink, createUser } from './support/factories.js'
 
 const error = (code: string) => ({ error: { code, message: expect.any(String) } })
-const STRONG = 'a-strong-password'
+const STRONG = 'A-strong-password-1'
 
 describe('POST /api/v1/auth/activate', () => {
   let t: TestApp
@@ -58,7 +58,7 @@ describe('POST /api/v1/auth/activate', () => {
     const { token } = await createActivationLink({ userId: user.id })
     await activate(token)
 
-    const res = await activate(token, 'another-strong-password')
+    const res = await activate(token, 'another-Strong-password-1')
 
     expect(res.status).toBe(409)
     expect(res.body).toEqual(error('ACTIVATION_LINK_USED'))
@@ -95,8 +95,8 @@ describe('POST /api/v1/auth/activate', () => {
     const activateUser = t.app.get(ActivateUserUseCase)
 
     const results = await Promise.allSettled([
-      activateUser.execute({ token, password: 'first-strong-password' }),
-      activateUser.execute({ token, password: 'second-strong-password' }),
+      activateUser.execute({ token, password: 'first-Strong-password-1' }),
+      activateUser.execute({ token, password: 'second-Strong-password-1' }),
     ])
 
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)

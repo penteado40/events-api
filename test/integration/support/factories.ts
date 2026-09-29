@@ -50,3 +50,38 @@ export async function createActivationLink(options: CreateActivationLinkOptions)
   })
   return { ...link, token }
 }
+
+export interface CreateEventOptions {
+  slug?: string
+  name?: string
+  status?: 'ACTIVE' | 'ARCHIVED'
+  startsAt?: Date
+  siteUrl?: string
+}
+
+export async function createEvent(options: CreateEventOptions = {}) {
+  sequence += 1
+  return testPrisma().event.create({
+    data: {
+      type: 'WEDDING',
+      name: options.name ?? `Evento ${sequence}`,
+      slug: options.slug ?? `evento-${sequence}`,
+      siteUrl: options.siteUrl ?? 'https://evento.com',
+      status: options.status ?? 'ACTIVE',
+      startsAt: options.startsAt ?? new Date('2026-11-14T22:00:00.000Z'),
+    },
+  })
+}
+
+export interface AddMemberOptions {
+  eventId: number
+  userId: number
+  role: 'OWNER' | 'MANAGER' | 'VIEWER'
+  isPrimaryOwner?: boolean
+}
+
+export async function addMember(options: AddMemberOptions) {
+  return testPrisma().eventMember.create({
+    data: { ...options, isPrimaryOwner: options.isPrimaryOwner ?? false },
+  })
+}

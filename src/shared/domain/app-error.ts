@@ -16,6 +16,9 @@ export type ErrorCode =
   | 'ACTIVATION_LINK_INVALID'
   | 'ACTIVATION_LINK_USED'
   | 'ACTIVATION_LINK_EXPIRED'
+  | 'SLUG_ALREADY_IN_USE'
+  | 'PRIMARY_OWNER_INVALID'
+  | 'EVENT_ARCHIVED'
   | 'INTERNAL_ERROR'
 
 export class AppError extends Error {

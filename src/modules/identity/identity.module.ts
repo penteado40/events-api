@@ -13,6 +13,7 @@ import { IssueActivationLinkUseCase } from './application/use-cases/issue-activa
 import { LoginUseCase } from './application/use-cases/login.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
+import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { BcryptPasswordHasher } from './infrastructure/bcrypt-password-hasher.js'
 import { CryptoActivationTokenGenerator } from './infrastructure/crypto-activation-token-generator.js'
 import {
@@ -22,7 +23,6 @@ import {
 } from './infrastructure/jwt-token-issuer.js'
 import { JwtStrategy } from './infrastructure/jwt.strategy.js'
 import { PrismaActivationLinkRepository } from './infrastructure/prisma-activation-link.repository.js'
-import { PrismaUserRepository } from './infrastructure/prisma-user.repository.js'
 import { AuthController } from './presentation/auth.controller.js'
 import { MeController } from './presentation/me.controller.js'
 import { TokenController } from './presentation/token.controller.js'
@@ -40,6 +40,7 @@ export class IdentityModule {
     return {
       module: IdentityModule,
       imports: [
+        IdentityPersistenceModule,
         PassportModule,
         JwtModule.registerAsync({
           inject: [AppConfig],
@@ -57,7 +58,6 @@ export class IdentityModule {
         ...(options.docsEnabled ? [TokenController] : []),
       ],
       providers: [
-        { provide: UserRepository, useClass: PrismaUserRepository },
         { provide: PasswordHasher, useClass: BcryptPasswordHasher },
         { provide: TokenIssuer, useClass: JwtTokenIssuer },
         { provide: ActivationLinkRepository, useClass: PrismaActivationLinkRepository },

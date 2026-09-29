@@ -30,6 +30,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 
 - Tipos do Prisma só aqui, importados de `../../../generated/prisma/client.js`, e convertidos no `toDomain(row)` do próprio repositório.
 - Model novo em `prisma/schema.prisma` com `@@map("<tabela_no_plural>")`; gere a migration com `npm run prisma:migrate -- --name <nome>` e commite `prisma/migrations/`. Índice que o Prisma não gera (ex.: único parcial, ADR-0003) vai como SQL na migration.
+- Todo model nasce com autoria: `createdAt`, `updatedAt`, `createdById` e `updatedById` (§5.8 da arquitetura). A entidade marca autor e hora a cada mudança; o use case passa quem está agindo. Casos sem User logado: siga a PROJ-96 até a forma final entrar no §5.8.
 - Adaptador prefixado pela tecnologia (`prisma-`, `resend-`, `cloudinary-`, `upstash-`), com `@Injectable()` e `extends <Port>`.
 
 ## presentation/ — `identity/presentation/auth.controller.ts`, `me.controller.ts`, `dto/`, `user.presenter.ts`
@@ -44,6 +45,8 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Port → adaptador: `{ provide: UserRepository, useClass: PrismaUserRepository }`.
 - Use case (sem `@Injectable`): `{ provide: XUseCase, useFactory: (a, b) => new XUseCase(a, b), inject: [A, B] }`.
 - `index.ts` exporta o módulo Nest e o que outros contextos podem consumir (tipos, serviços de consulta, domain events).
+- Consulta oferecida a outro contexto mora num módulo estático `<nome>-queries.module.ts`, sem controllers, que exporta só a classe de consulta (`identity/identity-queries.module.ts` → `UserLookup`). Quem consome importa esse módulo no próprio `imports` e depende dele por um port seu em `application/ports/`. Nunca torne um módulo `global` para compartilhar consultas: a dependência entre contextos precisa aparecer no `*.module.ts`.
+- O repositório que o módulo principal e o de consultas usam é ligado uma vez só, num `<nome>-persistence.module.ts` interno (fora do `index.ts`), importado pelos dois (`identity/identity-persistence.module.ts`). O módulo de consultas **não** reexporta o repositório: quem o importa enxerga só as consultas, nunca um jeito de escrever no contexto alheio.
 
 ## Módulo novo
 

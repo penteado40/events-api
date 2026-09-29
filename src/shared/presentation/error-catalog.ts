@@ -35,6 +35,15 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 410,
     message: 'Link de ativação expirado. Peça um novo a quem criou seu usuário.',
   },
+  SLUG_ALREADY_IN_USE: { status: 409, message: 'Já existe um evento com este slug.' },
+  PRIMARY_OWNER_INVALID: {
+    status: 422,
+    message: 'O Primary owner precisa ser um usuário existente que não seja Super admin.',
+  },
+  EVENT_ARCHIVED: {
+    status: 409,
+    message: 'Este evento está arquivado e não aceita alterações.',
+  },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

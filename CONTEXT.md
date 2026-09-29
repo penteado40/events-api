@@ -12,8 +12,12 @@ _Avoid_: Wedding, casamento (é só um tipo de Event), tenant, festa
 A categoria de um Event (`WEDDING`, `BIRTHDAY`, `CORPORATE`, `BABY_SHOWER`, `PARTY`, `OTHER`). Define os textos padrão dos emails; não liga nem desliga funcionalidades.
 _Avoid_: categoria, modalidade
 
+**Slug**:
+O identificador legível e permanente de um Event, único na plataforma e definido pelo Super admin na criação. Nunca muda.
+_Avoid_: apelido, handle, código do evento
+
 **Archived event** (evento arquivado):
-Um Event encerrado: continua visível para os membros, mas não aceita mais nenhuma escrita vinda do site público.
+Um Event encerrado e congelado: continua visível para os membros, mas não aceita mais nenhuma escrita, nem do Site nem dos membros. Só o Super admin escreve nele e só ele o desarquiva, devolvendo-o a ativo.
 _Avoid_: evento finalizado, inativo, deletado
 
 **User** (usuário):
@@ -29,12 +33,16 @@ Link de uso único pelo qual um Pending user define a própria senha e passa a p
 _Avoid_: convite, link de setup, senha inicial
 
 **Super admin**:
-O papel de plataforma com acesso total a todos os Events e o único que cria Events. Concedido só pela configuração da plataforma, nunca pela API.
+O papel de plataforma com acesso total a todos os Events e o único que cria Events. Concedido só pela configuração da plataforma, nunca pela API. Nunca é Event member: o acesso dele vem do papel, não de vínculos.
 _Avoid_: root, admin geral
 
 **Event member** (membro do evento):
 O vínculo entre um User e um Event, com um papel: Owner, Manager ou Viewer.
 _Avoid_: gerente, manager (quando se refere ao vínculo em geral), colaborador
+
+**Membership** (vínculo):
+O Event member de quem está fazendo a requisição, visto a partir dele: o papel e se é o Primary owner. O Super admin não tem Membership, porque nunca é Event member.
+_Avoid_: viewer (Viewer é um papel), papel do usuário, acesso
 
 **Owner**:
 Membro com controle total do Event, incluindo membros e API tokens. Um Owner que não é o Primary owner é chamado de Owner organizador.

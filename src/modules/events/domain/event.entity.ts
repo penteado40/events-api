@@ -1,4 +1,5 @@
 import { AppError } from '../../../shared/domain/app-error.js'
+import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { SiteUrl } from './site-url.vo.js'
 import type { Slug } from './slug.vo.js'
 
@@ -48,6 +49,8 @@ export interface EventProps extends NewEventProps {
   status: EventStatus
   createdAt: Date
   updatedAt: Date
+  createdById: number | null
+  updatedById: number | null
 }
 
 export type EventChanges = Partial<EventDetails> & { siteUrl?: SiteUrl }
@@ -119,29 +122,41 @@ export class Event {
   get updatedAt(): Date {
     return this.props.updatedAt
   }
+  get createdById(): number | null {
+    return this.props.createdById
+  }
+  get updatedById(): number | null {
+    return this.props.updatedById
+  }
 
   /** Applies the changes only if the resulting Event is still valid. */
-  update(changes: EventChanges, at: Date = new Date()): void {
-    const next = { ...this.props, ...withoutUndefined(changes), updatedAt: at }
+  update(changes: EventChanges, stamp: Stamp): void {
+    const next = { ...this.props, ...withoutUndefined(changes) }
     validateDetails(next)
     Object.assign(this.props, next)
+    this.touch(stamp)
   }
 
   /** Returns false when the Event was already archived (nothing to store). */
-  archive(): boolean {
-    return this.changeStatus('ARCHIVED')
+  archive(stamp: Stamp): boolean {
+    return this.changeStatus('ARCHIVED', stamp)
   }
 
   /** Returns false when the Event was already active (nothing to store). */
-  unarchive(): boolean {
-    return this.changeStatus('ACTIVE')
+  unarchive(stamp: Stamp): boolean {
+    return this.changeStatus('ACTIVE', stamp)
   }
 
-  private changeStatus(status: EventStatus): boolean {
+  private changeStatus(status: EventStatus, stamp: Stamp): boolean {
     if (this.props.status === status) return false
     this.props.status = status
-    this.props.updatedAt = new Date()
+    this.touch(stamp)
     return true
+  }
+
+  private touch(stamp: Stamp): void {
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
   }
 }
 

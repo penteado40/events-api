@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Requester } from '../requester.js'
 import { FakeUserDirectory } from '../testing/fake-user-directory.js'
@@ -7,6 +8,7 @@ import { type CreateEventInput, CreateEventUseCase } from './create-event.use-ca
 
 const superAdmin: Requester = { id: 1, isSuperAdmin: true }
 const ana: Requester = { id: 2, isSuperAdmin: false }
+const NOW = new Date('2026-09-29T12:00:00.000Z')
 
 function input(overrides: Partial<CreateEventInput> = {}): CreateEventInput {
   return {
@@ -30,7 +32,9 @@ describe('CreateEventUseCase', () => {
     users = new FakeUserDirectory()
     users.add({ id: 1, isSuperAdmin: true })
     users.add({ id: 2, isSuperAdmin: false })
-    createEvent = new CreateEventUseCase(events, users, { allowLocalhost: false })
+    createEvent = new CreateEventUseCase(events, users, new FixedClock(NOW), {
+      allowLocalhost: false,
+    })
   })
 
   it('creates an active Event with the platform defaults', async () => {
@@ -44,6 +48,15 @@ describe('CreateEventUseCase', () => {
     expect(event.currency).toBe('BRL')
     expect(event.endsAt).toBeNull()
     expect(membership).toBeNull()
+  })
+
+  it('records the Super admin as the Author of the new Event', async () => {
+    const { event } = await createEvent.execute(input())
+
+    expect(event.createdById).toBe(1)
+    expect(event.updatedById).toBe(1)
+    expect(event.createdAt).toEqual(NOW)
+    expect(event.updatedAt).toEqual(NOW)
   })
 
   it('makes the given User the Primary owner, even a Pending user', async () => {
@@ -109,7 +122,9 @@ describe('CreateEventUseCase', () => {
   })
 
   it('accepts http://localhost when allowed (outside production)', async () => {
-    const dev = new CreateEventUseCase(events, users, { allowLocalhost: true })
+    const dev = new CreateEventUseCase(events, users, new FixedClock(NOW), {
+      allowLocalhost: true,
+    })
 
     const { event } = await dev.execute(input({ siteUrl: 'http://localhost:3000' }))
 

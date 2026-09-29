@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakePasswordHasher } from '../testing/fake-password-hasher.js'
 import { FakeTokenIssuer } from '../testing/fake-token-issuer.js'
+import { SCRIPT_STAMP } from '../testing/identity-fixtures.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { ChangePasswordUseCase } from './change-password.use-case.js'
 
@@ -20,14 +22,17 @@ describe('ChangePasswordUseCase', () => {
       users,
       new FakePasswordHasher(),
       new FakeTokenIssuer(),
-      { now: () => NOW },
+      new FixedClock(NOW),
     )
-    ana = await users.create({
-      name: 'Ana',
-      email: Email.create('ana@example.com'),
-      passwordHash: 'hashed:current-password',
-      role: 'USER',
-    })
+    ana = await users.create(
+      {
+        name: 'Ana',
+        email: Email.create('ana@example.com'),
+        passwordHash: 'hashed:current-password',
+        role: 'USER',
+      },
+      SCRIPT_STAMP,
+    )
   })
 
   it('saves the new password, marks the change time and returns a new session', async () => {
@@ -41,6 +46,19 @@ describe('ChangePasswordUseCase', () => {
     const stored = await users.findById(ana.id)
     expect(stored?.passwordHash).toBe('hashed:Brand-new-password-1')
     expect(stored?.passwordChangedAt).toEqual(NOW)
+  })
+
+  it('records the User as the Author of the change', async () => {
+    await changePassword.execute({
+      user: ana,
+      currentPassword: 'current-password',
+      newPassword: 'Brand-new-password-1',
+    })
+
+    const stored = await users.findById(ana.id)
+    expect(stored?.updatedById).toBe(1)
+    expect(stored?.updatedAt).toEqual(NOW)
+    expect(stored?.createdById).toBeNull()
   })
 
   it('refuses a wrong current password with INVALID_CURRENT_PASSWORD', async () => {

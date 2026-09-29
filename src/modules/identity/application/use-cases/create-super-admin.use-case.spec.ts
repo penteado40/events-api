@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import { FakePasswordHasher } from '../testing/fake-password-hasher.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { CreateSuperAdminUseCase } from './create-super-admin.use-case.js'
+
+const NOW = new Date('2026-09-28T12:00:00.000Z')
+const EARLIER_WRITE = { by: 7, at: new Date('2026-09-01T12:00:00.000Z') }
 
 describe('CreateSuperAdminUseCase', () => {
   let users: InMemoryUserRepository
@@ -11,7 +15,11 @@ describe('CreateSuperAdminUseCase', () => {
 
   beforeEach(() => {
     users = new InMemoryUserRepository()
-    createSuperAdmin = new CreateSuperAdminUseCase(users, new FakePasswordHasher())
+    createSuperAdmin = new CreateSuperAdminUseCase(
+      users,
+      new FakePasswordHasher(),
+      new FixedClock(NOW),
+    )
   })
 
   it('creates a Super admin when the email is new', async () => {
@@ -28,6 +36,18 @@ describe('CreateSuperAdminUseCase', () => {
     expect(result.user.passwordHash).toBe('hashed:Admin-password-123')
   })
 
+  it('records no Author for the Super admin it creates: no User made the write', async () => {
+    const { user } = await createSuperAdmin.execute({
+      email: 'admin@local.test',
+      name: 'Admin',
+      password: 'Admin-password-123',
+    })
+
+    expect(user.createdById).toBeNull()
+    expect(user.updatedById).toBeNull()
+    expect(user.createdAt).toEqual(NOW)
+  })
+
   it('is idempotent: running twice keeps one User and the first password', async () => {
     const input = { email: 'admin@local.test', name: 'Admin', password: 'Admin-password-123' }
     await createSuperAdmin.execute(input)
@@ -38,13 +58,16 @@ describe('CreateSuperAdminUseCase', () => {
     expect(second.user.passwordHash).toBe('hashed:Admin-password-123')
   })
 
-  it('promotes an existing User without touching the password', async () => {
-    await users.create({
-      name: 'Ana',
-      email: Email.create('ana@example.com'),
-      passwordHash: 'hashed:original',
-      role: 'USER',
-    })
+  it('promotes an existing User without touching the password, with no Author for the change', async () => {
+    await users.create(
+      {
+        name: 'Ana',
+        email: Email.create('ana@example.com'),
+        passwordHash: 'hashed:original',
+        role: 'USER',
+      },
+      EARLIER_WRITE,
+    )
 
     const result = await createSuperAdmin.execute({
       email: 'ana@example.com',
@@ -56,6 +79,9 @@ describe('CreateSuperAdminUseCase', () => {
     expect(result.user.role).toBe('SUPER_ADMIN')
     expect(result.user.passwordHash).toBe('hashed:original')
     expect(result.user.passwordChangedAt).toBeNull()
+    expect(result.user.createdById).toBe(7)
+    expect(result.user.updatedById).toBeNull()
+    expect(result.user.updatedAt).toEqual(NOW)
   })
 
   it('resets the password of an existing User only when asked', async () => {
@@ -74,7 +100,7 @@ describe('CreateSuperAdminUseCase', () => {
 
     expect(result.passwordReset).toBe(true)
     expect(result.user.passwordHash).toBe('hashed:Brand-new-password-1')
-    expect(result.user.passwordChangedAt).toBeInstanceOf(Date)
+    expect(result.user.passwordChangedAt).toEqual(NOW)
   })
 
   it('refuses a password outside the PasswordPolicy with WEAK_PASSWORD, in any environment', async () => {
@@ -96,12 +122,15 @@ describe('CreateSuperAdminUseCase', () => {
   })
 
   it('refuses the email of a Pending user with USER_PENDING, leaving them untouched', async () => {
-    await users.create({
-      name: 'Pedro',
-      email: Email.create('pedro@example.com'),
-      passwordHash: null,
-      role: 'USER',
-    })
+    await users.create(
+      {
+        name: 'Pedro',
+        email: Email.create('pedro@example.com'),
+        passwordHash: null,
+        role: 'USER',
+      },
+      EARLIER_WRITE,
+    )
 
     await expect(
       createSuperAdmin.execute({

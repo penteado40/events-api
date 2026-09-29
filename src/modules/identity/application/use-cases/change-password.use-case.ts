@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { PasswordPolicy } from '../../domain/password-policy.js'
 import type { User } from '../../domain/user.entity.js'
@@ -17,10 +18,6 @@ export interface ChangePasswordOutput {
   user: User
 }
 
-export interface ChangePasswordOptions {
-  now?: () => Date
-}
-
 /**
  * A User changes their own password. Every session issued before the change is
  * revoked; the returned one keeps the current device logged in.
@@ -30,7 +27,7 @@ export class ChangePasswordUseCase {
     private readonly users: UserRepository,
     private readonly hasher: PasswordHasher,
     private readonly sessions: TokenIssuer,
-    private readonly options: ChangePasswordOptions = {},
+    private readonly clock: Clock,
   ) {}
 
   async execute(input: ChangePasswordInput): Promise<ChangePasswordOutput> {
@@ -40,7 +37,10 @@ export class ChangePasswordUseCase {
     }
     if (!PasswordPolicy.isStrong(input.newPassword)) throw new AppError('WEAK_PASSWORD')
 
-    user.changePassword(await this.hasher.hash(input.newPassword), this.options.now?.())
+    user.changePassword(await this.hasher.hash(input.newPassword), {
+      by: user.id,
+      at: this.clock.now(),
+    })
     await this.users.save(user)
     const { token, expiresIn } = await this.sessions.issue(user)
     return { token, expiresIn, user }

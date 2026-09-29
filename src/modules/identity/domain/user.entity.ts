@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Email } from '../../../shared/domain/email.vo.js'
+import type { Stamp } from '../../../shared/domain/stamp.js'
 
 export const ROLES = ['SUPER_ADMIN', 'USER'] as const
 export type Role = (typeof ROLES)[number]
@@ -14,6 +15,8 @@ export interface UserProps {
   passwordChangedAt: Date | null
   createdAt: Date
   updatedAt: Date
+  createdById: number | null
+  updatedById: number | null
 }
 
 export interface NewUserProps {
@@ -58,6 +61,12 @@ export class User {
   get updatedAt(): Date {
     return this.props.updatedAt
   }
+  get createdById(): number | null {
+    return this.props.createdById
+  }
+  get updatedById(): number | null {
+    return this.props.updatedById
+  }
 
   get isSuperAdmin(): boolean {
     return this.props.role === 'SUPER_ADMIN'
@@ -68,19 +77,26 @@ export class User {
     return this.props.passwordHash === null
   }
 
-  promoteToSuperAdmin(): void {
+  promoteToSuperAdmin(stamp: Stamp): void {
     this.props.role = 'SUPER_ADMIN'
+    this.touch(stamp)
   }
 
   /** A Pending user sets their own first password; only a Pending user can. */
-  activate(passwordHash: string, at: Date = new Date()): void {
+  activate(passwordHash: string, stamp: Stamp): void {
     if (!this.isPending) throw new AppError('USER_ALREADY_ACTIVE')
-    this.changePassword(passwordHash, at)
+    this.changePassword(passwordHash, stamp)
   }
 
-  changePassword(passwordHash: string, at: Date = new Date()): void {
+  changePassword(passwordHash: string, stamp: Stamp): void {
     this.props.passwordHash = passwordHash
-    this.props.passwordChangedAt = at
+    this.props.passwordChangedAt = stamp.at
+    this.touch(stamp)
+  }
+
+  private touch(stamp: Stamp): void {
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
   }
 
   /**

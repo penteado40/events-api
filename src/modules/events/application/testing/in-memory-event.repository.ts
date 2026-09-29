@@ -1,3 +1,4 @@
+import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
 import { Event, type NewEventProps } from '../../domain/event.entity.js'
 import type { Membership } from '../../domain/event-member.js'
 import type { Slug } from '../../domain/slug.vo.js'
@@ -20,14 +21,16 @@ export class InMemoryEventRepository extends EventRepository {
     return [...this.events.values()].find((e) => e.slug.equals(slug)) ?? null
   }
 
-  async create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event> {
-    const now = new Date()
+  async create(
+    props: NewEventProps,
+    primaryOwnerUserId: number | null,
+    stamp: Stamp,
+  ): Promise<Event> {
     const event = Event.restore({
       ...props,
       id: this.nextId++,
       status: 'ACTIVE',
-      createdAt: now,
-      updatedAt: now,
+      ...createdWith(stamp),
     })
     this.events.set(event.id, event)
     if (primaryOwnerUserId !== null) {

@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
 import { PasswordPolicy } from '../../domain/password-policy.js'
@@ -18,10 +19,6 @@ export interface ActivateUserOutput {
   user: User
 }
 
-export interface ActivateUserOptions {
-  now?: () => Date
-}
-
 /**
  * A Pending user sets their own password through the Activation link and gets
  * a session. Checks run in order: link exists, unused, unexpired, then the
@@ -34,11 +31,11 @@ export class ActivateUserUseCase {
     private readonly tokens: ActivationTokenGenerator,
     private readonly hasher: PasswordHasher,
     private readonly sessions: TokenIssuer,
-    private readonly options: ActivateUserOptions = {},
+    private readonly clock: Clock,
   ) {}
 
   async execute(input: ActivateUserInput): Promise<ActivateUserOutput> {
-    const now = this.options.now?.() ?? new Date()
+    const now = this.clock.now()
     const link = await this.links.findByTokenHash(this.tokens.hash(input.token))
     if (!link) throw new AppError('ACTIVATION_LINK_INVALID')
     if (link.isUsed) throw new AppError('ACTIVATION_LINK_USED')
@@ -48,8 +45,10 @@ export class ActivateUserUseCase {
     const user = await this.users.findById(link.userId)
     if (!user) throw new AppError('ACTIVATION_LINK_INVALID')
 
-    user.activate(await this.hasher.hash(input.password), now)
-    const outcome = await this.links.completeActivation(link, user, now)
+    // No session yet: the Pending user is the Author of their own activation.
+    const stamp = { by: user.id, at: now }
+    user.activate(await this.hasher.hash(input.password), stamp)
+    const outcome = await this.links.completeActivation(link, user, stamp)
     if (outcome === 'used') throw new AppError('ACTIVATION_LINK_USED')
     if (outcome === 'replaced') throw new AppError('ACTIVATION_LINK_INVALID')
     const { token, expiresIn } = await this.sessions.issue(user)

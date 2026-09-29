@@ -1,0 +1,12 @@
+# Autoria dos registros: o Author é sempre um User, e um User nunca é apagado
+
+Cada tabela guarda quem criou e quem editou por último cada registro (`createdById`/`updatedById`), além de quando (`createdAt`/`updatedAt`). Assim o painel responde "quem mexeu nisso?" num Event com vários organizadores. O **Author é sempre um User**: as colunas são FKs anuláveis para `users`, e `null` quer dizer que a escrita não partiu de um User (o Site em nome de um Guest, a LegacyMigration, scripts como o `create-super-admin`). Descartamos registrar também o API token (dobraria as colunas) e um ator polimórfico (`kind` + id, sem FK garantida pelo banco). A pergunta que motivou a decisão só envolve Users, e numa escrita do Site quem age é o Guest, cujos dados já estão no próprio registro.
+
+## Consequences
+
+- **Um User nunca é apagado, só desativado** (Deactivated user), e as FKs de autoria são `ON DELETE RESTRICT`. A desativação ainda não existe: fica para a [PROJ-99](https://flpenteado.atlassian.net/browse/PROJ-99); até lá, simplesmente não há caminho para remover um User. Assim o `null` mantém um sentido só: se o apagamento fosse permitido, `SET NULL` confundiria "não foi um User" com "foi um User que não existe mais". Se vier a exclusão por LGPD, o User é anonimizado e continua existindo.
+- **Soft delete caso a caso, não por padrão.** Um registro ganha soft delete quando outros dependem dele como histórico ou quando envolve dinheiro: hoje só `users`; mais tarde, Registry item e Contribution. Dado pessoal de Guest (RSVP, Receipt) segue o caminho oposto, a exclusão ou anonimização.
+- **Toda escrita persistida na linha atualiza a autoria**, inclusive as técnicas: troca de senha, ativação (o Pending user é o Author da própria ativação, no User e no link), emissão e reemissão de um Activation link (Author: o Super admin), archive/unarchive. Adicionar um Event member não mexe no Event: a autoria fica na linha do vínculo. Guardamos só o último editor, sem histórico; uma tabela de auditoria só entra se a pergunta "quem mudou o quê" aparecer.
+- **Autor e hora chegam juntos e obrigatórios.** Toda mutação de entidade e todo `create` de repositório recebe um `Stamp { by, at }`, e o use case lê a hora da porta `Clock`, nunca de `new Date()`. O compilador impede que alguém esqueça o Author.
+- **A API ainda não expõe a autoria.** Ela é gravada, mas as respostas do painel não a mostram. Quando mostrarem, o formato provável é `{ id, name } | null`.
+- As linhas criadas antes desta decisão ficaram com o Author `null`: ainda não havia dados reais.

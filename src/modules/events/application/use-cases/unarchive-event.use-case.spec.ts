@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Event } from '../../domain/event.entity.js'
 import { newEventProps } from '../testing/event-fixtures.js'
@@ -7,17 +8,21 @@ import { UnarchiveEventUseCase } from './unarchive-event.use-case.js'
 
 const superAdmin = { id: 1, isSuperAdmin: true }
 const owner = { id: 10, isSuperAdmin: false }
+const NOW = new Date('2026-09-29T12:00:00.000Z')
+const LATER = new Date('2026-09-30T08:00:00.000Z')
 
 describe('UnarchiveEventUseCase', () => {
   let events: InMemoryEventRepository
+  let clock: FixedClock
   let unarchiveEvent: UnarchiveEventUseCase
   let event: Event
 
   beforeEach(async () => {
     events = new InMemoryEventRepository()
-    unarchiveEvent = new UnarchiveEventUseCase(events)
-    event = await events.create(newEventProps(), 10)
-    event.archive()
+    clock = new FixedClock(LATER)
+    unarchiveEvent = new UnarchiveEventUseCase(events, clock)
+    event = await events.create(newEventProps(), 10, { by: 1, at: NOW })
+    event.archive({ by: 10, at: NOW })
     await events.save(event)
   })
 
@@ -31,5 +36,13 @@ describe('UnarchiveEventUseCase', () => {
     expect(first.event.status).toBe('ACTIVE')
     expect(again.event.status).toBe('ACTIVE')
     expect((await events.findById(event.id))?.status).toBe('ACTIVE')
+  })
+
+  it('records the Super admin as the Author of the unarchiving', async () => {
+    await unarchiveEvent.execute({ actor: superAdmin, eventId: event.id })
+
+    const stored = await events.findById(event.id)
+    expect(stored?.updatedById).toBe(1)
+    expect(stored?.updatedAt).toEqual(LATER)
   })
 })

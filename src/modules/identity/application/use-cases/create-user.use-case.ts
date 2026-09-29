@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
@@ -26,6 +27,7 @@ export class CreateUserUseCase {
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
     private readonly tokens: ActivationTokenGenerator,
+    private readonly clock: Clock,
     private readonly options: ActivationLinkOptions,
   ) {}
 
@@ -34,13 +36,12 @@ export class CreateUserUseCase {
     const email = Email.create(input.email)
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
-    const user = await this.users.create({
-      name: input.name.trim(),
-      email,
-      passwordHash: null,
-      role: 'USER',
-    })
-    const link = await issueActivationLink(this.links, this.tokens, user.id, this.options)
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+    const user = await this.users.create(
+      { name: input.name.trim(), email, passwordHash: null, role: 'USER' },
+      stamp,
+    )
+    const link = await issueActivationLink(this.links, this.tokens, user.id, stamp, this.options)
     return { user, ...link }
   }
 }

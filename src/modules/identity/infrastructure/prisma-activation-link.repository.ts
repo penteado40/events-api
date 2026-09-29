@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import type { ActivationLink as PrismaActivationLink } from '../../../generated/prisma/client.js'
+import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { ActivationLink, type NewActivationLinkProps } from '../domain/activation-link.entity.js'
 import {
@@ -14,10 +15,10 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
     super()
   }
 
-  async replaceForUser(props: NewActivationLinkProps): Promise<ActivationLink> {
+  async replaceForUser(props: NewActivationLinkProps, stamp: Stamp): Promise<ActivationLink> {
     const [, row] = await this.prisma.$transaction([
       this.prisma.activationLink.deleteMany({ where: { userId: props.userId } }),
-      this.prisma.activationLink.create({ data: props }),
+      this.prisma.activationLink.create({ data: { ...props, ...createdWith(stamp) } }),
     ])
     return toDomain(row)
   }
@@ -28,13 +29,17 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
   }
 
   /** Touches two aggregates on purpose: see the port. */
-  async completeActivation(link: ActivationLink, user: User, at: Date): Promise<ActivationOutcome> {
+  async completeActivation(
+    link: ActivationLink,
+    user: User,
+    stamp: Stamp,
+  ): Promise<ActivationOutcome> {
     return this.prisma.$transaction(async (tx) => {
       // The row lock taken by this conditional update makes a concurrent
       // activation wait, then match nothing.
       const { count } = await tx.activationLink.updateMany({
         where: { id: link.id, usedAt: null },
-        data: { usedAt: at },
+        data: { usedAt: stamp.at, updatedAt: stamp.at, updatedById: stamp.by },
       })
       if (count === 0) {
         const stillThere = await tx.activationLink.count({ where: { id: link.id } })
@@ -42,7 +47,12 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
       }
       await tx.user.update({
         where: { id: user.id },
-        data: { passwordHash: user.passwordHash, passwordChangedAt: user.passwordChangedAt },
+        data: {
+          passwordHash: user.passwordHash,
+          passwordChangedAt: user.passwordChangedAt,
+          updatedAt: user.updatedAt,
+          updatedById: user.updatedById,
+        },
       })
       return 'activated'
     })
@@ -57,5 +67,8 @@ function toDomain(row: PrismaActivationLink): ActivationLink {
     expiresAt: row.expiresAt,
     usedAt: row.usedAt,
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    createdById: row.createdById,
+    updatedById: row.updatedById,
   })
 }

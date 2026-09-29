@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Event } from '../../domain/event.entity.js'
 import { newEventProps } from '../testing/event-fixtures.js'
@@ -9,15 +10,19 @@ const superAdmin = { id: 1, isSuperAdmin: true }
 const owner = { id: 10, isSuperAdmin: false }
 const manager = { id: 11, isSuperAdmin: false }
 const viewer = { id: 12, isSuperAdmin: false }
+const NOW = new Date('2026-09-29T12:00:00.000Z')
+const LATER = new Date('2026-09-30T08:00:00.000Z')
 
 describe('UpdateEventUseCase', () => {
   let events: InMemoryEventRepository
+  let clock: FixedClock
   let updateEvent: UpdateEventUseCase
   let event: Event
 
   beforeEach(async () => {
     events = new InMemoryEventRepository()
-    updateEvent = new UpdateEventUseCase(events, { allowLocalhost: false })
+    clock = new FixedClock(NOW)
+    updateEvent = new UpdateEventUseCase(events, clock, { allowLocalhost: false })
     event = await events.create(
       newEventProps({
         name: 'Casamento',
@@ -25,6 +30,7 @@ describe('UpdateEventUseCase', () => {
         endsAt: new Date('2026-11-15T04:00:00.000Z'),
       }),
       10,
+      { by: 1, at: NOW },
     )
     events.addMember(event.id, 11, { role: 'MANAGER', isPrimaryOwner: false })
     events.addMember(event.id, 12, { role: 'VIEWER', isPrimaryOwner: false })
@@ -47,6 +53,20 @@ describe('UpdateEventUseCase', () => {
     expect(updated.venueName).toBe('Casa Vilella')
     expect(membership).toEqual({ role: 'MANAGER', isPrimaryOwner: false })
     expect((await events.findById(event.id))?.name).toBe('Casamento da Ana')
+  })
+
+  it('records the member who edited as the Author of the last change', async () => {
+    clock.set(LATER)
+    const { event: updated } = await updateEvent.execute({
+      actor: manager,
+      eventId: event.id,
+      changes: { name: 'Casamento da Ana' },
+    })
+
+    expect(updated.updatedById).toBe(11)
+    expect(updated.updatedAt).toEqual(LATER)
+    expect(updated.createdById).toBe(1)
+    expect(updated.createdAt).toEqual(NOW)
   })
 
   it('refuses a Viewer with FORBIDDEN', async () => {
@@ -105,7 +125,7 @@ describe('UpdateEventUseCase', () => {
   })
 
   it('refuses members on an Archived event with EVENT_ARCHIVED, but lets the Super admin edit it', async () => {
-    event.archive()
+    event.archive({ by: 10, at: NOW })
     await events.save(event)
 
     await expect(

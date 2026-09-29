@@ -32,6 +32,14 @@ _Avoid_: usuário inativo, desativado, convidado
 Link de uso único pelo qual um Pending user define a própria senha e passa a poder fazer login. Quem cria o User o entrega à pessoa.
 _Avoid_: convite, link de setup, senha inicial
 
+**Deactivated user** (usuário desativado):
+Um User retirado da plataforma: não faz mais login, mas continua existindo, e tudo o que ele criou ou editou permanece intacto e atribuído a ele. Um User nunca é apagado.
+_Avoid_: usuário excluído, deletado, removido
+
+**Author** (autor):
+O User que criou ou editou por último um registro. Escritas que não partem de um User (o Site em nome de um Guest, a migração, scripts da plataforma) não têm Author.
+_Avoid_: dono do registro, owner (Owner é papel), responsável
+
 **Super admin**:
 O papel de plataforma com acesso total a todos os Events e o único que cria Events. Concedido só pela configuração da plataforma, nunca pela API. Nunca é Event member: o acesso dele vem do papel, não de vínculos.
 _Avoid_: root, admin geral

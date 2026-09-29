@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { Slug } from '../../domain/slug.vo.js'
-import { newEventProps } from '../testing/event-fixtures.js'
+import { newEventProps, SUPER_ADMIN_STAMP } from '../testing/event-fixtures.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { ListEventsUseCase } from './list-events.use-case.js'
 
@@ -21,8 +21,9 @@ describe('ListEventsUseCase', () => {
         startsAt: new Date('2024-05-01T12:00:00.000Z'),
       }),
       10,
+      SUPER_ADMIN_STAMP,
     )
-    wedding.archive()
+    wedding.archive(SUPER_ADMIN_STAMP)
     await events.save(wedding)
     const birthday = await events.create(
       newEventProps({
@@ -30,9 +31,14 @@ describe('ListEventsUseCase', () => {
         startsAt: new Date('2026-11-14T22:00:00.000Z'),
       }),
       null,
+      SUPER_ADMIN_STAMP,
     )
     events.addMember(birthday.id, 10, { role: 'MANAGER', isPrimaryOwner: false })
-    await events.create(newEventProps({ slug: Slug.create('de-outra-pessoa') }), 11)
+    await events.create(
+      newEventProps({ slug: Slug.create('de-outra-pessoa') }),
+      11,
+      SUPER_ADMIN_STAMP,
+    )
   })
 
   it('lists only the member’s Events, archived included, newest start first, with their Membership', async () => {

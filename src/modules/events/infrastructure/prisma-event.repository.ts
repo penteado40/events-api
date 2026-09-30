@@ -15,7 +15,7 @@ import {
   type Locale,
   type NewEventProps,
 } from '../domain/event.entity.js'
-import type { Membership } from '../domain/event-member.js'
+import { EventMember, type Membership, type NewEventMemberProps } from '../domain/event-member.js'
 import {
   type EventListFilter,
   EventRepository,
@@ -119,6 +119,104 @@ export class PrismaEventRepository extends EventRepository {
     })
     return row ? toMembership(row) : null
   }
+
+  async listMembers(eventId: number): Promise<EventMember[]> {
+    const rows = await this.prisma.eventMember.findMany({
+      where: { eventId },
+      orderBy: { id: 'asc' },
+    })
+    return rows.map(toMember)
+  }
+
+  async findMember(eventId: number, userId: number): Promise<EventMember | null> {
+    const row = await this.prisma.eventMember.findUnique({
+      where: { eventId_userId: { eventId, userId } },
+    })
+    return row ? toMember(row) : null
+  }
+
+  async createMember(props: NewEventMemberProps, stamp: Stamp): Promise<EventMember> {
+    try {
+      const row = await this.prisma.eventMember.create({
+        data: { ...props, isPrimaryOwner: false, ...createdWith(stamp) },
+      })
+      return toMember(row)
+    } catch (error) {
+      // The use case checks first; this covers two concurrent additions.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppError('MEMBER_ALREADY_EXISTS')
+      }
+      throw error
+    }
+  }
+
+  async saveMember(member: EventMember): Promise<void> {
+    await refuseConflicts(async () => {
+      assertMatched(await this.prisma.eventMember.updateMany(memberUpdate(member)))
+    })
+  }
+
+  async deleteMember(member: EventMember): Promise<void> {
+    const { count } = await this.prisma.eventMember.deleteMany({ where: asLoaded(member) })
+    assertMatched({ count })
+  }
+
+  async savePrimaryOwnerChange(former: EventMember | null, next: EventMember): Promise<void> {
+    await refuseConflicts(() =>
+      this.prisma.$transaction(async (tx) => {
+        // Order matters: the partial unique index allows one Primary owner per Event at a time.
+        if (former) assertMatched(await tx.eventMember.updateMany(memberUpdate(former)))
+        assertMatched(await tx.eventMember.updateMany(memberUpdate(next)))
+      }),
+    )
+  }
+
+  countMembershipsOf(userId: number): Promise<number> {
+    return this.prisma.eventMember.count({ where: { userId } })
+  }
+}
+
+/** The link, only while it still is as the member was read (ADR-0014). */
+function asLoaded(member: EventMember) {
+  const loaded = member.loadedMembership
+  return {
+    eventId: member.eventId,
+    userId: member.userId,
+    role: loaded.role,
+    isPrimaryOwner: loaded.isPrimaryOwner,
+  } satisfies Prisma.EventMemberWhereInput
+}
+
+function memberUpdate(member: EventMember) {
+  return {
+    where: asLoaded(member),
+    data: {
+      role: member.role,
+      isPrimaryOwner: member.isPrimaryOwner,
+      updatedAt: member.updatedAt,
+      updatedById: member.updatedById,
+    },
+  } satisfies Prisma.EventMemberUpdateManyArgs
+}
+
+/** A conditional write that matched nothing: the link changed or vanished meanwhile. */
+function assertMatched({ count }: { count: number }): void {
+  if (count === 0) throw new AppError('MEMBER_CHANGED')
+}
+
+/**
+ * A second Primary owner can still slip in between the reads and the writes;
+ * the partial unique index then refuses it, which is the same conflict.
+ */
+async function refuseConflicts(write: () => Promise<void>): Promise<void> {
+  try {
+    await write()
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new AppError('MEMBER_CHANGED')
+    }
+    throw error
+  }
 }
 
 /** The columns that the Event's edits may change (slug and currency never do). */
@@ -164,6 +262,19 @@ function toDomain(row: PrismaEvent): Event {
 
 function toMembership(row: PrismaEventMember): Membership {
   return { role: row.role, isPrimaryOwner: row.isPrimaryOwner }
+}
+
+function toMember(row: PrismaEventMember): EventMember {
+  return EventMember.restore({
+    eventId: row.eventId,
+    userId: row.userId,
+    role: row.role,
+    isPrimaryOwner: row.isPrimaryOwner,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    createdById: row.createdById,
+    updatedById: row.updatedById,
+  })
 }
 
 function oneOf(allowed: readonly string[], value: string): string {

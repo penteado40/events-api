@@ -8,6 +8,8 @@ export type ActivationOutcome = 'activated' | 'used' | 'replaced'
 export abstract class ActivationLinkRepository {
   /** Creates the User's link and drops any previous one: one active link per User. */
   abstract replaceForUser(props: NewActivationLinkProps, stamp: Stamp): Promise<ActivationLink>
+  /** Drops the User's link, if any. */
+  abstract deleteForUser(userId: number): Promise<void>
   abstract findByTokenHash(tokenHash: string): Promise<ActivationLink | null>
   /**
    * Atomically marks the link used (at the stamp's time, by its Author) and

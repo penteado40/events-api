@@ -38,6 +38,9 @@ const ACTIVE_EVENT: Record<EventAction, Row> = {
   'event:update-site': [ALLOWED, ALLOWED, ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
   'event:archive': [ALLOWED, ALLOWED, ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
   'event:unarchive': [ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN, FORBIDDEN, FORBIDDEN],
+  'member:read': [ALLOWED, ALLOWED, ALLOWED, ALLOWED, ALLOWED, FORBIDDEN],
+  'member:manage': [ALLOWED, ALLOWED, ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
+  'member:leave': [ALLOWED, ALLOWED, ALLOWED, ALLOWED, ALLOWED, FORBIDDEN],
 }
 
 // Frozen (ADR-0011): only the Super admin writes. The role is checked before the
@@ -49,6 +52,9 @@ const ARCHIVED_EVENT: Record<EventAction, Row> = {
   'event:update-site': [ALLOWED, ARCHIVED, ARCHIVED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
   'event:archive': [ALLOWED, ALLOWED, ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
   'event:unarchive': [ALLOWED, FORBIDDEN, FORBIDDEN, FORBIDDEN, FORBIDDEN, FORBIDDEN],
+  'member:read': [ALLOWED, ALLOWED, ALLOWED, ALLOWED, ALLOWED, FORBIDDEN],
+  'member:manage': [ALLOWED, ARCHIVED, ARCHIVED, FORBIDDEN, FORBIDDEN, FORBIDDEN],
+  'member:leave': [ALLOWED, ARCHIVED, ARCHIVED, ARCHIVED, ARCHIVED, FORBIDDEN],
 }
 
 function cases(matrix: Record<EventAction, Row>) {

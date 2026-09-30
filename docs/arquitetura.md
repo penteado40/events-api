@@ -261,12 +261,15 @@ Se algo lança `AppError`, o filter global (presentation) consulta o catálogo, 
 
 ### 5.5 Comunicação entre contextos
 
-Existem dois jeitos, e cada um tem seu caso (ADR-0010):
+Existem três jeitos, e cada um tem seu caso (ADR-0010):
 
 | Situação | Mecanismo | Exemplo |
 |---|---|---|
 | Preciso de uma **resposta** de outro contexto | Chamada direta ao que o outro módulo **exporta** no `*.module.ts` | Todo contexto pergunta à AccessPolicy (`events`) se a ação é permitida |
+| Uma regra minha exige que o dono de um dado o **escreva agora**, e preciso do resultado | Chamada direta a um serviço de comandos que o dono exporta num módulo próprio | `events` adiciona um Event member por email e o `identity` cria o Pending user, devolvendo o Activation link; ao remover o último vínculo, `events` pede ao `identity` que derrube o link |
 | Aconteceu um **fato** e outro contexto reage | Domain event | `rsvp` publica `RsvpConfirmed`; `emails` envia a confirmação |
+
+O que separa um comando de um domain event: no comando, a escrita faz parte da regra de quem chama, que precisa dela concluída (ou do resultado) antes de responder. No domain event, quem publica não sabe nem se importa com quem reage. Quem executa o comando continua dono do dado e das próprias invariantes; a autorização é de quem chama.
 
 Regra de fronteira: um módulo só usa o que outro **exporta**. Nunca importa arquivos de `domain/`, `application/` ou `infrastructure/` de outro módulo.
 

@@ -23,6 +23,10 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
     return toDomain(row)
   }
 
+  async deleteForUser(userId: number): Promise<void> {
+    await this.prisma.activationLink.deleteMany({ where: { userId } })
+  }
+
   async findByTokenHash(tokenHash: string): Promise<ActivationLink | null> {
     const row = await this.prisma.activationLink.findUnique({ where: { tokenHash } })
     return row ? toDomain(row) : null

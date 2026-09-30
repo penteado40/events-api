@@ -6,7 +6,7 @@ import type { UserRepository } from '../../domain/user.repository.js'
 import {
   type ActivationLinkOptions,
   type IssuedActivationLink,
-  issueActivationLink,
+  reissueActivationLink,
 } from '../issue-activation-link.js'
 import type { ActivationTokenGenerator } from '../ports/activation-token-generator.js'
 
@@ -29,10 +29,14 @@ export class IssueActivationLinkUseCase {
 
   async execute(input: IssueActivationLinkInput): Promise<IssueActivationLinkOutput> {
     if (!input.actor.isSuperAdmin) throw new AppError('FORBIDDEN')
-    const user = await this.users.findById(input.userId)
-    if (!user) throw new AppError('NOT_FOUND')
-    if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return issueActivationLink(this.links, this.tokens, user.id, stamp, this.options)
+    return reissueActivationLink(
+      this.users,
+      this.links,
+      this.tokens,
+      input.userId,
+      stamp,
+      this.options,
+    )
   }
 }

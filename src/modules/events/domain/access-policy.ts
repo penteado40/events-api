@@ -3,7 +3,14 @@ import type { EventStatus } from './event.entity.js'
 import type { Membership } from './event-member.js'
 
 export type EventAction =
-  'event:read' | 'event:update' | 'event:update-site' | 'event:archive' | 'event:unarchive'
+  | 'event:read'
+  | 'event:update'
+  | 'event:update-site'
+  | 'event:archive'
+  | 'event:unarchive'
+  | 'member:read'
+  | 'member:manage'
+  | 'member:leave'
 
 export type PlatformAction = 'event:create'
 
@@ -39,6 +46,10 @@ const RULES: Record<EventAction, Rule> = {
   'event:update-site': { roles: ['OWNER'], write: true },
   'event:archive': { roles: ['OWNER'], write: false },
   'event:unarchive': { roles: [], write: true },
+  'member:read': { roles: ['OWNER', 'MANAGER', 'VIEWER'], write: false },
+  // Who may change which member is the MembershipRules' call (ADR-0003).
+  'member:manage': { roles: ['OWNER'], write: true },
+  'member:leave': { roles: ['OWNER', 'MANAGER', 'VIEWER'], write: true },
 }
 
 /** Decides every access to an Event (ADR-0003, ADR-0011). No controller decides on its own. */

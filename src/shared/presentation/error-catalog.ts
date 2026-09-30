@@ -45,6 +45,25 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'Este evento está arquivado e não aceita alterações.',
   },
+  MEMBER_NOT_FOUND: { status: 404, message: 'Este usuário não é membro do evento.' },
+  MEMBER_ALREADY_EXISTS: { status: 409, message: 'Este usuário já é membro do evento.' },
+  USER_IS_SUPER_ADMIN: {
+    status: 409,
+    message: 'O Super admin já tem acesso a todos os eventos e não pode ser membro.',
+  },
+  TRANSFER_TARGET_NOT_OWNER: {
+    status: 409,
+    message: 'O posto de Primary owner só pode ir para um Owner do evento.',
+  },
+  PRIMARY_OWNER_MUST_TRANSFER: {
+    status: 409,
+    message: 'Transfira o posto de Primary owner para outro Owner antes.',
+  },
+  MEMBER_CHANGED: {
+    status: 409,
+    message:
+      'Este membro foi alterado por outra pessoa ao mesmo tempo. Recarregue e tente de novo.',
+  },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

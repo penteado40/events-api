@@ -29,6 +29,12 @@ export class InMemoryActivationLinkRepository extends ActivationLinkRepository {
     return link
   }
 
+  async deleteForUser(userId: number): Promise<void> {
+    for (const link of this.links.values()) {
+      if (link.userId === userId) this.links.delete(link.id)
+    }
+  }
+
   async findByTokenHash(tokenHash: string): Promise<ActivationLink | null> {
     return [...this.links.values()].find((l) => l.tokenHash === tokenHash) ?? null
   }

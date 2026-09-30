@@ -23,6 +23,11 @@ export class PrismaUserRepository extends UserRepository {
     return row ? toDomain(row) : null
   }
 
+  async findManyByIds(ids: number[]): Promise<User[]> {
+    const rows = await this.prisma.user.findMany({ where: { id: { in: ids } } })
+    return rows.map(toDomain)
+  }
+
   async create(props: NewUserProps, stamp: Stamp): Promise<User> {
     try {
       const row = await this.prisma.user.create({

@@ -1,6 +1,11 @@
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
 import { Event, type NewEventProps } from '../../domain/event.entity.js'
-import type { Membership } from '../../domain/event-member.js'
+import { AppError } from '../../../../shared/domain/app-error.js'
+import {
+  EventMember,
+  type Membership,
+  type NewEventMemberProps,
+} from '../../domain/event-member.js'
 import type { Slug } from '../../domain/slug.vo.js'
 import {
   type EventListFilter,
@@ -10,7 +15,7 @@ import {
 
 export class InMemoryEventRepository extends EventRepository {
   private readonly events = new Map<number, Event>()
-  private readonly members = new Map<string, Membership>()
+  private readonly members = new Map<string, EventMember>()
   private nextId = 1
 
   async findById(id: number): Promise<Event | null> {
@@ -34,7 +39,7 @@ export class InMemoryEventRepository extends EventRepository {
     })
     this.events.set(event.id, event)
     if (primaryOwnerUserId !== null) {
-      this.addMember(event.id, primaryOwnerUserId, { role: 'OWNER', isPrimaryOwner: true })
+      this.store(event.id, primaryOwnerUserId, { role: 'OWNER', isPrimaryOwner: true }, stamp)
     }
     return event
   }
@@ -55,23 +60,73 @@ export class InMemoryEventRepository extends EventRepository {
     )
     return events.map((event) => ({
       event,
-      membership: this.members.get(key(event.id, userId)) ?? null,
+      membership: this.members.get(key(event.id, userId))?.membership ?? null,
     }))
   }
 
   async findMembership(eventId: number, userId: number): Promise<Membership | null> {
+    return this.members.get(key(eventId, userId))?.membership ?? null
+  }
+
+  async listMembers(eventId: number): Promise<EventMember[]> {
+    return [...this.members.values()].filter((m) => m.eventId === eventId)
+  }
+
+  async findMember(eventId: number, userId: number): Promise<EventMember | null> {
     return this.members.get(key(eventId, userId)) ?? null
   }
 
-  /** Test arrangement: member management arrives with PROJ-56. */
-  addMember(eventId: number, userId: number, membership: Membership): void {
-    this.members.set(key(eventId, userId), membership)
+  async createMember(props: NewEventMemberProps, stamp: Stamp): Promise<EventMember> {
+    if (this.members.has(key(props.eventId, props.userId))) {
+      throw new AppError('MEMBER_ALREADY_EXISTS')
+    }
+    return this.store(
+      props.eventId,
+      props.userId,
+      { role: props.role, isPrimaryOwner: false },
+      stamp,
+    )
+  }
+
+  async saveMember(member: EventMember): Promise<void> {
+    this.members.set(key(member.eventId, member.userId), member)
+  }
+
+  async deleteMember(member: EventMember): Promise<void> {
+    this.members.delete(key(member.eventId, member.userId))
+  }
+
+  async savePrimaryOwnerChange(former: EventMember | null, next: EventMember): Promise<void> {
+    if (former) await this.saveMember(former)
+    await this.saveMember(next)
+  }
+
+  async countMembershipsOf(userId: number): Promise<number> {
+    return [...this.members.values()].filter((m) => m.userId === userId).length
+  }
+
+  /** Test arrangement: links a User to an Event, written by the Super admin. */
+  addMember(eventId: number, userId: number, membership: Membership): EventMember {
+    return this.store(eventId, userId, membership, ARRANGE_STAMP)
+  }
+
+  private store(
+    eventId: number,
+    userId: number,
+    membership: Membership,
+    stamp: Stamp,
+  ): EventMember {
+    const member = EventMember.restore({ eventId, userId, ...membership, ...createdWith(stamp) })
+    this.members.set(key(eventId, userId), member)
+    return member
   }
 
   all(): Event[] {
     return [...this.events.values()]
   }
 }
+
+const ARRANGE_STAMP: Stamp = { by: 1, at: new Date('2026-09-01T12:00:00.000Z') }
 
 function key(eventId: number, userId: number): string {
   return `${eventId}:${userId}`

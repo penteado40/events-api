@@ -6,8 +6,8 @@ import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 import {
   type ActivationLinkOptions,
+  createPendingUser,
   type IssuedActivationLink,
-  issueActivationLink,
 } from '../issue-activation-link.js'
 import type { ActivationTokenGenerator } from '../ports/activation-token-generator.js'
 
@@ -37,11 +37,14 @@ export class CreateUserUseCase {
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    const user = await this.users.create(
-      { name: input.name.trim(), email, passwordHash: null, role: 'USER' },
+    const { user, link } = await createPendingUser(
+      this.users,
+      this.links,
+      this.tokens,
+      { name: input.name, email },
       stamp,
+      this.options,
     )
-    const link = await issueActivationLink(this.links, this.tokens, user.id, stamp, this.options)
     return { user, ...link }
   }
 }

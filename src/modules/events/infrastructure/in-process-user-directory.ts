@@ -12,4 +12,8 @@ export class InProcessUserDirectory extends UserDirectory {
   findById(id: number): Promise<DirectoryUser | null> {
     return this.users.findById(id)
   }
+
+  findManyByIds(ids: number[]): Promise<DirectoryUser[]> {
+    return this.users.findManyByIds(ids)
+  }
 }

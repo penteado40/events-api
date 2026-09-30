@@ -15,6 +15,10 @@ export class InMemoryUserRepository extends UserRepository {
     return this.users.get(id) ?? null
   }
 
+  async findManyByIds(ids: number[]): Promise<User[]> {
+    return ids.flatMap((id) => this.users.get(id) ?? [])
+  }
+
   async create(props: NewUserProps, stamp: Stamp): Promise<User> {
     const user = User.restore({
       ...props,

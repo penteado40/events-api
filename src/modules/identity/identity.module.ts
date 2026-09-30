@@ -23,7 +23,6 @@ import {
   TOKEN_TTL_SECONDS,
 } from './infrastructure/jwt-token-issuer.js'
 import { JwtStrategy } from './infrastructure/jwt.strategy.js'
-import { PrismaActivationLinkRepository } from './infrastructure/prisma-activation-link.repository.js'
 import { AuthController } from './presentation/auth.controller.js'
 import { MeController } from './presentation/me.controller.js'
 import { TokenController } from './presentation/token.controller.js'
@@ -61,7 +60,6 @@ export class IdentityModule {
       providers: [
         { provide: PasswordHasher, useClass: BcryptPasswordHasher },
         { provide: TokenIssuer, useClass: JwtTokenIssuer },
-        { provide: ActivationLinkRepository, useClass: PrismaActivationLinkRepository },
         { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
         {
           provide: LoginUseCase,

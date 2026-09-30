@@ -49,6 +49,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Use case (sem `@Injectable`): `{ provide: XUseCase, useFactory: (a, b) => new XUseCase(a, b), inject: [A, B] }`.
 - `index.ts` exporta o módulo Nest e o que outros contextos podem consumir (tipos, serviços de consulta, domain events).
 - Consulta oferecida a outro contexto mora num módulo estático `<nome>-queries.module.ts`, sem controllers, que exporta só a classe de consulta (`identity/identity-queries.module.ts` → `UserLookup`). Quem consome importa esse módulo no próprio `imports` e depende dele por um port seu em `application/ports/`. Nunca torne um módulo `global` para compartilhar consultas: a dependência entre contextos precisa aparecer no `*.module.ts`.
+- Escrita oferecida a outro contexto (§5.5) segue a mesma forma num `<nome>-accounts.module.ts` (ou `<nome>-<assunto>.module.ts`) próprio, separado do de consultas, que exporta só a classe de comandos (`identity/identity-accounts.module.ts` → `UserAccounts`). A classe não decide autorização (quem chama já decidiu) e não expõe repositórios.
 - O repositório que o módulo principal e o de consultas usam é ligado uma vez só, num `<nome>-persistence.module.ts` interno (fora do `index.ts`), importado pelos dois (`identity/identity-persistence.module.ts`). O módulo de consultas **não** reexporta o repositório: quem o importa enxerga só as consultas, nunca um jeito de escrever no contexto alheio.
 
 ## Módulo novo

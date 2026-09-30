@@ -24,22 +24,42 @@ model User {
   passwordChangedAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+  // Author (ADR-0013): null when no User made the write. A User is never deleted.
+  createdById       Int?
+  updatedById       Int?
+  createdBy         User?     @relation("UserCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy         User?     @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  activationLinks ActivationLink[]
-  memberships     EventMember[]
+  activationLinks ActivationLink[] @relation("ActivationLinkUser")
+  memberships     EventMember[]    @relation("EventMemberUser")
+
+  // Records this User is the Author of.
+  createdUsers           User[]           @relation("UserCreated")
+  updatedUsers           User[]           @relation("UserUpdated")
+  createdActivationLinks ActivationLink[] @relation("ActivationLinkCreated")
+  updatedActivationLinks ActivationLink[] @relation("ActivationLinkUpdated")
+  createdEvents          Event[]          @relation("EventCreated")
+  updatedEvents          Event[]          @relation("EventUpdated")
+  createdEventMembers    EventMember[]    @relation("EventMemberCreated")
+  updatedEventMembers    EventMember[]    @relation("EventMemberUpdated")
 
   @@map("users")
 }
 
 model ActivationLink {
-  id        Int       @id @default(autoincrement())
-  userId    Int
-  tokenHash String    @unique // SHA-256 of the token; the token is never stored
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  tokenHash   String    @unique // SHA-256 of the token; the token is never stored
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?     @relation("ActivationLinkCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?     @relation("ActivationLinkUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("ActivationLinkUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("activation_links")
@@ -83,6 +103,10 @@ model Event {
   mapsUrl      String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+  createdById  Int? // Author (ADR-0013)
+  updatedById  Int?
+  createdBy    User?       @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy    User?       @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   members EventMember[]
 
@@ -98,9 +122,13 @@ model EventMember {
   isPrimaryOwner Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  createdById    Int? // Author (ADR-0013)
+  updatedById    Int?
+  createdBy      User?     @relation("EventMemberCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?     @relation("EventMemberUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User  @relation("EventMemberUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
   @@index([userId])

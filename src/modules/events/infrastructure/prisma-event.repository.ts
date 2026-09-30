@@ -5,6 +5,7 @@ import {
   Prisma,
 } from '../../../generated/prisma/client.js'
 import { AppError } from '../../../shared/domain/app-error.js'
+import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import {
   CURRENCIES,
@@ -44,17 +45,29 @@ export class PrismaEventRepository extends EventRepository {
     return row ? toDomain(row) : null
   }
 
-  async create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event> {
+  async create(
+    props: NewEventProps,
+    primaryOwnerUserId: number | null,
+    stamp: Stamp,
+  ): Promise<Event> {
     try {
       const row = await this.prisma.event.create({
         data: {
           ...toRow(props),
           slug: props.slug.value,
           currency: props.currency,
+          ...createdWith(stamp),
           members:
             primaryOwnerUserId === null
               ? undefined
-              : { create: { userId: primaryOwnerUserId, role: 'OWNER', isPrimaryOwner: true } },
+              : {
+                  create: {
+                    userId: primaryOwnerUserId,
+                    role: 'OWNER',
+                    isPrimaryOwner: true,
+                    ...createdWith(stamp),
+                  },
+                },
         },
       })
       return toDomain(row)
@@ -71,7 +84,12 @@ export class PrismaEventRepository extends EventRepository {
     await this.prisma.event.update({
       where: { id: event.id },
       // The entity keeps its own updatedAt, so the response matches what is stored.
-      data: { ...toRow(event), status: event.status, updatedAt: event.updatedAt },
+      data: {
+        ...toRow(event),
+        status: event.status,
+        updatedAt: event.updatedAt,
+        updatedById: event.updatedById,
+      },
     })
   }
 
@@ -139,6 +157,8 @@ function toDomain(row: PrismaEvent): Event {
     mapsUrl: row.mapsUrl,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    createdById: row.createdById,
+    updatedById: row.updatedById,
   })
 }
 

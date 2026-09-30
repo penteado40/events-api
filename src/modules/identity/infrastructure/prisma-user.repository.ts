@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { Prisma, type User as PrismaUser } from '../../../generated/prisma/client.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
+import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { type NewUserProps, User } from '../domain/user.entity.js'
 import { UserRepository } from '../domain/user.repository.js'
@@ -22,7 +23,7 @@ export class PrismaUserRepository extends UserRepository {
     return row ? toDomain(row) : null
   }
 
-  async create(props: NewUserProps): Promise<User> {
+  async create(props: NewUserProps, stamp: Stamp): Promise<User> {
     try {
       const row = await this.prisma.user.create({
         data: {
@@ -30,6 +31,7 @@ export class PrismaUserRepository extends UserRepository {
           email: props.email.value,
           passwordHash: props.passwordHash,
           role: props.role,
+          ...createdWith(stamp),
         },
       })
       return toDomain(row)
@@ -52,6 +54,8 @@ export class PrismaUserRepository extends UserRepository {
         passwordHash: user.passwordHash,
         role: user.role,
         passwordChangedAt: user.passwordChangedAt,
+        updatedAt: user.updatedAt,
+        updatedById: user.updatedById,
       },
     })
   }
@@ -67,5 +71,7 @@ function toDomain(row: PrismaUser): User {
     passwordChangedAt: row.passwordChangedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    createdById: row.createdById,
+    updatedById: row.updatedById,
   })
 }

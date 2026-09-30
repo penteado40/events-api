@@ -6,6 +6,9 @@ export interface ActivationLinkProps {
   expiresAt: Date
   usedAt: Date | null
   createdAt: Date
+  updatedAt: Date
+  createdById: number | null
+  updatedById: number | null
 }
 
 export interface NewActivationLinkProps {
@@ -39,6 +42,15 @@ export class ActivationLink {
   }
   get createdAt(): Date {
     return this.props.createdAt
+  }
+  get updatedAt(): Date {
+    return this.props.updatedAt
+  }
+  get createdById(): number | null {
+    return this.props.createdById
+  }
+  get updatedById(): number | null {
+    return this.props.updatedById
   }
 
   get isUsed(): boolean {

@@ -3,6 +3,7 @@ import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import { FakePasswordHasher } from '../testing/fake-password-hasher.js'
 import { FakeTokenIssuer } from '../testing/fake-token-issuer.js'
+import { SCRIPT_STAMP } from '../testing/identity-fixtures.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { LoginUseCase } from './login.use-case.js'
 
@@ -15,12 +16,15 @@ describe('LoginUseCase', () => {
     users = new InMemoryUserRepository()
     hasher = new FakePasswordHasher()
     login = new LoginUseCase(users, hasher, new FakeTokenIssuer())
-    await users.create({
-      name: 'Ana',
-      email: Email.create('ana@example.com'),
-      passwordHash: 'hashed:correct-password',
-      role: 'USER',
-    })
+    await users.create(
+      {
+        name: 'Ana',
+        email: Email.create('ana@example.com'),
+        passwordHash: 'hashed:correct-password',
+        role: 'USER',
+      },
+      SCRIPT_STAMP,
+    )
   })
 
   it('returns a token and the User for valid credentials', async () => {
@@ -54,12 +58,15 @@ describe('LoginUseCase', () => {
   })
 
   it('refuses a Pending user with USER_PENDING, whatever the password', async () => {
-    await users.create({
-      name: 'Pedro',
-      email: Email.create('pedro@example.com'),
-      passwordHash: null,
-      role: 'USER',
-    })
+    await users.create(
+      {
+        name: 'Pedro',
+        email: Email.create('pedro@example.com'),
+        passwordHash: null,
+        role: 'USER',
+      },
+      SCRIPT_STAMP,
+    )
 
     await expect(
       login.execute({ email: 'pedro@example.com', password: 'anything' }),

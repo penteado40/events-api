@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Event } from '../../domain/event.entity.js'
-import { newEventProps } from '../testing/event-fixtures.js'
+import { newEventProps, SUPER_ADMIN_STAMP } from '../testing/event-fixtures.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { GetEventUseCase } from './get-event.use-case.js'
 
@@ -13,7 +13,7 @@ describe('GetEventUseCase', () => {
   beforeEach(async () => {
     events = new InMemoryEventRepository()
     getEvent = new GetEventUseCase(events)
-    event = await events.create(newEventProps(), 10)
+    event = await events.create(newEventProps(), 10, SUPER_ADMIN_STAMP)
     events.addMember(event.id, 11, { role: 'VIEWER', isPrimaryOwner: false })
   })
 

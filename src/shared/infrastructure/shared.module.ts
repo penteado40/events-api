@@ -1,6 +1,8 @@
 import { type DynamicModule, Global, Module } from '@nestjs/common'
+import { Clock } from '../application/clock.js'
 import { AppConfig } from './app-config.js'
 import { PrismaService } from './prisma.service.js'
+import { SystemClock } from './system-clock.js'
 
 @Global()
 @Module({})
@@ -15,8 +17,9 @@ export class SharedModule {
           useFactory: (c: AppConfig) => new PrismaService(c.databaseUrl),
           inject: [AppConfig],
         },
+        { provide: Clock, useClass: SystemClock },
       ],
-      exports: [AppConfig, PrismaService],
+      exports: [AppConfig, PrismaService, Clock],
     }
   }
 }

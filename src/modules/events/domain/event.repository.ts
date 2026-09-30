@@ -1,3 +1,4 @@
+import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { Event, EventStatus, NewEventProps } from './event.entity.js'
 import type { Membership } from './event-member.js'
 import type { Slug } from './slug.vo.js'
@@ -15,8 +16,12 @@ export interface EventWithMembership {
 export abstract class EventRepository {
   abstract findById(id: number): Promise<Event | null>
   abstract findBySlug(slug: Slug): Promise<Event | null>
-  /** Creates the Event and, when given, its Primary owner, in one transaction. */
-  abstract create(props: NewEventProps, primaryOwnerUserId: number | null): Promise<Event>
+  /** Creates the Event and, when given, its Primary owner, in one transaction; both carry the stamp. */
+  abstract create(
+    props: NewEventProps,
+    primaryOwnerUserId: number | null,
+    stamp: Stamp,
+  ): Promise<Event>
   abstract save(event: Event): Promise<void>
   /** Every Event, newest `startsAt` first. */
   abstract listAll(filter: EventListFilter): Promise<Event[]>

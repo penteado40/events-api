@@ -16,6 +16,7 @@ import { BcryptPasswordHasher } from '../src/modules/identity/infrastructure/bcr
 import { PrismaUserRepository } from '../src/modules/identity/infrastructure/prisma-user.repository.js'
 import { AppError } from '../src/shared/domain/app-error.js'
 import { PrismaService } from '../src/shared/infrastructure/prisma.service.js'
+import { SystemClock } from '../src/shared/infrastructure/system-clock.js'
 
 export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAdminInput) {
   const prisma = new PrismaService(databaseUrl)
@@ -23,6 +24,7 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
     const useCase = new CreateSuperAdminUseCase(
       new PrismaUserRepository(prisma),
       new BcryptPasswordHasher(),
+      new SystemClock(),
     )
     return await useCase.execute(input)
   } finally {

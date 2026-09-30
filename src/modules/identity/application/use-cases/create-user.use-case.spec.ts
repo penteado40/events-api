@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeActivationTokenGenerator } from '../testing/fake-activation-token-generator.js'
+import { SCRIPT_STAMP } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { CreateUserUseCase } from './create-user.use-case.js'
@@ -19,16 +21,22 @@ describe('CreateUserUseCase', () => {
   beforeEach(async () => {
     users = new InMemoryUserRepository()
     links = new InMemoryActivationLinkRepository(users)
-    createUser = new CreateUserUseCase(users, links, new FakeActivationTokenGenerator(), {
-      ttlSeconds: SEVEN_DAYS,
-      now: () => NOW,
-    })
-    superAdmin = await users.create({
-      name: 'Admin',
-      email: Email.create('admin@example.com'),
-      passwordHash: 'hashed:admin-password',
-      role: 'SUPER_ADMIN',
-    })
+    createUser = new CreateUserUseCase(
+      users,
+      links,
+      new FakeActivationTokenGenerator(),
+      new FixedClock(NOW),
+      { ttlSeconds: SEVEN_DAYS },
+    )
+    superAdmin = await users.create(
+      {
+        name: 'Admin',
+        email: Email.create('admin@example.com'),
+        passwordHash: 'hashed:admin-password',
+        role: 'SUPER_ADMIN',
+      },
+      SCRIPT_STAMP,
+    )
   })
 
   it('creates a Pending user with an Activation link valid for the TTL', async () => {
@@ -49,13 +57,31 @@ describe('CreateUserUseCase', () => {
     expect(links.all()[0]?.tokenHash).toBe('hash:token-1')
   })
 
-  it('refuses an actor who is not the Super admin with FORBIDDEN', async () => {
-    const ana = await users.create({
-      name: 'Ana',
-      email: Email.create('ana@example.com'),
-      passwordHash: 'hashed:x',
-      role: 'USER',
+  it('records the Super admin as the Author of the User and of the Activation link', async () => {
+    const { user } = await createUser.execute({
+      actor: superAdmin,
+      name: 'Pedro',
+      email: 'pedro@example.com',
     })
+
+    expect(user.createdById).toBe(1)
+    expect(user.updatedById).toBe(1)
+    expect(user.createdAt).toEqual(NOW)
+    expect(user.updatedAt).toEqual(NOW)
+    expect(links.all()[0]?.createdById).toBe(1)
+    expect(links.all()[0]?.createdAt).toEqual(NOW)
+  })
+
+  it('refuses an actor who is not the Super admin with FORBIDDEN', async () => {
+    const ana = await users.create(
+      {
+        name: 'Ana',
+        email: Email.create('ana@example.com'),
+        passwordHash: 'hashed:x',
+        role: 'USER',
+      },
+      SCRIPT_STAMP,
+    )
 
     await expect(
       createUser.execute({ actor: ana, name: 'Pedro', email: 'pedro@example.com' }),

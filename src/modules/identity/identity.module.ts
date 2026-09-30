@@ -1,6 +1,7 @@
 import { type DynamicModule, Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
+import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
 import { PasswordHasher } from './application/ports/password-hasher.js'
@@ -74,12 +75,19 @@ export class IdentityModule {
             users: UserRepository,
             links: ActivationLinkRepository,
             tokens: ActivationTokenGenerator,
+            clock: Clock,
             config: AppConfig,
           ) =>
-            new CreateUserUseCase(users, links, tokens, {
+            new CreateUserUseCase(users, links, tokens, clock, {
               ttlSeconds: config.activationLinkTtlSeconds,
             }),
-          inject: [UserRepository, ActivationLinkRepository, ActivationTokenGenerator, AppConfig],
+          inject: [
+            UserRepository,
+            ActivationLinkRepository,
+            ActivationTokenGenerator,
+            Clock,
+            AppConfig,
+          ],
         },
         {
           provide: IssueActivationLinkUseCase,
@@ -87,12 +95,19 @@ export class IdentityModule {
             users: UserRepository,
             links: ActivationLinkRepository,
             tokens: ActivationTokenGenerator,
+            clock: Clock,
             config: AppConfig,
           ) =>
-            new IssueActivationLinkUseCase(users, links, tokens, {
+            new IssueActivationLinkUseCase(users, links, tokens, clock, {
               ttlSeconds: config.activationLinkTtlSeconds,
             }),
-          inject: [UserRepository, ActivationLinkRepository, ActivationTokenGenerator, AppConfig],
+          inject: [
+            UserRepository,
+            ActivationLinkRepository,
+            ActivationTokenGenerator,
+            Clock,
+            AppConfig,
+          ],
         },
         {
           provide: ActivateUserUseCase,
@@ -102,20 +117,26 @@ export class IdentityModule {
             tokens: ActivationTokenGenerator,
             hasher: PasswordHasher,
             sessions: TokenIssuer,
-          ) => new ActivateUserUseCase(users, links, tokens, hasher, sessions),
+            clock: Clock,
+          ) => new ActivateUserUseCase(users, links, tokens, hasher, sessions, clock),
           inject: [
             UserRepository,
             ActivationLinkRepository,
             ActivationTokenGenerator,
             PasswordHasher,
             TokenIssuer,
+            Clock,
           ],
         },
         {
           provide: ChangePasswordUseCase,
-          useFactory: (users: UserRepository, hasher: PasswordHasher, sessions: TokenIssuer) =>
-            new ChangePasswordUseCase(users, hasher, sessions),
-          inject: [UserRepository, PasswordHasher, TokenIssuer],
+          useFactory: (
+            users: UserRepository,
+            hasher: PasswordHasher,
+            sessions: TokenIssuer,
+            clock: Clock,
+          ) => new ChangePasswordUseCase(users, hasher, sessions, clock),
+          inject: [UserRepository, PasswordHasher, TokenIssuer, Clock],
         },
         {
           provide: GetCurrentUserUseCase,

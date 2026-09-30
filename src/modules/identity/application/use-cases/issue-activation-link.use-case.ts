@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
 import type { User } from '../../domain/user.entity.js'
@@ -22,6 +23,7 @@ export class IssueActivationLinkUseCase {
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
     private readonly tokens: ActivationTokenGenerator,
+    private readonly clock: Clock,
     private readonly options: ActivationLinkOptions,
   ) {}
 
@@ -30,6 +32,7 @@ export class IssueActivationLinkUseCase {
     const user = await this.users.findById(input.userId)
     if (!user) throw new AppError('NOT_FOUND')
     if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
-    return issueActivationLink(this.links, this.tokens, user.id, this.options)
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+    return issueActivationLink(this.links, this.tokens, user.id, stamp, this.options)
   }
 }

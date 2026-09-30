@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { AccessPolicy } from '../../domain/access-policy.js'
 import {
@@ -39,6 +40,7 @@ export class CreateEventUseCase {
   constructor(
     private readonly events: EventRepository,
     private readonly users: UserDirectory,
+    private readonly clock: Clock,
     private readonly siteUrlOptions: SiteUrlOptions,
   ) {}
 
@@ -73,7 +75,8 @@ export class CreateEventUseCase {
     }
     if (await this.events.findBySlug(props.slug)) throw new AppError('SLUG_ALREADY_IN_USE')
 
-    const event = await this.events.create(props, primaryOwnerUserId)
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+    const event = await this.events.create(props, primaryOwnerUserId, stamp)
     return { event, membership: null }
   }
 }

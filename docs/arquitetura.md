@@ -308,18 +308,24 @@ Arquivos: `shared/domain/domain-event.ts` (tipo base e `AggregateRoot` com `reco
 
 ### 5.8 Autoria dos registros (toda tabela)
 
-**Toda tabela guarda quem criou e quem editou por último cada registro, e quando.** Isso vale para as tabelas que já existem e é o padrão de toda tabela nova: um model sem autoria é incompleto.
+**Toda tabela guarda quem criou e quem editou por último cada registro, e quando** (ADR-0013). Isso vale para as tabelas que já existem e é o padrão de toda tabela nova: um model sem autoria é incompleto.
 
 | Coluna | O que guarda |
 |---|---|
 | `createdAt` | Quando o registro foi criado |
 | `updatedAt` | Quando foi editado pela última vez |
-| `createdById` | Quem o criou (User) |
-| `updatedById` | Quem o editou por último (User) |
+| `createdById` | O Author da criação: FK anulável para `users`, `onDelete: Restrict` |
+| `updatedById` | O Author da última escrita: FK anulável para `users`, `onDelete: Restrict` |
 
+- **`null` quer dizer que a escrita não partiu de um User**: o Site em nome de um Guest, a LegacyMigration, scripts da plataforma (`create-super-admin`). Nunca quer dizer "não sei".
+- **Toda escrita persistida na linha atualiza `updatedAt`/`updatedById`**, inclusive as técnicas (troca de senha, uso de um Activation link, archive). Na criação, `updatedById = createdById`.
+- **O `Stamp` carrega autor e hora juntos** (`shared/domain/stamp.ts`: `{ by: number | null, at: Date }`). Toda mutação de entidade recebe um (`event.update(changes, stamp)`, `user.changePassword(hash, stamp)`), e todo `create` de repositório também (`users.create(props, stamp)`). Sem default: o compilador impede que alguém esqueça o Author.
+- **A hora vem da porta `Clock`** (`shared/application/clock.ts`), injetada pelo Nest (`SystemClock`, no `SharedModule`) e trocada por `FixedClock` nos testes. Use case e entidade nunca chamam `new Date()`. O use case monta o stamp: `{ by: input.actor.id, at: this.clock.now() }`.
+- O repositório Prisma grava as quatro colunas explicitamente. Na criação, use `...createdWith(stamp)` (`shared/domain/stamp.ts`, também usado pelos repositórios em memória); no `save`, passe `updatedAt` e `updatedById` da entidade.
 - Guardamos só o **último** editor, não o histórico de alterações. Uma tabela de auditoria, com uma linha por mudança, só entra se a dúvida "quem mudou o quê" aparecer na prática.
-- Autor e hora são responsabilidade do domínio: o use case recebe quem está agindo e a entidade marca autor e hora juntos a cada mudança. O banco não adivinha o autor.
-- Ainda a decidir na PROJ-96 (e registrado no ADR que ela cria): o autor de escritas sem User logado (Guest pelo Site, LegacyMigration, scripts), a nulidade das colunas e se a API expõe a autoria. Até lá, siga a PROJ-96 e atualize esta seção com a forma final.
+- A API ainda **não expõe** a autoria: ela é gravada, e os testes de integração leem a linha no banco.
+
+**Soft delete, caso a caso.** Um registro ganha soft delete (fica marcado, nunca some) quando outros registros dependem dele como histórico ou quando ele envolve dinheiro. Hoje isso vale só para `users`, porque um User nunca é apagado: ele é desativado (Deactivated user) e continua sendo o Author do que fez. Dado pessoal de Guest segue o caminho oposto, a exclusão ou anonimização (LGPD). As demais tabelas apagam de verdade.
 
 ### 5.9 Documentação da API (Scalar)
 

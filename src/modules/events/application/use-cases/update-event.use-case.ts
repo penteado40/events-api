@@ -1,3 +1,4 @@
+import type { Clock } from '../../../../shared/application/clock.js'
 import type { EventChanges, EventDetails } from '../../domain/event.entity.js'
 import type { EventRepository, EventWithMembership } from '../../domain/event.repository.js'
 import { SiteUrl, type SiteUrlOptions } from '../../domain/site-url.vo.js'
@@ -20,6 +21,7 @@ export type UpdateEventOutput = EventWithMembership
 export class UpdateEventUseCase {
   constructor(
     private readonly events: EventRepository,
+    private readonly clock: Clock,
     private readonly siteUrlOptions: SiteUrlOptions,
   ) {}
 
@@ -33,7 +35,7 @@ export class UpdateEventUseCase {
     if (siteUrl !== undefined) {
       changes.siteUrl = SiteUrl.create(siteUrl, this.siteUrlOptions)
     }
-    result.event.update(changes)
+    result.event.update(changes, { by: input.actor.id, at: this.clock.now() })
     await this.events.save(result.event)
     return result
   }

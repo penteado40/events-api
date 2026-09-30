@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { IdentityQueriesModule } from '../identity/index.js'
 import { UserDirectory } from './application/ports/user-directory.js'
@@ -23,9 +24,13 @@ import { EventsController } from './presentation/events.controller.js'
     { provide: UserDirectory, useClass: InProcessUserDirectory },
     {
       provide: CreateEventUseCase,
-      useFactory: (events: EventRepository, users: UserDirectory, config: AppConfig) =>
-        new CreateEventUseCase(events, users, siteUrlOptions(config)),
-      inject: [EventRepository, UserDirectory, AppConfig],
+      useFactory: (
+        events: EventRepository,
+        users: UserDirectory,
+        clock: Clock,
+        config: AppConfig,
+      ) => new CreateEventUseCase(events, users, clock, siteUrlOptions(config)),
+      inject: [EventRepository, UserDirectory, Clock, AppConfig],
     },
     {
       provide: ListEventsUseCase,
@@ -39,19 +44,20 @@ import { EventsController } from './presentation/events.controller.js'
     },
     {
       provide: UpdateEventUseCase,
-      useFactory: (events: EventRepository, config: AppConfig) =>
-        new UpdateEventUseCase(events, siteUrlOptions(config)),
-      inject: [EventRepository, AppConfig],
+      useFactory: (events: EventRepository, clock: Clock, config: AppConfig) =>
+        new UpdateEventUseCase(events, clock, siteUrlOptions(config)),
+      inject: [EventRepository, Clock, AppConfig],
     },
     {
       provide: ArchiveEventUseCase,
-      useFactory: (events: EventRepository) => new ArchiveEventUseCase(events),
-      inject: [EventRepository],
+      useFactory: (events: EventRepository, clock: Clock) => new ArchiveEventUseCase(events, clock),
+      inject: [EventRepository, Clock],
     },
     {
       provide: UnarchiveEventUseCase,
-      useFactory: (events: EventRepository) => new UnarchiveEventUseCase(events),
-      inject: [EventRepository],
+      useFactory: (events: EventRepository, clock: Clock) =>
+        new UnarchiveEventUseCase(events, clock),
+      inject: [EventRepository, Clock],
     },
   ],
 })

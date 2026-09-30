@@ -1,6 +1,10 @@
+import type { Stamp } from '../../../../shared/domain/stamp.js'
 import type { NewEventProps } from '../../domain/event.entity.js'
 import { SiteUrl } from '../../domain/site-url.vo.js'
 import { Slug } from '../../domain/slug.vo.js'
+
+/** A write by the Super admin (id 1), for arranging state where the Author does not matter. */
+export const SUPER_ADMIN_STAMP: Stamp = { by: 1, at: new Date('2026-09-01T12:00:00.000Z') }
 
 let sequence = 0
 

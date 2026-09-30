@@ -94,3 +94,26 @@ export class EventResponseDto extends createZodDto(z.object({ data: EventJsonSch
 export class EventListResponseDto extends createZodDto(
   z.object({ data: z.array(EventJsonSchema) }),
 ) {}
+
+/** What the Site reads: the happening, never how the Event is run. */
+export const PublicEventJsonSchema = EventJsonSchema.pick({
+  id: true,
+  type: true,
+  status: true,
+  name: true,
+  startsAt: true,
+  endsAt: true,
+  timezone: true,
+  locale: true,
+  currency: true,
+  venueName: true,
+  venueAddress: true,
+  city: true,
+  mapsUrl: true,
+})
+
+export type PublicEventJson = z.infer<typeof PublicEventJsonSchema>
+
+export class PublicEventResponseDto extends createZodDto(
+  z.object({ data: PublicEventJsonSchema }),
+) {}

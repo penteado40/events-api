@@ -5,7 +5,8 @@ import { apiReference } from '@scalar/nestjs-api-reference'
 import type { Request, Response } from 'express'
 import { cleanupOpenApiDoc } from 'nestjs-zod'
 import { API_PREFIX } from './api-prefix.js'
-import { completeOpenApiDocument } from './openapi-document.js'
+import { API_TOKEN_HEADER } from './api-token.js'
+import { API_TOKEN_SCHEME, completeOpenApiDocument } from './openapi-document.js'
 
 export const DOCS_PATH = `/${API_PREFIX}/docs`
 export const OPENAPI_PATH = `/${API_PREFIX}/openapi`
@@ -23,6 +24,15 @@ export function setupDocs(app: INestApplication): void {
     .setDescription('API multi-evento: RSVP, lista de presentes e emails para convidados.')
     .setVersion('v1')
     .addBearerAuth()
+    .addApiKey(
+      {
+        type: 'apiKey',
+        in: 'header',
+        name: API_TOKEN_HEADER,
+        description: 'API token do Site (`evt_...`), só nas rotas públicas do evento.',
+      },
+      API_TOKEN_SCHEME,
+    )
     .addOAuth2(
       { type: 'oauth2', flows: { password: { tokenUrl: TOKEN_PATH, scopes: {} } } },
       'oauth2',

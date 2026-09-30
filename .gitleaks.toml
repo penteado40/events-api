@@ -11,3 +11,10 @@ regexes = [
   '''ci-only-secret-not-used-anywhere-else-0123456789''',
   '''\$2b\$10\$Iklldu0YrOqwFb93nfkp3OEhG\.X2Q85juONeAgt5DOJVqIryst/fK''',
 ]
+
+# API tokens of the Sites (ADR-0008): `evt_` + 32 random bytes in base64url.
+[[rules]]
+id = "events-api-token"
+description = "API token de um Site da events-api"
+regex = '''\bevt_[A-Za-z0-9_-]{43}'''
+keywords = ["evt_"]

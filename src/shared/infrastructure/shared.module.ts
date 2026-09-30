@@ -1,6 +1,8 @@
 import { type DynamicModule, Global, Module } from '@nestjs/common'
 import { Clock } from '../application/clock.js'
+import { SecretTokens } from '../application/secret-tokens.js'
 import { AppConfig } from './app-config.js'
+import { CryptoSecretTokens } from './crypto-secret-tokens.js'
 import { PrismaService } from './prisma.service.js'
 import { SystemClock } from './system-clock.js'
 
@@ -18,8 +20,9 @@ export class SharedModule {
           inject: [AppConfig],
         },
         { provide: Clock, useClass: SystemClock },
+        { provide: SecretTokens, useClass: CryptoSecretTokens },
       ],
-      exports: [AppConfig, PrismaService, Clock],
+      exports: [AppConfig, PrismaService, Clock, SecretTokens],
     }
   }
 }

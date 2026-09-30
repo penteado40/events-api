@@ -35,9 +35,7 @@ import {
   TransferPrimaryOwnerDto,
 } from './dto/event-member.dto.js'
 import { EventMemberPresenter } from './event-member.presenter.js'
-
-/** What `loadEventFor` refuses: a non-member, or a missing Event for the Super admin. */
-const EVENT_ACCESS_ERRORS = ['FORBIDDEN', 'NOT_FOUND'] as const
+import { EVENT_ACCESS_ERRORS } from './event-access-errors.js'
 
 @ApiTags('event members')
 @Controller('events/:id/members')

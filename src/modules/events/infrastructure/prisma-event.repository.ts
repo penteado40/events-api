@@ -151,21 +151,24 @@ export class PrismaEventRepository extends EventRepository {
   }
 
   async saveMember(member: EventMember): Promise<void> {
-    await this.prisma.eventMember.update(memberUpdate(member))
-  }
-
-  async deleteMember(member: EventMember): Promise<void> {
-    await this.prisma.eventMember.delete({
-      where: { eventId_userId: { eventId: member.eventId, userId: member.userId } },
+    await refuseConflicts(async () => {
+      assertMatched(await this.prisma.eventMember.updateMany(memberUpdate(member)))
     })
   }
 
+  async deleteMember(member: EventMember): Promise<void> {
+    const { count } = await this.prisma.eventMember.deleteMany({ where: asLoaded(member) })
+    assertMatched({ count })
+  }
+
   async savePrimaryOwnerChange(former: EventMember | null, next: EventMember): Promise<void> {
-    // Order matters: the partial unique index allows one Primary owner per Event at a time.
-    await this.prisma.$transaction([
-      ...(former ? [this.prisma.eventMember.update(memberUpdate(former))] : []),
-      this.prisma.eventMember.update(memberUpdate(next)),
-    ])
+    await refuseConflicts(() =>
+      this.prisma.$transaction(async (tx) => {
+        // Order matters: the partial unique index allows one Primary owner per Event at a time.
+        if (former) assertMatched(await tx.eventMember.updateMany(memberUpdate(former)))
+        assertMatched(await tx.eventMember.updateMany(memberUpdate(next)))
+      }),
+    )
   }
 
   countMembershipsOf(userId: number): Promise<number> {
@@ -173,16 +176,47 @@ export class PrismaEventRepository extends EventRepository {
   }
 }
 
+/** The link, only while it still is as the member was read (ADR-0014). */
+function asLoaded(member: EventMember) {
+  const loaded = member.loadedMembership
+  return {
+    eventId: member.eventId,
+    userId: member.userId,
+    role: loaded.role,
+    isPrimaryOwner: loaded.isPrimaryOwner,
+  } satisfies Prisma.EventMemberWhereInput
+}
+
 function memberUpdate(member: EventMember) {
   return {
-    where: { eventId_userId: { eventId: member.eventId, userId: member.userId } },
+    where: asLoaded(member),
     data: {
       role: member.role,
       isPrimaryOwner: member.isPrimaryOwner,
       updatedAt: member.updatedAt,
       updatedById: member.updatedById,
     },
-  } satisfies Prisma.EventMemberUpdateArgs
+  } satisfies Prisma.EventMemberUpdateManyArgs
+}
+
+/** A conditional write that matched nothing: the link changed or vanished meanwhile. */
+function assertMatched({ count }: { count: number }): void {
+  if (count === 0) throw new AppError('MEMBER_CHANGED')
+}
+
+/**
+ * A second Primary owner can still slip in between the reads and the writes;
+ * the partial unique index then refuses it, which is the same conflict.
+ */
+async function refuseConflicts(write: () => Promise<void>): Promise<void> {
+  try {
+    await write()
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new AppError('MEMBER_CHANGED')
+    }
+    throw error
+  }
 }
 
 /** The columns that the Event's edits may change (slug and currency never do). */

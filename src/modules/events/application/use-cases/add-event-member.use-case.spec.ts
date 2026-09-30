@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { as, MEMBER_NOW, memberRows, memberScenario } from '../testing/member-fixtures.js'
 import { AddEventMemberUseCase } from './add-event-member.use-case.js'
@@ -68,6 +68,38 @@ describe('AddEventMemberUseCase', () => {
     })
 
     expect(await memberRows(s.events, s.event.id)).toContainEqual([14, 'OWNER', false])
+  })
+
+  it('drops the Activation link of a Pending user it just created if the link to the Event fails', async () => {
+    vi.spyOn(s.events, 'createMember').mockRejectedValueOnce(new Error('database down'))
+
+    await expect(
+      addMember.execute({
+        actor: as.organizer,
+        eventId: s.event.id,
+        email: 'joao@x.com',
+        name: 'João',
+        role: 'VIEWER',
+      }),
+    ).rejects.toThrow('database down')
+    expect(s.accounts.links.has(1000)).toBe(false)
+  })
+
+  it("leaves an existing User's link alone if the link to the Event fails", async () => {
+    s.users.add({ id: 30, email: 'joao@x.com', isPending: true })
+    s.accounts.links.set(30, 'ana-link')
+    vi.spyOn(s.events, 'createMember').mockRejectedValueOnce(new Error('database down'))
+
+    await expect(
+      addMember.execute({
+        actor: as.organizer,
+        eventId: s.event.id,
+        email: 'joao@x.com',
+        name: 'João',
+        role: 'VIEWER',
+      }),
+    ).rejects.toThrow('database down')
+    expect(s.accounts.links.get(30)).toBe('ana-link')
   })
 
   it('refuses someone who already is a member with MEMBER_ALREADY_EXISTS', async () => {

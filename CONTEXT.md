@@ -17,8 +17,12 @@ O identificador legível e permanente de um Event, único na plataforma e defini
 _Avoid_: apelido, handle, código do evento
 
 **Archived event** (evento arquivado):
-Um Event encerrado e congelado: continua visível para os membros, mas não aceita mais nenhuma escrita, nem do Site nem dos membros. Só o Super admin escreve nele e só ele o desarquiva, devolvendo-o a ativo.
+Um Event encerrado e congelado: não aceita mais nenhuma escrita, nem do Site nem dos membros. Os Owners continuam vendo tudo; os demais membros veem só o Event summary. Só o Super admin escreve nele e só ele o desarquiva, devolvendo-o a ativo.
 _Avoid_: evento finalizado, inativo, deletado
+
+**Event summary** (resumo do evento):
+Os números agregados de um Event (total de RSVPs, valor arrecadado e afins), sem dado de nenhum Guest. É o que Managers e Viewers veem de um Archived event.
+_Avoid_: relatório, dashboard, estatísticas
 
 **User** (usuário):
 Uma pessoa com login na plataforma, única por email e independente de quantos Events ela participa. Nasce pelas mãos do Super admin ou implicitamente quando um Owner adiciona como Event member um email que ainda não tem User; não há cadastro aberto.

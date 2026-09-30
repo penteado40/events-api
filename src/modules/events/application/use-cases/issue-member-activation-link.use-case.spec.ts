@@ -30,6 +30,16 @@ describe('IssueMemberActivationLinkUseCase', () => {
     ).rejects.toEqual(new AppError('USER_ALREADY_ACTIVE'))
   })
 
+  it('refuses an Owner on an Archived event with EVENT_ARCHIVED', async () => {
+    const event = await s.events.findById(s.event.id)
+    event?.archive({ by: 10, at: new Date('2026-09-30T12:00:00.000Z') })
+
+    await expect(
+      issueLink.execute({ actor: as.primary, eventId: s.event.id, userId: 13 }),
+    ).rejects.toEqual(new AppError('EVENT_ARCHIVED'))
+    expect(s.accounts.links.get(13)).toBe('old-link')
+  })
+
   it('refuses a Manager with FORBIDDEN', async () => {
     await expect(
       issueLink.execute({ actor: as.manager, eventId: s.event.id, userId: 13 }),

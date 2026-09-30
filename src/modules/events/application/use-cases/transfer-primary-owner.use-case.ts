@@ -39,11 +39,9 @@ export class TransferPrimaryOwnerUseCase {
       input.eventId,
       'member:manage',
     )
+    MembershipRules.assertCanTransferPrimary(memberActor(input.actor, membership))
     const next = await findMemberOrThrow(this.events, input.eventId, input.userId)
-    MembershipRules.assertCanTransferPrimary(memberActor(input.actor, membership), {
-      userId: next.userId,
-      membership: next.membership,
-    })
+    MembershipRules.assertCanReceivePrimary({ userId: next.userId, membership: next.membership })
 
     if (!next.isPrimaryOwner) {
       const members = await this.events.listMembers(input.eventId)

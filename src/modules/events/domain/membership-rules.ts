@@ -42,8 +42,12 @@ export const MembershipRules = {
     if (target.membership.isPrimaryOwner) throw new AppError('PRIMARY_OWNER_MUST_TRANSFER')
   },
 
-  assertCanTransferPrimary(actor: MemberActor, target: MemberTarget): void {
+  /** Asked before the target is looked up: who is asking comes before what exists. */
+  assertCanTransferPrimary(actor: MemberActor): void {
     assertCanOverrule(actor)
+  },
+
+  assertCanReceivePrimary(target: MemberTarget): void {
     if (target.membership.role !== 'OWNER') throw new AppError('TRANSFER_TARGET_NOT_OWNER')
   },
 }

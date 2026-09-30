@@ -134,36 +134,30 @@ describe('MembershipRules', () => {
   })
 
   describe('assertCanTransferPrimary', () => {
-    it('lets the Primary owner and the Super admin hand the post to another Owner', () => {
-      expect(() => MembershipRules.assertCanTransferPrimary(primary, otherOwner)).not.toThrow()
-      expect(() => MembershipRules.assertCanTransferPrimary(superAdmin, otherOwner)).not.toThrow()
+    it('lets the Primary owner and the Super admin hand the post on', () => {
+      expect(() => MembershipRules.assertCanTransferPrimary(primary)).not.toThrow()
+      expect(() => MembershipRules.assertCanTransferPrimary(superAdmin)).not.toThrow()
     })
 
-    it('refuses an Owner organizador, a Manager and a Viewer', () => {
+    it('refuses an Owner organizador (nobody promotes themselves), a Manager and a Viewer', () => {
       for (const actor of [organizer, manager, viewer]) {
-        expect(() => MembershipRules.assertCanTransferPrimary(actor, otherOwner)).toThrow(FORBIDDEN)
+        expect(() => MembershipRules.assertCanTransferPrimary(actor)).toThrow(FORBIDDEN)
       }
     })
+  })
 
-    it('refuses an Owner organizador naming themselves (nobody promotes themselves)', () => {
-      expect(() => MembershipRules.assertCanTransferPrimary(organizer, self(organizer))).toThrow(
-        FORBIDDEN,
-      )
-    })
-
+  describe('assertCanReceivePrimary', () => {
     it('hands the post only to someone who already is an Owner', () => {
+      expect(() => MembershipRules.assertCanReceivePrimary(otherOwner)).not.toThrow()
       for (const to of [otherManager, otherViewer]) {
-        expect(() => MembershipRules.assertCanTransferPrimary(primary, to)).toThrow(
-          new AppError('TRANSFER_TARGET_NOT_OWNER'),
-        )
-        expect(() => MembershipRules.assertCanTransferPrimary(superAdmin, to)).toThrow(
+        expect(() => MembershipRules.assertCanReceivePrimary(to)).toThrow(
           new AppError('TRANSFER_TARGET_NOT_OWNER'),
         )
       }
     })
 
-    it('accepts naming the current Primary owner again', () => {
-      expect(() => MembershipRules.assertCanTransferPrimary(primary, self(primary))).not.toThrow()
+    it('accepts the current Primary owner again', () => {
+      expect(() => MembershipRules.assertCanReceivePrimary(thePrimary)).not.toThrow()
     })
   })
 })

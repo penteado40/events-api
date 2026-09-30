@@ -69,11 +69,12 @@ export class InMemoryEventRepository extends EventRepository {
   }
 
   async listMembers(eventId: number): Promise<EventMember[]> {
-    return [...this.members.values()].filter((m) => m.eventId === eventId)
+    return [...this.members.values()].filter((m) => m.eventId === eventId).map(copy)
   }
 
   async findMember(eventId: number, userId: number): Promise<EventMember | null> {
-    return this.members.get(key(eventId, userId)) ?? null
+    const member = this.members.get(key(eventId, userId))
+    return member ? copy(member) : null
   }
 
   async createMember(props: NewEventMemberProps, stamp: Stamp): Promise<EventMember> {
@@ -89,20 +90,34 @@ export class InMemoryEventRepository extends EventRepository {
   }
 
   async saveMember(member: EventMember): Promise<void> {
-    this.members.set(key(member.eventId, member.userId), member)
+    this.assertUnchanged(member)
+    this.members.set(key(member.eventId, member.userId), copy(member))
   }
 
   async deleteMember(member: EventMember): Promise<void> {
+    this.assertUnchanged(member)
     this.members.delete(key(member.eventId, member.userId))
   }
 
   async savePrimaryOwnerChange(former: EventMember | null, next: EventMember): Promise<void> {
+    // Both checked before either is stored, like the transaction.
+    if (former) this.assertUnchanged(former)
+    this.assertUnchanged(next)
     if (former) await this.saveMember(former)
     await this.saveMember(next)
   }
 
   async countMembershipsOf(userId: number): Promise<number> {
     return [...this.members.values()].filter((m) => m.userId === userId).length
+  }
+
+  /** Like the conditional writes of the real repository (ADR-0014). */
+  private assertUnchanged(member: EventMember): void {
+    const stored = this.members.get(key(member.eventId, member.userId))
+    const loaded = member.loadedMembership
+    if (!stored || stored.role !== loaded.role || stored.isPrimaryOwner !== loaded.isPrimaryOwner) {
+      throw new AppError('MEMBER_CHANGED')
+    }
   }
 
   /** Test arrangement: links a User to an Event, written by the Super admin. */
@@ -124,6 +139,20 @@ export class InMemoryEventRepository extends EventRepository {
   all(): Event[] {
     return [...this.events.values()]
   }
+}
+
+/** Each read gets its own entity, as each request would from the database. */
+function copy(member: EventMember): EventMember {
+  return EventMember.restore({
+    eventId: member.eventId,
+    userId: member.userId,
+    role: member.role,
+    isPrimaryOwner: member.isPrimaryOwner,
+    createdAt: member.createdAt,
+    updatedAt: member.updatedAt,
+    createdById: member.createdById,
+    updatedById: member.updatedById,
+  })
 }
 
 const ARRANGE_STAMP: Stamp = { by: 1, at: new Date('2026-09-01T12:00:00.000Z') }

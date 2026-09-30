@@ -28,7 +28,11 @@ export interface EventMemberProps extends NewEventMemberProps {
  * MembershipRules' call; the entity only records the change and its Author.
  */
 export class EventMember {
-  private constructor(private readonly props: EventMemberProps) {}
+  private readonly loaded: Membership
+
+  private constructor(private readonly props: EventMemberProps) {
+    this.loaded = { role: props.role, isPrimaryOwner: props.isPrimaryOwner }
+  }
 
   static restore(props: EventMemberProps): EventMember {
     return new EventMember({ ...props })
@@ -48,6 +52,13 @@ export class EventMember {
   }
   get membership(): Membership {
     return { role: this.props.role, isPrimaryOwner: this.props.isPrimaryOwner }
+  }
+  /**
+   * The Membership as it was read. A write only goes through if the stored
+   * link still matches it, so a concurrent change is refused (ADR-0014).
+   */
+  get loadedMembership(): Membership {
+    return { ...this.loaded }
   }
   get createdAt(): Date {
     return this.props.createdAt

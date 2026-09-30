@@ -108,6 +108,7 @@ export class EventMembersController {
     'EVENT_ARCHIVED',
     'MEMBER_NOT_FOUND',
     'TRANSFER_TARGET_NOT_OWNER',
+    'MEMBER_CHANGED',
   )
   async transferPrimary(
     @CurrentUser() actor: User,
@@ -134,6 +135,7 @@ export class EventMembersController {
     'EVENT_ARCHIVED',
     'MEMBER_NOT_FOUND',
     'PRIMARY_OWNER_MUST_TRANSFER',
+    'MEMBER_CHANGED',
   )
   async changeRole(
     @CurrentUser() actor: User,
@@ -163,6 +165,7 @@ export class EventMembersController {
     'EVENT_ARCHIVED',
     'MEMBER_NOT_FOUND',
     'PRIMARY_OWNER_MUST_TRANSFER',
+    'MEMBER_CHANGED',
   )
   async remove(
     @CurrentUser() actor: User,

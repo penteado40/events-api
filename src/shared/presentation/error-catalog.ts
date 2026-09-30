@@ -59,6 +59,11 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'Transfira o posto de Primary owner para outro Owner antes.',
   },
+  MEMBER_CHANGED: {
+    status: 409,
+    message:
+      'Este membro foi alterado por outra pessoa ao mesmo tempo. Recarregue e tente de novo.',
+  },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

@@ -53,10 +53,17 @@ export class AddEventMemberUseCase {
       throw new AppError('MEMBER_ALREADY_EXISTS')
     }
 
-    const member = await this.events.createMember(
-      { eventId: input.eventId, userId: user.id, role: input.role },
-      stamp,
-    )
-    return { member, user, activation }
+    try {
+      const member = await this.events.createMember(
+        { eventId: input.eventId, userId: user.id, role: input.role },
+        stamp,
+      )
+      return { member, user, activation }
+    } catch (error) {
+      // identity and events write apart (ADR-0014): a Pending user created just
+      // now must not keep a live link with no Event behind it.
+      if (activation) await this.accounts.dropPendingActivation(user.id)
+      throw error
+    }
   }
 }

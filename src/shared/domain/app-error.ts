@@ -24,6 +24,7 @@ export type ErrorCode =
   | 'USER_IS_SUPER_ADMIN'
   | 'TRANSFER_TARGET_NOT_OWNER'
   | 'PRIMARY_OWNER_MUST_TRANSFER'
+  | 'MEMBER_CHANGED'
   | 'INTERNAL_ERROR'
 
 export class AppError extends Error {

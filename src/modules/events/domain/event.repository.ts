@@ -34,6 +34,11 @@ export abstract class EventRepository {
   abstract findMember(eventId: number, userId: number): Promise<EventMember | null>
   /** Throws MEMBER_ALREADY_EXISTS when the User already is a member of the Event. */
   abstract createMember(props: NewEventMemberProps, stamp: Stamp): Promise<EventMember>
+  /*
+   * The writes below go through only if the stored link still matches the
+   * member's `loadedMembership`; otherwise nothing is stored and they throw
+   * MEMBER_CHANGED (ADR-0014).
+   */
   abstract saveMember(member: EventMember): Promise<void>
   abstract deleteMember(member: EventMember): Promise<void>
   /**

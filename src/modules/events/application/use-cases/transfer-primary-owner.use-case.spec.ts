@@ -54,6 +54,12 @@ describe('TransferPrimaryOwnerUseCase', () => {
     ).rejects.toEqual(new AppError('FORBIDDEN'))
   })
 
+  it('refuses an Owner organizador with FORBIDDEN before looking the target up', async () => {
+    await expect(
+      transfer.execute({ actor: as.organizer, eventId: s.event.id, userId: 14 }),
+    ).rejects.toEqual(new AppError('FORBIDDEN'))
+  })
+
   it('refuses someone who is not a member with MEMBER_NOT_FOUND', async () => {
     await expect(
       transfer.execute({ actor: as.primary, eventId: s.event.id, userId: 14 }),

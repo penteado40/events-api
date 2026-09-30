@@ -11,10 +11,10 @@ import { ERROR_CATALOG } from './error-catalog.js'
 export const ERROR_CODES_EXTENSION = 'x-error-codes'
 /** Set by `@Public()`: the route takes no token. */
 export const PUBLIC_EXTENSION = 'x-public'
-/** Set by `@AcceptsApiKey()`: the route also takes the Site's `X-Api-Key`. */
-export const API_KEY_EXTENSION = 'x-api-key'
+/** Set by `@AcceptsApiToken()`: the route also takes the Site's `X-Api-Key`. */
+export const API_TOKEN_EXTENSION = 'x-api-token'
 /** The name of the `X-Api-Key` security scheme registered in `setupDocs`. */
-export const API_KEY_SCHEME = 'apiKey'
+export const API_TOKEN_SCHEME = 'apiToken'
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const
 
@@ -48,11 +48,11 @@ function completeOperation(
 ): void {
   const extensions = operation as unknown as Record<string, unknown>
   const isPublic = extensions[PUBLIC_EXTENSION] === true
-  const acceptsApiKey = extensions[API_KEY_EXTENSION] === true
+  const acceptsApiToken = extensions[API_TOKEN_EXTENSION] === true
   delete extensions[PUBLIC_EXTENSION]
-  delete extensions[API_KEY_EXTENSION]
+  delete extensions[API_TOKEN_EXTENSION]
   if (isPublic) operation.security = []
-  else if (acceptsApiKey) operation.security = [...globalSecurity, { [API_KEY_SCHEME]: [] }]
+  else if (acceptsApiToken) operation.security = [...globalSecurity, { [API_TOKEN_SCHEME]: [] }]
 
   const codes = new Set<ErrorCode>()
   if (operation.requestBody || operation.parameters?.length) codes.add('VALIDATION_ERROR')

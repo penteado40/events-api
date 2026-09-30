@@ -57,13 +57,13 @@ describe('completeOpenApiDocument', () => {
 
   it('lets a route that accepts the X-Api-Key be called with it, besides the global security', () => {
     const doc = completeOpenApiDocument({
-      ...docWith({ 'x-api-key': true }),
+      ...docWith({ 'x-api-token': true }),
       security: [{ bearer: [] }],
     })
 
-    expect(op(doc).security).toEqual([{ bearer: [] }, { apiKey: [] }])
+    expect(op(doc).security).toEqual([{ bearer: [] }, { apiToken: [] }])
     expect(op(doc).responses['401']).toMatchObject({ description: '`UNAUTHENTICATED`' })
-    expect(op(doc) as unknown as Record<string, unknown>).not.toHaveProperty('x-api-key')
+    expect(op(doc) as unknown as Record<string, unknown>).not.toHaveProperty('x-api-token')
   })
 
   it('adds 400 VALIDATION_ERROR to routes with a body or parameters, next to declared codes', () => {

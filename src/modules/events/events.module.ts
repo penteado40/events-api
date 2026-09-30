@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
 import { SecretTokens } from '../../shared/application/secret-tokens.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
-import { ApiKeyAuthenticator } from '../../shared/presentation/api-key.js'
+import { ApiTokenAuthenticator } from '../../shared/presentation/api-token.js'
 import { IdentityAccountsModule, IdentityQueriesModule } from '../identity/index.js'
 import { MemberAccounts } from './application/ports/member-accounts.js'
 import { UserDirectory } from './application/ports/user-directory.js'
@@ -32,7 +32,7 @@ import { InProcessMemberAccounts } from './infrastructure/in-process-member-acco
 import { InProcessUserDirectory } from './infrastructure/in-process-user-directory.js'
 import { PrismaApiTokenRepository } from './infrastructure/prisma-api-token.repository.js'
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
-import { ApiTokenAuthenticator } from './presentation/api-token-authenticator.js'
+import { SiteApiTokenAuthenticator } from './presentation/site-api-token-authenticator.js'
 import { ApiTokensController } from './presentation/api-tokens.controller.js'
 import { EventMembersController } from './presentation/event-members.controller.js'
 import { EventsController } from './presentation/events.controller.js'
@@ -166,13 +166,13 @@ import { EventsController } from './presentation/events.controller.js'
     },
     // The global guard checks the Site's X-Api-Key through it.
     {
-      provide: ApiKeyAuthenticator,
+      provide: ApiTokenAuthenticator,
       useFactory: (authenticate: AuthenticateApiTokenUseCase) =>
-        new ApiTokenAuthenticator(authenticate),
+        new SiteApiTokenAuthenticator(authenticate),
       inject: [AuthenticateApiTokenUseCase],
     },
   ],
-  exports: [ApiKeyAuthenticator],
+  exports: [ApiTokenAuthenticator],
 })
 export class EventsModule {}
 

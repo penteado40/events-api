@@ -10,7 +10,8 @@ import {
   Query,
 } from '@nestjs/common'
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
-import { AcceptsApiKey, CurrentApiKey } from '../../../shared/presentation/api-key.js'
+import { AppError } from '../../../shared/domain/app-error.js'
+import { AcceptsApiToken, CurrentApiToken } from '../../../shared/presentation/api-token.js'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import type { User } from '../../identity/index.js'
@@ -31,9 +32,7 @@ import {
   UpdateEventDto,
 } from './dto/event.dto.js'
 import { EventPresenter } from './event.presenter.js'
-
-/** What `loadEventFor` refuses: a non-member, or a missing Event for the Super admin. */
-const EVENT_ACCESS_ERRORS = ['FORBIDDEN', 'NOT_FOUND'] as const
+import { EVENT_ACCESS_ERRORS } from './event-access-errors.js'
 
 @ApiTags('events')
 @Controller('events')
@@ -96,7 +95,7 @@ export class EventsController {
   }
 
   @Get(':id/public')
-  @AcceptsApiKey()
+  @AcceptsApiToken()
   @ApiOperation({
     summary: 'Ler a parte pública de um Event',
     description:
@@ -106,11 +105,12 @@ export class EventsController {
   @ApiErrors(...EVENT_ACCESS_ERRORS, 'INSUFFICIENT_SCOPE')
   async getPublic(
     @CurrentUser() user: User | undefined,
-    @CurrentApiKey() site: SiteCredential | undefined,
+    @CurrentApiToken() site: SiteCredential | undefined,
     @Param('id', ParseIntPipe) eventId: number,
   ): Promise<PublicEventResponseDto> {
-    // The guard puts exactly one of them on the request.
-    const actor = site ?? (user as User)
+    // The guard puts one of them on the request.
+    const actor = site ?? user
+    if (!actor) throw new AppError('UNAUTHENTICATED')
     const event = await this.getPublicEventUseCase.execute({ actor, eventId })
     return { data: EventPresenter.toPublicJson(event) }
   }

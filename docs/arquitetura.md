@@ -217,7 +217,7 @@ src/
     domain/            # AppError, Email, Money
     application/       # ports compartilhados (RateLimiter...)
     infrastructure/    # PrismaService, config, UpstashRateLimitStore
-    presentation/      # filter global de erros, JwtAuthGuard, @Public, @CurrentUser
+    presentation/      # filter global de erros, CredentialsGuard (JWT ou X-Api-Key), @Public, @AcceptsApiToken, @CurrentUser
   legacy-migration/    # ferramenta de migração (não é contexto)
   app.module.ts
   main.ts

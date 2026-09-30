@@ -32,9 +32,7 @@ import {
   CreatedApiTokenResponseDto,
   UpdateApiTokenDto,
 } from './dto/api-token.dto.js'
-
-/** What `loadEventFor` refuses: a non-member, or a missing Event for the Super admin. */
-const EVENT_ACCESS_ERRORS = ['FORBIDDEN', 'NOT_FOUND'] as const
+import { EVENT_ACCESS_ERRORS } from './event-access-errors.js'
 
 @ApiTags('api tokens')
 @Controller('events/:id/api-tokens')
@@ -98,7 +96,7 @@ export class ApiTokensController {
   @ApiOperation({
     summary: 'Editar um API token',
     description:
-      'Owners e o Super admin renomeiam, mudam os Scopes, desativam e reativam; o valor não muda. Num Archived event, o Owner só desativa.',
+      'Owners e o Super admin renomeiam, mudam os Scopes, desativam e reativam; o valor não muda. Num Archived event, o Owner só pode revogar: o corpo precisa ser exatamente `{ "isActive": false }`.',
   })
   @ApiOkResponse({ type: ApiTokenResponseDto })
   @ApiErrors(...EVENT_ACCESS_ERRORS, 'EVENT_ARCHIVED', 'API_TOKEN_NOT_FOUND')

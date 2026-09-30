@@ -7,9 +7,8 @@ const scopes = z
   .array(z.enum(SCOPES))
   .min(1)
   .meta({
-    description:
-      'Sem repetição: `event:read`, `rsvp:create`, `registry:read`, `contribution:create`.',
-    example: ['event:read', 'rsvp:create', 'registry:read', 'contribution:create'],
+    description: `Sem repetição: ${SCOPES.map((scope) => `\`${scope}\``).join(', ')}.`,
+    example: [...SCOPES],
   })
 
 export class CreateApiTokenDto extends createZodDto(z.object({ name, scopes })) {}

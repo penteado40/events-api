@@ -97,7 +97,8 @@ export class ApiToken {
 
   /**
    * Notes a use by the Site. Returns false while the last one stored is within
-   * the window (nothing to store). A use is not an edit: no Author, no updatedAt.
+   * the window (nothing to store). A use is not an edit, so it takes no Stamp and
+   * leaves the authorship alone (ADR-0013).
    */
   recordUse(at: Date): boolean {
     const last = this.props.lastUsedAt

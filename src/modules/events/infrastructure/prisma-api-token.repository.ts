@@ -59,11 +59,11 @@ export class PrismaApiTokenRepository extends ApiTokenRepository {
   }
 
   async saveLastUse(apiToken: ApiToken): Promise<void> {
-    // updatedAt is given back as it was, or @updatedAt would stamp the use as an edit.
-    await this.prisma.apiToken.updateMany({
-      where: { id: apiToken.id },
-      data: { lastUsedAt: apiToken.lastUsedAt, updatedAt: apiToken.updatedAt },
-    })
+    // Only this column (ADR-0013): through the client, @updatedAt would stamp the
+    // use as an edit, and writing back the updatedAt read earlier could undo an
+    // edit made in the meantime.
+    await this.prisma.$executeRaw`
+      UPDATE "api_tokens" SET "lastUsedAt" = ${apiToken.lastUsedAt} WHERE "id" = ${apiToken.id}`
   }
 }
 

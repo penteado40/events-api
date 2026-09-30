@@ -321,7 +321,7 @@ Arquivos: `shared/domain/domain-event.ts` (tipo base e `AggregateRoot` com `reco
 | `updatedById` | O Author da última escrita: FK anulável para `users`, `onDelete: Restrict` |
 
 - **`null` quer dizer que a escrita não partiu de um User**: o Site em nome de um Guest, a LegacyMigration, scripts da plataforma (`create-super-admin`). Nunca quer dizer "não sei".
-- **Toda escrita persistida na linha atualiza `updatedAt`/`updatedById`**, inclusive as técnicas (troca de senha, uso de um Activation link, archive). Na criação, `updatedById = createdById`.
+- **Toda escrita persistida na linha atualiza `updatedAt`/`updatedById`**, inclusive as técnicas (troca de senha, uso de um Activation link, archive). Na criação, `updatedById = createdById`. A exceção é o registro de uso (o `lastUsedAt` de um API token), que não é edição e grava só a própria coluna (ADR-0013).
 - **O `Stamp` carrega autor e hora juntos** (`shared/domain/stamp.ts`: `{ by: number | null, at: Date }`). Toda mutação de entidade recebe um (`event.update(changes, stamp)`, `user.changePassword(hash, stamp)`), e todo `create` de repositório também (`users.create(props, stamp)`). Sem default: o compilador impede que alguém esqueça o Author.
 - **A hora vem da porta `Clock`** (`shared/application/clock.ts`), injetada pelo Nest (`SystemClock`, no `SharedModule`) e trocada por `FixedClock` nos testes. Use case e entidade nunca chamam `new Date()`. O use case monta o stamp: `{ by: input.actor.id, at: this.clock.now() }`.
 - O repositório Prisma grava as quatro colunas explicitamente. Na criação, use `...createdWith(stamp)` (`shared/domain/stamp.ts`, também usado pelos repositórios em memória); no `save`, passe `updatedAt` e `updatedById` da entidade.

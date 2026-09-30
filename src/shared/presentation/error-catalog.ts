@@ -45,6 +45,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'Este evento está arquivado e não aceita alterações.',
   },
+  INSUFFICIENT_SCOPE: {
+    status: 403,
+    message: 'Este API token não tem o Scope necessário para esta ação.',
+  },
   MEMBER_NOT_FOUND: { status: 404, message: 'Este usuário não é membro do evento.' },
   MEMBER_ALREADY_EXISTS: { status: 409, message: 'Este usuário já é membro do evento.' },
   USER_IS_SUPER_ADMIN: {
@@ -64,6 +68,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     message:
       'Este membro foi alterado por outra pessoa ao mesmo tempo. Recarregue e tente de novo.',
   },
+  API_TOKEN_NOT_FOUND: { status: 404, message: 'API token não encontrado neste evento.' },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

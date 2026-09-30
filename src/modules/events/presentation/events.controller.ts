@@ -10,12 +10,15 @@ import {
   Query,
 } from '@nestjs/common'
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { AcceptsApiKey, CurrentApiKey } from '../../../shared/presentation/api-key.js'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import type { User } from '../../identity/index.js'
 import { ArchiveEventUseCase } from '../application/use-cases/archive-event.use-case.js'
 import { CreateEventUseCase } from '../application/use-cases/create-event.use-case.js'
+import type { SiteCredential } from '../application/site-credential.js'
 import { GetEventUseCase } from '../application/use-cases/get-event.use-case.js'
+import { GetPublicEventUseCase } from '../application/use-cases/get-public-event.use-case.js'
 import { ListEventsUseCase } from '../application/use-cases/list-events.use-case.js'
 import { UnarchiveEventUseCase } from '../application/use-cases/unarchive-event.use-case.js'
 import { UpdateEventUseCase } from '../application/use-cases/update-event.use-case.js'
@@ -24,6 +27,7 @@ import {
   EventListResponseDto,
   EventResponseDto,
   ListEventsQueryDto,
+  PublicEventResponseDto,
   UpdateEventDto,
 } from './dto/event.dto.js'
 import { EventPresenter } from './event.presenter.js'
@@ -41,6 +45,7 @@ export class EventsController {
     private readonly updateEventUseCase: UpdateEventUseCase,
     private readonly archiveEventUseCase: ArchiveEventUseCase,
     private readonly unarchiveEventUseCase: UnarchiveEventUseCase,
+    private readonly getPublicEventUseCase: GetPublicEventUseCase,
   ) {}
 
   @Post()
@@ -88,6 +93,26 @@ export class EventsController {
     @Param('id', ParseIntPipe) eventId: number,
   ): Promise<EventResponseDto> {
     return { data: EventPresenter.toJson(await this.getEventUseCase.execute({ actor, eventId })) }
+  }
+
+  @Get(':id/public')
+  @AcceptsApiKey()
+  @ApiOperation({
+    summary: 'Ler a parte pública de um Event',
+    description:
+      'O Site, com um API token de Scope `event:read` no header `X-Api-Key`; Event members e o Super admin também, para ver o que o Site vê. Responde mesmo com o Event arquivado.',
+  })
+  @ApiOkResponse({ type: PublicEventResponseDto })
+  @ApiErrors(...EVENT_ACCESS_ERRORS, 'INSUFFICIENT_SCOPE')
+  async getPublic(
+    @CurrentUser() user: User | undefined,
+    @CurrentApiKey() site: SiteCredential | undefined,
+    @Param('id', ParseIntPipe) eventId: number,
+  ): Promise<PublicEventResponseDto> {
+    // The guard puts exactly one of them on the request.
+    const actor = site ?? (user as User)
+    const event = await this.getPublicEventUseCase.execute({ actor, eventId })
+    return { data: EventPresenter.toPublicJson(event) }
   }
 
   @Patch(':id')

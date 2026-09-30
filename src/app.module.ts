@@ -6,7 +6,7 @@ import { IdentityModule } from './modules/identity/index.js'
 import { AppConfig } from './shared/infrastructure/app-config.js'
 import { SharedModule } from './shared/infrastructure/shared.module.js'
 import { AllExceptionsFilter } from './shared/presentation/all-exceptions.filter.js'
-import { JwtAuthGuard } from './shared/presentation/jwt-auth.guard.js'
+import { CredentialsGuard } from './shared/presentation/credentials.guard.js'
 
 @Module({})
 export class AppModule {
@@ -20,7 +20,7 @@ export class AppModule {
       ],
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
-        { provide: APP_GUARD, useClass: JwtAuthGuard },
+        { provide: APP_GUARD, useClass: CredentialsGuard },
         {
           provide: APP_FILTER,
           useFactory: (c: AppConfig) =>

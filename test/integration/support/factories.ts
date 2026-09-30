@@ -85,3 +85,29 @@ export async function addMember(options: AddMemberOptions) {
     data: { ...options, isPrimaryOwner: options.isPrimaryOwner ?? false },
   })
 }
+
+export interface CreateApiTokenOptions {
+  eventId: number
+  value?: string
+  name?: string
+  scopes?: string[]
+  isActive?: boolean
+  lastUsedAt?: Date | null
+}
+
+/** An API token with a known value (stored as its SHA-256, like the app does). */
+export async function createApiToken(options: CreateApiTokenOptions) {
+  sequence += 1
+  const value = options.value ?? `evt_test-api-token-${sequence}`
+  const apiToken = await testPrisma().apiToken.create({
+    data: {
+      eventId: options.eventId,
+      name: options.name ?? `Site ${sequence}`,
+      tokenHash: createHash('sha256').update(value).digest('hex'),
+      scopes: options.scopes ?? ['event:read'],
+      isActive: options.isActive ?? true,
+      lastUsedAt: options.lastUsedAt ?? null,
+    },
+  })
+  return { ...apiToken, value }
+}

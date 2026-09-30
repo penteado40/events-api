@@ -17,7 +17,7 @@ O identificador legível e permanente de um Event, único na plataforma e defini
 _Avoid_: apelido, handle, código do evento
 
 **Archived event** (evento arquivado):
-Um Event encerrado e congelado: não aceita mais nenhuma escrita, nem do Site nem dos membros. Os Owners continuam vendo tudo; os demais membros veem só o Event summary. Só o Super admin escreve nele e só ele o desarquiva, devolvendo-o a ativo.
+Um Event encerrado e congelado: não aceita mais nenhuma escrita, nem do Site nem dos membros. O Site continua lendo a parte pública enquanto tiver um API token ativo, e os Owners ainda podem desativar ou apagar API tokens, porque isso só fecha acesso. Os Owners continuam vendo tudo; os demais membros veem só o Event summary. Só o Super admin escreve nele e só ele o desarquiva, devolvendo-o a ativo.
 _Avoid_: evento finalizado, inativo, deletado
 
 **Event summary** (resumo do evento):
@@ -79,7 +79,7 @@ _Avoid_: usuário, visitante
 ## Acesso público
 
 **Site**:
-O frontend público de um Event, identificado pelo `siteUrl`.
+O frontend público de um Event, identificado pelo `siteUrl`. Na parte aberta a Guests, fala com a API por um API token: lê o que é público e faz as escritas diretas de um Guest (RSVP, Contribution). Pode ter também uma área com login para os membros, só com informações básicas e práticas; a gestão do Event é feita direto pela API.
 _Avoid_: landing, front do casal
 
 **API token**:
@@ -87,7 +87,7 @@ Credencial de um Site para falar com a API em nome de um único Event, limitada 
 _Avoid_: chave pública, token do front, secret
 
 **Scope** (escopo):
-Uma permissão pontual concedida a um API token (ex.: criar RSVP, ler a Registry).
+Uma permissão pontual concedida a um API token (ex.: criar RSVP, ler a Registry). Só alcança o que é público de um Event; nunca dá acesso ao que os membros veem, mesmo quando o nome coincide (o Scope `event:read` lê só a parte pública do Event).
 _Avoid_: permissão (genérico), role
 
 ## Presença

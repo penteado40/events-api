@@ -93,7 +93,7 @@ _Avoid_: permissão (genérico), role
 ## Presença
 
 **RSVP**:
-A resposta de um Guest sobre a presença em um Event, única por email dentro do Event.
+O registro de que um Guest vai a um Event, único por email dentro do Event. Só existe para quem vai: quem não vai não deixa RSVP, e não há RSVP recusado ou pendente (ADR-0015).
 _Avoid_: confirmação, inscrição, presença
 
 ## Presentes e contribuições

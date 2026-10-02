@@ -17,7 +17,7 @@ Cada peça da programação de um Event: um acontecimento com hora (uma apresent
 _Avoid_: Activity, atividade, apresentação, show (são tipos de Event item), Appearance, item do roteiro
 
 **Draft** (rascunho):
-Um Event ou Event item que a produção ainda não liberou. Um Event nasce em Draft: todo Group member já vê onde e quando, mas nenhum Event item dele aparece. Um Event item em Draft só a produção vê, mesmo num Event publicado. Num Event em Draft, o Event item nasce publicado; num Event publicado, nasce em Draft. Publicar e voltar ao Draft vale nos dois sentidos.
+Um Event ou Event item que a produção ainda não liberou. Um Event nasce em Draft: todo Group member já vê onde e quando, mas nenhum Event item dele aparece. Um Event item em Draft só os Owners e o Item lead dele veem, mesmo num Event publicado. Num Event em Draft, o Event item nasce publicado; num Event publicado, nasce em Draft. Publicar e voltar ao Draft vale nos dois sentidos.
 _Avoid_: oculto, privado, pendente
 
 **Cancelled** (cancelado):
@@ -39,6 +39,18 @@ _Avoid_: Venue, local (é o que o Event item guarda), endereço
 **Field** (campo):
 Uma informação livre dentro de um Event item, com um nome e um valor de um único tipo: texto, pessoas ou fotos (ex.: "Obs: despachar som", "Carro 1 - EC: Matias, Jacque", a paleta de roupa). A produção escolhe quais Fields cada Event item tem e como se chamam; um Event item pode ter vários, de tipos diferentes, mas um Field nunca mistura tipos. Lista, telefone e link são Fields de texto. Cada foto de um Field de fotos pode ter uma legenda curta (ex.: "Azul petróleo #1F4E5F" sob a foto da roupa). Um Field de pessoas aceita, além de Users, nomes soltos de quem não tem login (ex.: o motorista local), que só aparecem ali. Um nome solto nunca vira User sozinho: a produção pode vinculá-lo a um User, o que troca o nome por essa pessoa em todos os Fields do Event.
 _Avoid_: atributo, propriedade, bloco
+
+**Item template** (modelo de item):
+Um Event item de molde de um Group (ex.: "Saída terrestre" com Local em Highlight e os Fields de pessoas Carro 1 e Carro 2), escolhido ao criar um Event item. Traz o nome do item, os Fields (com ou sem valor, Highlight e ordem), o Audience ("Todos" ou Teams, que só copiam quem deles está no Event) e o lugar; nunca a hora nem pessoas avulsas. Tudo é copiado: editar o Item template depois não muda nenhum Event item. Um Item template automático cria o seu Event item sozinho em todo Event novo (ex.: "O que levar"). Um Group nasce com os Item templates da plataforma, só com os nomes e tipos dos Fields, e os ajusta como quiser.
+_Avoid_: tipo de item (sugere vínculo vivo), template de evento, categoria
+
+**Saved field** (Field salvo):
+Um Field pronto de um Group, com nome, tipo, valor e Highlight (ex.: a paleta Azul, com as fotos e as legendas; o contato da produção), que a produção insere em qualquer Event item a qualquer momento, como cópia: editar o Saved field depois não muda nenhum Event item. Um Item template pode incluí-lo, e então o Event item recebe o valor que ele tiver no momento da criação.
+_Avoid_: paleta (é um Saved field de fotos), preset, valor padrão
+
+**Item lead** (responsável pelo item):
+A pessoa que cuida de um Event item, no máximo uma por item e opcional: um Owner, um Event manager ou um Viewer que seja Participant do Event, nunca um Event guest. Para o Owner, é só a marca de quem cuida; o Event manager edita os Event items de que é Item lead; o Viewer só sugere alterações, que a produção confirma ou rejeita. Quem cria um Event item vira o Item lead dele.
+_Avoid_: responsável (sem qualificador), dono do item, Author (é quem editou por último), assignee
 
 **Personal note** (nota individual):
 O valor de uma pessoa dentro de um Field de pessoas (ex.: o localizador dela, "dirigindo"). Por padrão só ela e a produção veem; o Field pode torná-las visíveis para todos.
@@ -96,7 +108,7 @@ O vínculo entre um User e um Group, com um papel: Owner ou Viewer. Um User pode
 _Avoid_: integrante (quando se refere ao vínculo), colaborador
 
 **Team** (equipe):
-Um conjunto de Group members com nome, mantido pelos Owners do Group (ex.: Cantores, Banda, Produção). A lista de Teams é plana, e uma pessoa pode estar em vários Teams ou em nenhum, independente do papel. Escolher um Team num Audience só copia quem está nele naquele momento: mudar o Team depois não muda nenhum Audience.
+Um conjunto de Group members com nome, mantido pelos Owners do Group (ex.: Cantores, Banda, Técnica, Produção; Técnica, quem cuida de som e luz, é outro Team, não a Produção). O Team Produção é só um Team, e quem está nele pode ser Viewer; não se confunde com "a produção", quem edita (Owners e Event managers). A lista de Teams é plana, e uma pessoa pode estar em vários Teams ou em nenhum, independente do papel. Escolher um Team num Audience só copia quem está nele naquele momento: mudar o Team depois não muda nenhum Audience.
 _Avoid_: naipe, Section, agrupamento, Grouping, subgrupo
 
 **Owner**:
@@ -108,7 +120,7 @@ Group member que só consulta: vê todos os Events do Group que não são Archiv
 _Avoid_: leitor, participante, convidado
 
 **Event manager**:
-O vínculo entre um User e um único Event, que deixa editar os Event items daquele Event e nada mais (ex.: um produtor local de Manaus). Não é Group member.
+O vínculo entre um User e um único Event, para quem ajuda a montá-lo sem ser Owner (ex.: um produtor local de Manaus que cuida dos traslados). Cria Event items e edita só aqueles de que é Item lead; dos outros, vê os publicados, independente do Audience, sem editar. Usa os Item templates e Saved fields do Group, que só os Owners mantêm. Não é Group member.
 _Avoid_: Manager (sem qualificador), organizador, gerente, editor
 
 **Event guest** (convidado do evento):

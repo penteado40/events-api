@@ -112,7 +112,7 @@ O User que criou ou editou por último um registro. Escritas que não partem de 
 _Avoid_: dono do registro, owner (Owner é papel), responsável
 
 **Super admin**:
-O papel de plataforma com acesso total a todos os Groups e o único que cria Groups. Concedido só pela configuração da plataforma, nunca pela API. Nunca é Group member: o acesso dele vem do papel, não de vínculos.
+O papel de plataforma com acesso total a todos os Groups e o único que cria Groups e que dá, tira ou rebaixa o papel de Owner. Concedido só pela configuração da plataforma, nunca pela API. Nunca é Group member: o acesso dele vem do papel, não de vínculos.
 _Avoid_: root, admin geral
 
 **Group member** (membro do grupo):
@@ -124,23 +124,23 @@ Um conjunto de Group members com nome, mantido pelos Owners do Group (ex.: Canto
 _Avoid_: naipe, Section, agrupamento, Grouping, subgrupo
 
 **Owner**:
-Group member que responde pelo Group: edita o Group, os membros, os Events e os Event items. É a produção.
-_Avoid_: dono (sem qualificador), admin do grupo, produtor
+Group member que responde pelo Group: edita o Group, os Events e os Event items, e adiciona e remove Viewers, Event managers e Event guests. É a produção. Todos os Owners de um Group são iguais: nenhum adiciona, remove ou rebaixa outro Owner, o que só o Super admin faz. Um Owner pode sair ou se rebaixar a Viewer, menos o último. Um Group pode nascer sem Owner, até o Super admin definir o primeiro; depois disso, nunca mais fica sem.
+_Avoid_: dono (sem qualificador), admin do grupo, produtor, Primary owner (não há hierarquia entre Owners)
 
 **Viewer**:
-Group member que só consulta: vê todos os Events do Group que não são Archived events, cada um filtrado pelos Audiences. De um Event de que não é Participant, vê só que ele existe (onde e quando), já que nenhum Audience o alcança.
+Group member que só consulta: vê todos os Events do Group que não são Archived events, cada um filtrado pelos Audiences. De um Event de que não é Participant, vê só que ele existe (onde e quando), já que nenhum Audience o alcança. Não sai do Group por conta própria: só um Owner o remove. Quem é removido sai dos Teams, deixa de ser Participant dos Events que ainda não acabaram e de ser Item lead, mas o nome continua nos Fields de pessoas, marcado como fora do Event, e nos Finished events.
 _Avoid_: leitor, participante, convidado
 
 **Event manager**:
-O vínculo entre um User e um único Event, para quem ajuda a montá-lo sem ser Owner (ex.: um produtor local de Manaus que cuida dos traslados). Cria Event items e edita só aqueles de que é Item lead; dos outros, vê os publicados, independente do Audience, sem editar. Usa os Item templates e Saved fields do Group, que só os Owners mantêm. Não é Group member.
+O vínculo entre um User e um único Event, para quem ajuda a montá-lo sem ser Owner (ex.: um produtor local de Manaus que cuida dos traslados). Cria Event items e edita só aqueles de que é Item lead; dos outros, vê os publicados, independente do Audience, sem editar. Usa os Item templates e Saved fields do Group, que só os Owners mantêm. Não é Group member. Vale da hora em que um Owner o adiciona até o fim do Event, mais 7 dias só de consulta, sem editar; depois perde o acesso àquele Event. Não sai por conta própria: só um Owner o remove antes. Removido antes da hora, deixa de ser Item lead; expirado, o nome continua onde estava.
 _Avoid_: Manager (sem qualificador), organizador, gerente, editor
 
 **Event guest** (convidado do evento):
-O vínculo entre um User e um único Event, para quem vai junto sem ser do Group (ex.: um baixista convidado para os shows de Manaus). Só vê os Event items cujo Audience o inclui, escolhido pelo nome ou escalado num Field de pessoas: o "Todos" não o alcança, e ele não vê nada mais do Group. Não é Group member nem Participant. Os Group members veem quem são os Event guests de cada Event, à parte da lista de Participants; o Event guest não vê essas listas. Só os Owners adicionam e removem Event guests. Quem é removido perde o acesso na hora e sai dos Audiences, mas, como o Participant que sai, continua nos Fields de pessoas marcado como fora do Event até a produção reorganizá-los. Se virar presença fixa, entra no Group como Viewer, o que não muda os Events em que já é Event guest: só vira Participant deles se um Owner trocar um vínculo pelo outro, já que ninguém é Participant e Event guest do mesmo Event.
+O vínculo entre um User e um único Event, para quem vai junto sem ser do Group (ex.: um baixista convidado para os shows de Manaus). Só vê os Event items cujo Audience o inclui, escolhido pelo nome ou escalado num Field de pessoas: o "Todos" não o alcança, e ele não vê nada mais do Group. Não é Group member nem Participant. Os Group members veem quem são os Event guests de cada Event, à parte da lista de Participants; o Event guest não vê essas listas. Só os Owners adicionam e removem Event guests; ele não sai por conta própria. Como o Event manager, vale até o fim do Event, mais 7 dias só de consulta, e então perde o acesso. Quem é removido perde o acesso na hora e sai dos Audiences, mas, como o Participant que sai, continua nos Fields de pessoas marcado como fora do Event até a produção reorganizá-los. Se virar presença fixa, entra no Group como Viewer, o que não muda os Events em que já é Event guest: só vira Participant deles se um Owner trocar um vínculo pelo outro, já que ninguém é Participant e Event guest do mesmo Event.
 _Avoid_: Guest (sem qualificador, era o convidado de RSVP), músico convidado, extra, Viewer temporário
 
 **Guest access link** (link de acesso do convidado):
-Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. A produção o gera e entrega. Vale até pouco depois do fim do Event, e a produção pode revogá-lo e gerar outro. Quem quiser continuar define uma senha como qualquer Pending user.
+Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. A produção o gera e entrega. Vale enquanto o vínculo do Event guest valer (até 7 dias depois do fim do Event), e a produção pode revogá-lo e gerar outro. Quem quiser continuar define uma senha como qualquer Pending user.
 _Avoid_: link mágico, convite, link público, Activation link (esse define senha)
 
 **Membership** (vínculo):

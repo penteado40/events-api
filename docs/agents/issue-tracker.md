@@ -23,3 +23,14 @@ Crie uma issue no projeto `PROJ`, filha do épico PROJ-51.
 ## Quando uma skill disser "fetch the relevant ticket"
 
 Busque a issue do Jira pela chave, incluindo os comentários.
+
+## Wayfinding operations
+
+O épico **PROJ-51** é também o mapa wayfinder do pivô para Groups (label `wayfinder:map`). A descrição dele traz Destination, Notes, Decisions so far, Not yet specified e Out of scope.
+
+- **Ticket do mapa**: filho do PROJ-51 com label `v2` e `wayfinder:<tipo>` (`grilling`, `research`, `prototype`, `task`). O corpo é a seção `## Question`.
+- **Bloqueio**: links nativos "Blocks" ("is blocked by").
+- **Fronteira**: JQL `parent = PROJ-51 AND labels in ("wayfinder:grilling", "wayfinder:research", "wayfinder:prototype", "wayfinder:task") AND statusCategory != Done AND assignee is EMPTY ORDER BY key ASC`, descartando os que ainda têm um bloqueio aberto.
+- **Reivindicar**: atribuir o ticket a quem conduz o mapa, antes de qualquer trabalho.
+- **Resolver**: comentário de resolução, transição para Concluído e uma linha em "Decisions so far" na descrição do PROJ-51.
+- **Fora de escopo**: fechar o ticket e registrar uma linha em "Out of scope" no mapa.

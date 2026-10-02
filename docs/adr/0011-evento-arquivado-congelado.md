@@ -6,7 +6,7 @@ O PRD previa que arquivar um Event recusasse apenas as escritas vindas do Site (
 
 - A AccessPolicy checa o papel antes do estado: um Viewer que tenta escrever num evento arquivado recebe `403`, não `409`. O `409` sinaliza que o problema é o estado do evento, não a permissão.
 - `archive` e `unarchive` são idempotentes: pedir o estado em que o evento já está devolve `200` com ele.
-- Toda escrita de membro que venha a existir (Registry, Verification de Contribution, membros, API tokens, emails) herda a regra. Um Pix que chegue depois do arquivamento só é conferido se o Super admin desarquivar o evento.
+- Toda escrita de membro que venha a existir (Registry, Verification de Contribution, membros, API tokens, emails) herda a regra, salvo a Verification do Owner (ver o refinamento abaixo).
 
 ## Refinamento: o que cada membro vê de um evento arquivado
 
@@ -19,3 +19,7 @@ A mesma regra resolve o Pending user cujos eventos foram todos arquivados: ele a
 Congelar é sobre **mudanças**, não sobre tirar o evento da internet. As leituras públicas do Site (com um API token ativo) continuam respondendo num evento arquivado; só as escritas públicas (RSVP, Contribution) recebem `EVENT_ARCHIVED`. Para o Site mostrar "evento encerrado" sem esperar um `409`, a leitura pública traz o `status` do evento.
 
 A exceção à regra do congelamento: o Owner ainda pode **desativar** e **apagar** API tokens de um evento arquivado. Revogar uma credencial vazada é segurança e não pode depender do Super admin; e só fecha acesso, sem tocar em nenhum dado que o congelamento protege. É o mesmo raciocínio de `archive` sobre um evento já arquivado: não é o tipo de escrita que o congelamento recusa. Criar, renomear, mudar Scopes e reativar continuam congelados (`EVENT_ARCHIVED`).
+
+## Refinamento: o Owner ainda faz a Verification
+
+O texto original dizia que um Pix chegado depois do arquivamento só seria conferido se o Super admin desarquivasse o evento. Decidimos que o **Owner** ainda faz a Verification (`verify` / `reject`) de uma Paid contribution num evento arquivado. Managers e Viewers não: o Manager recebe `409 EVENT_ARCHIVED` e o Viewer, `403` (papel antes do estado). A Verification não muda o evento, só registra se um Pix que o Guest já declarou ter pago chegou mesmo, e é justamente o "conferir quem contribuiu" que o refinamento de leitura deixa nas mãos do Owner. Obrigar o Super admin a desarquivar só para isso reabriria o evento inteiro para escritas que o congelamento existe para impedir.

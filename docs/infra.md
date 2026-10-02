@@ -16,7 +16,7 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo por ambiente (PROJ-59) | mesmo banco | — |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
-| `CORS_ORIGINS` | na PROJ-58 | na PROJ-58 | só localhost |
+| `CORS_ORIGINS` | vazia (origem do Panel pendente) | vazia (origem do Panel pendente) | vazia (localhost já é liberado em dev) |
 
 Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
 

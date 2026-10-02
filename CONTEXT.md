@@ -79,8 +79,12 @@ _Avoid_: usuário, visitante
 ## Acesso público
 
 **Site**:
-O frontend público de um Event, identificado pelo `siteUrl`. Na parte aberta a Guests, fala com a API por um API token: lê o que é público e faz as escritas diretas de um Guest (RSVP, Contribution). Pode ter também uma área com login para os membros, só com informações básicas e práticas; a gestão do Event é feita direto pela API.
+O frontend público de um Event, identificado pelo `siteUrl`. Na parte aberta a Guests, fala com a API por um API token: lê o que é público e faz as escritas diretas de um Guest (RSVP, Contribution). Pode ter também uma área com login para os membros, só com informações básicas e práticas; a gestão do Event é feita no Panel.
 _Avoid_: landing, front do casal
+
+**Panel** (painel):
+O app de gestão da plataforma, onde Users fazem login e gerenciam os Events de que são Event members (ou todos, no caso do Super admin). Não pertence a nenhum Event e tem origem própria, fora de qualquer `siteUrl`.
+_Avoid_: dashboard, admin, backoffice, área de membros (essa é a parte com login dentro de um Site)
 
 **API token**:
 Credencial de um Site para falar com a API em nome de um único Event, limitada por Scopes.

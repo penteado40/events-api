@@ -10,4 +10,4 @@ Em serverless, cada instância tem memória própria, então o rate limiter em m
 - Corpo da requisição limitado a 4,5 MB: arquivos grandes vão direto ao Cloudinary (ADR-0005).
 - Conexões com o Neon usam a URL com pooler.
 - O plano Hobby da Vercel é para uso não comercial; se a plataforma virar produto, é preciso migrar para o Pro.
-- O CORS aceita automaticamente o `siteUrl` dos eventos ativos (com cache), além das origens extras da env, para que um evento novo não exija redeploy.
+- O CORS aceita automaticamente o `siteUrl` de todo Event, ativo ou arquivado (com cache), além das origens extras da env, para que um evento novo não exija redeploy. O arquivado continua no CORS porque o Site segue lendo a parte pública dele (ADR-0011); o CORS só protege o navegador, e quem autoriza é o API token.

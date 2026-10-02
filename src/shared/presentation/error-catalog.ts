@@ -69,6 +69,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
       'Este membro foi alterado por outra pessoa ao mesmo tempo. Recarregue e tente de novo.',
   },
   API_TOKEN_NOT_FOUND: { status: 404, message: 'API token não encontrado neste evento.' },
+  RATE_LIMITED: {
+    status: 429,
+    message: 'Muitas tentativas. Tente de novo em alguns minutos.',
+  },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

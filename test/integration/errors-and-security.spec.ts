@@ -57,7 +57,12 @@ describe('errors and security headers', () => {
   })
 
   it('does not leak the internal message of an unexpected error in production', async () => {
-    const prod = await withBrokenUserRepository({ NODE_ENV: 'production' })
+    const prod = await withBrokenUserRepository({
+      NODE_ENV: 'production',
+      // Required in production; the test app keeps the counters in memory anyway.
+      UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+      UPSTASH_REDIS_REST_TOKEN: 'token',
+    })
     try {
       const res = await prod
         .http()

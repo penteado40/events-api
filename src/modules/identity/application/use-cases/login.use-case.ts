@@ -1,3 +1,4 @@
+import type { RateLimiter } from '../../../../shared/application/rate-limiter.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
@@ -21,16 +22,25 @@ export class LoginUseCase {
     private readonly users: UserRepository,
     private readonly hasher: PasswordHasher,
     private readonly tokens: TokenIssuer,
+    private readonly limiter: RateLimiter,
   ) {}
 
   async execute(input: LoginInput): Promise<LoginOutput> {
     const email = parseEmail(input.email)
+    // Only wrong passwords count against an email, existing or not: a right
+    // password never locks its owner out, and the 429 reveals nothing. A
+    // malformed email is no account; the IP limit covers it.
+    if (email) await this.limiter.check('login-email', email.value)
+
     const user = email ? await this.users.findByEmail(email) : null
     // Accepted trade-off: this reveals that the email belongs to a Pending user.
     if (user?.isPending) throw new AppError('USER_PENDING')
     // Unknown email still pays for a comparison (constant time).
     const valid = await this.hasher.compare(input.password, user?.passwordHash ?? null)
-    if (!user || !valid) throw new AppError('INVALID_CREDENTIALS')
+    if (!user || !valid) {
+      if (email) await this.limiter.hit('login-email', email.value)
+      throw new AppError('INVALID_CREDENTIALS')
+    }
     const { token, expiresIn } = await this.tokens.issue(user)
     return { token, expiresIn, user }
   }

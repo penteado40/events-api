@@ -102,7 +102,7 @@ Responses use `{ data }` on success and a stable error envelope otherwise:
 
 ## Tech stack
 
-Node 22 · TypeScript (ESM, `strict`) · NestJS 11 · Zod (`nestjs-zod`) + `@nestjs/swagger` + Scalar · Passport JWT · Prisma 7 with `@prisma/adapter-pg` · PostgreSQL (Neon in production) · Vitest + supertest · ESLint + Prettier · GitHub Actions · Vercel Functions. Coming with V1: Upstash Redis, Resend + React Email, Cloudinary.
+Node 22 · TypeScript (ESM, `strict`) · NestJS 11 · Zod (`nestjs-zod`) + `@nestjs/swagger` + Scalar · Passport JWT · Prisma 7 with `@prisma/adapter-pg` · PostgreSQL (Neon in production) · Vitest + supertest · ESLint + Prettier · GitHub Actions · Vercel Functions · Upstash Redis. Coming with V1: Resend + React Email, Cloudinary.
 
 ## Getting started
 

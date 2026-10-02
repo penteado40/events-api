@@ -27,6 +27,7 @@ export type ErrorCode =
   | 'PRIMARY_OWNER_MUST_TRANSFER'
   | 'MEMBER_CHANGED'
   | 'API_TOKEN_NOT_FOUND'
+  | 'RATE_LIMITED'
   | 'INTERNAL_ERROR'
 
 export class AppError extends Error {

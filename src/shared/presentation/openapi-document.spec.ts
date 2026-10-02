@@ -41,6 +41,16 @@ describe('completeOpenApiDocument', () => {
     })
   })
 
+  it('documents the Retry-After header of a 429 RATE_LIMITED', () => {
+    const doc = completeOpenApiDocument(
+      docWith({ 'x-public': true, 'x-error-codes': ['RATE_LIMITED'] }),
+    )
+
+    expect(op(doc).responses['429']).toMatchObject({
+      headers: { 'Retry-After': { schema: { type: 'integer' } } },
+    })
+  })
+
   it('adds 401 UNAUTHENTICATED to every route that is not public', () => {
     const doc = completeOpenApiDocument(docWith({}))
 

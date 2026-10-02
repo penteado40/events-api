@@ -25,6 +25,8 @@ export abstract class EventRepository {
   abstract save(event: Event): Promise<void>
   /** Every Event, newest `startsAt` first. */
   abstract listAll(filter: EventListFilter): Promise<Event[]>
+  /** The siteUrl of every Event, active or archived, without repeats (CORS, ADR-0007). */
+  abstract listSiteUrls(): Promise<string[]>
   /** The Events the User is a member of, newest `startsAt` first. */
   abstract listForMember(userId: number, filter: EventListFilter): Promise<EventWithMembership[]>
   abstract findMembership(eventId: number, userId: number): Promise<Membership | null>

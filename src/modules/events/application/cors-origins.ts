@@ -14,11 +14,13 @@ export interface CorsOriginsOptions {
 /**
  * The origins CORS accepts: the siteUrl of every Event, active or archived
  * (ADR-0007, ADR-0011), plus the extra origins from the env. The siteUrls
- * are cached per instance; a failed reload keeps the last good list (only the
- * extra origins, before the first load) so a database outage never closes CORS.
+ * are cached per instance and, once loaded, reloaded in the background when
+ * stale, so a slow database never holds a request; a failed reload keeps the
+ * last good list (only the extra origins, before the first load).
  */
 export class CorsOrigins {
   private siteUrls = new Set<string>()
+  private loaded = false
   private expiresAt = 0
   private reloading: Promise<void> | null = null
 
@@ -36,9 +38,9 @@ export class CorsOrigins {
 
   private async currentSiteUrls(): Promise<Set<string>> {
     if (this.clock.now().getTime() >= this.expiresAt) {
-      // Requests that arrive while a reload runs wait for that same one.
+      // One reload at a time; only requests with no list yet wait for it.
       this.reloading ??= this.reload().finally(() => (this.reloading = null))
-      await this.reloading
+      if (!this.loaded) await this.reloading
     }
     return this.siteUrls
   }
@@ -46,6 +48,7 @@ export class CorsOrigins {
   private async reload(): Promise<void> {
     try {
       this.siteUrls = new Set(await this.events.listSiteUrls())
+      this.loaded = true
       this.expiresAt = this.clock.now().getTime() + TTL_MS
     } catch {
       this.expiresAt = this.clock.now().getTime() + RETRY_MS

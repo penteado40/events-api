@@ -5,15 +5,19 @@ import { CorsOrigins } from './cors-origins.js'
 import { newEventProps, SUPER_ADMIN_STAMP } from './testing/event-fixtures.js'
 import { InMemoryEventRepository } from './testing/in-memory-event.repository.js'
 
-/** An Event repository whose `listSiteUrls` can fail, as a database outage would. */
+/** An Event repository whose `listSiteUrls` can fail or hang, as a database outage would. */
 class FlakyEventRepository extends InMemoryEventRepository {
-  failListSiteUrls = false
+  database: 'up' | 'down' | 'hanging' = 'up'
 
   override listSiteUrls(): Promise<string[]> {
-    if (this.failListSiteUrls) return Promise.reject(new Error('database unavailable'))
+    if (this.database === 'down') return Promise.reject(new Error('database unavailable'))
+    if (this.database === 'hanging') return new Promise(() => {})
     return super.listSiteUrls()
   }
 }
+
+/** Lets a reload started in the background finish. */
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('CorsOrigins', () => {
   let events: FlakyEventRepository
@@ -59,7 +63,7 @@ describe('CorsOrigins', () => {
   describe('cache', () => {
     const later = (seconds: number) => new Date(clock.now().getTime() + seconds * 1000)
 
-    it('keeps the loaded siteUrls for 60 s, then sees a new Event', async () => {
+    it('keeps the loaded siteUrls for 60 s, then reloads them in the background', async () => {
       const origins = corsOrigins()
       await origins.isAllowed('https://festa-da-ana.com')
       await createEvent('https://festa-da-ana.com')
@@ -68,6 +72,8 @@ describe('CorsOrigins', () => {
       expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(false)
 
       clock.set(later(1))
+      expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(false)
+      await settle()
       expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(true)
     })
 
@@ -79,9 +85,23 @@ describe('CorsOrigins', () => {
       await events.save(event)
 
       clock.set(later(60))
+      await origins.isAllowed('https://festa-da-ana.com')
+      await settle()
 
       expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(false)
       expect(await origins.isAllowed('https://ana-e-bia.com')).toBe(true)
+    })
+
+    it('never waits for a reload while it has a list, even if the database hangs', async () => {
+      await createEvent('https://festa-da-ana.com')
+      const origins = corsOrigins()
+      await origins.isAllowed('https://festa-da-ana.com')
+
+      clock.set(later(60))
+      events.database = 'hanging'
+
+      expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(true)
+      expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(true)
     })
 
     it('keeps the last good list when a reload fails, and retries after 5 s', async () => {
@@ -91,25 +111,35 @@ describe('CorsOrigins', () => {
       await createEvent('https://festa-do-bruno.com')
 
       clock.set(later(60))
-      events.failListSiteUrls = true
+      events.database = 'down'
+      await origins.isAllowed('https://festa-da-ana.com')
+      await settle()
       expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(true)
       expect(await origins.isAllowed('https://festa-do-bruno.com')).toBe(false)
 
-      events.failListSiteUrls = false
+      events.database = 'up'
       clock.set(later(4))
+      await origins.isAllowed('https://festa-do-bruno.com')
+      await settle()
       expect(await origins.isAllowed('https://festa-do-bruno.com')).toBe(false)
 
       clock.set(later(1))
+      await origins.isAllowed('https://festa-do-bruno.com')
+      await settle()
       expect(await origins.isAllowed('https://festa-do-bruno.com')).toBe(true)
     })
 
-    it('accepts only the extra origins while the first load fails', async () => {
+    it('waits for the first load, and accepts only the extra origins while it fails', async () => {
       await createEvent('https://festa-da-ana.com')
-      events.failListSiteUrls = true
+      events.database = 'down'
       const origins = corsOrigins(['https://painel.com'])
 
       expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(false)
       expect(await origins.isAllowed('https://painel.com')).toBe(true)
+
+      events.database = 'up'
+      clock.set(later(5))
+      expect(await origins.isAllowed('https://festa-da-ana.com')).toBe(true)
     })
   })
 })

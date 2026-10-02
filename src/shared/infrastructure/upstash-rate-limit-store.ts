@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { Redis } from '@upstash/redis'
 import { RateLimitStore } from '../application/rate-limit-store.js'
 
-/** A rate-limit check must not hold a request: past this, the RateLimiter fails open. */
+/** A rate-limit call must not hold a request: past this (no retries), the RateLimiter fails open. */
 const TIMEOUT_MS = 1_000
 
 export interface UpstashRateLimitStoreOptions {
@@ -24,7 +24,7 @@ export class UpstashRateLimitStore extends RateLimitStore {
     this.redis = new Redis({
       url: options.url,
       token: options.token,
-      retry: { retries: 1 },
+      retry: false,
       signal: () => AbortSignal.timeout(TIMEOUT_MS),
     })
   }

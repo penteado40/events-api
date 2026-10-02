@@ -140,6 +140,14 @@ describe('LoginUseCase', () => {
       ).rejects.toMatchObject({ code: 'RATE_LIMITED' })
     })
 
+    it('leaves a malformed email out: it is no account, and the IP limit covers the volume', async () => {
+      for (let i = 0; i < 6; i++) {
+        await expect(login.execute({ email: 'not-an-email', password: 'x' })).rejects.toEqual(
+          new AppError('INVALID_CREDENTIALS'),
+        )
+      }
+    })
+
     it('keeps each email apart', async () => {
       await failTimes(5, 'nobody@example.com')
 

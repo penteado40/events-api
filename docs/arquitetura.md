@@ -254,7 +254,7 @@ Se algo lança `AppError`, o filter global (presentation) consulta o catálogo, 
 
 ### 5.4 Erros
 
-- `AppError` mora em `shared/domain` e carrega **só o código** (`new AppError('CONTRIBUTION_NOT_PENDING')`). O domínio não sabe o que é HTTP.
+- `AppError` mora em `shared/domain` e carrega **só o código** (`new AppError('CONTRIBUTION_NOT_PENDING')`). O domínio não sabe o que é HTTP. A única exceção é o `RateLimitedError` (`shared/application`), que leva também os segundos até o fim da janela, que o filter global devolve no header `Retry-After`.
 - O catálogo que traduz código → status HTTP + mensagem fica em `shared/presentation`, e é usado pelo filter global.
 - Contrato de resposta: ADR-0008.
 - Na doc, cada rota lista os códigos que pode responder com `@ApiErrors(...)` (ver §5.9).

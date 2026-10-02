@@ -28,9 +28,9 @@ export class LoginUseCase {
   async execute(input: LoginInput): Promise<LoginOutput> {
     const email = parseEmail(input.email)
     // Only wrong passwords count against an email, existing or not: a right
-    // password never locks its owner out, and the 429 reveals nothing.
-    const subject = email?.value ?? input.email.trim().toLowerCase()
-    await this.limiter.check('login-email', subject)
+    // password never locks its owner out, and the 429 reveals nothing. A
+    // malformed email is no account; the IP limit covers it.
+    if (email) await this.limiter.check('login-email', email.value)
 
     const user = email ? await this.users.findByEmail(email) : null
     // Accepted trade-off: this reveals that the email belongs to a Pending user.
@@ -38,7 +38,7 @@ export class LoginUseCase {
     // Unknown email still pays for a comparison (constant time).
     const valid = await this.hasher.compare(input.password, user?.passwordHash ?? null)
     if (!user || !valid) {
-      await this.limiter.hit('login-email', subject)
+      if (email) await this.limiter.hit('login-email', email.value)
       throw new AppError('INVALID_CREDENTIALS')
     }
     const { token, expiresIn } = await this.tokens.issue(user)

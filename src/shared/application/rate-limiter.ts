@@ -10,6 +10,14 @@ export class RateLimitedError extends AppError {
   }
 }
 
+/** The current window of one policy for one subject. */
+interface Window {
+  key: string
+  limit: number
+  ttlMs: number
+  retryAfterSeconds: number
+}
+
 export interface RateLimiterOptions {
   /** Called when the store fails; the call then goes through (fail open). */
   onStoreError?: (error: unknown) => void
@@ -31,7 +39,7 @@ export class RateLimiter {
   /** Counts one hit for `subject` and refuses it past the limit. */
   async consume(policyName: RateLimitPolicyName, subject: string): Promise<void> {
     const window = this.currentWindow(policyName, subject)
-    const count = await this.failOpen(() => this.store.increment(window.key, window.ttlMs))
+    const count = await this.increment(window)
     if (count > window.limit) throw new RateLimitedError(window.retryAfterSeconds)
   }
 
@@ -44,21 +52,24 @@ export class RateLimiter {
 
   /** Counts one hit for `subject` without deciding anything; pair it with `check`. */
   async hit(policyName: RateLimitPolicyName, subject: string): Promise<void> {
-    const window = this.currentWindow(policyName, subject)
-    await this.failOpen(() => this.store.increment(window.key, window.ttlMs))
+    await this.increment(this.currentWindow(policyName, subject))
+  }
+
+  private increment(window: Window): Promise<number> {
+    return this.failOpen(() => this.store.increment(window.key, window.ttlMs))
   }
 
   /** The store's answer, or 0 (nothing counted) when it fails. */
-  private async failOpen(read: () => Promise<number>): Promise<number> {
+  private async failOpen(call: () => Promise<number>): Promise<number> {
     try {
-      return await read()
+      return await call()
     } catch (error) {
       this.options.onStoreError?.(error)
       return 0
     }
   }
 
-  private currentWindow(policyName: RateLimitPolicyName, subject: string) {
+  private currentWindow(policyName: RateLimitPolicyName, subject: string): Window {
     const { limit, windowMs } = RATE_LIMIT_POLICIES[policyName]
     const now = this.clock.now().getTime()
     const index = Math.floor(now / windowMs)

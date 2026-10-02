@@ -101,6 +101,14 @@ export class PrismaEventRepository extends EventRepository {
     return rows.map(toDomain)
   }
 
+  async listSiteUrls(): Promise<string[]> {
+    const rows = await this.prisma.event.findMany({
+      select: { siteUrl: true },
+      distinct: ['siteUrl'],
+    })
+    return rows.map((row) => row.siteUrl)
+  }
+
   async listForMember(userId: number, filter: EventListFilter): Promise<EventWithMembership[]> {
     const rows = await this.prisma.event.findMany({
       where: { status: filter.status, members: { some: { userId } } },

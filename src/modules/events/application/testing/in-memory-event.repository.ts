@@ -52,6 +52,10 @@ export class InMemoryEventRepository extends EventRepository {
     return sortNewestFirst([...this.events.values()].filter((e) => matches(e, filter)))
   }
 
+  async listSiteUrls(): Promise<string[]> {
+    return [...new Set([...this.events.values()].map((e) => e.siteUrl.value))]
+  }
+
   async listForMember(userId: number, filter: EventListFilter): Promise<EventWithMembership[]> {
     const events = sortNewestFirst(
       [...this.events.values()].filter(

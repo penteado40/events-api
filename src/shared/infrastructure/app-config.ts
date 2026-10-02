@@ -1,5 +1,14 @@
 import { z } from 'zod'
 
+/** An origin written exactly as a browser sends it: scheme + host + port, no path, no wildcard. */
+function isExactOrigin(value: string): boolean {
+  try {
+    return !value.includes('*') && new URL(value).origin === value
+  } catch {
+    return false
+  }
+}
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
@@ -15,6 +24,21 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /** Comma-separated origins CORS accepts besides the Events' siteUrls (e.g. the Panel). */
+  CORS_ORIGINS: z
+    .string()
+    .default('')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin !== ''),
+    )
+    .pipe(
+      z.array(
+        z.string().refine(isExactOrigin, 'cada origem precisa ser exata, ex.: https://painel.com'),
+      ),
+    ),
 })
 
 /** Typed, validated environment. Also the injection token for configuration. */
@@ -25,6 +49,7 @@ export class AppConfig {
   readonly jwtSecret: string
   readonly docsEnabled: boolean
   readonly activationLinkTtlSeconds: number
+  readonly corsOrigins: string[]
 
   private constructor(env: z.output<typeof EnvSchema>) {
     this.nodeEnv = env.NODE_ENV
@@ -33,6 +58,7 @@ export class AppConfig {
     this.jwtSecret = env.JWT_SECRET
     this.docsEnabled = env.DOCS_ENABLED
     this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
+    this.corsOrigins = env.CORS_ORIGINS
   }
 
   get isProduction(): boolean {

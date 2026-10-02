@@ -2,8 +2,10 @@ import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
 import { SecretTokens } from '../../shared/application/secret-tokens.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
+import { AllowedOrigins } from '../../shared/presentation/allowed-origins.js'
 import { ApiTokenAuthenticator } from '../../shared/presentation/api-token.js'
 import { IdentityAccountsModule, IdentityQueriesModule } from '../identity/index.js'
+import { CorsOrigins } from './application/cors-origins.js'
 import { MemberAccounts } from './application/ports/member-accounts.js'
 import { UserDirectory } from './application/ports/user-directory.js'
 import { AuthenticateApiTokenUseCase } from './application/use-cases/authenticate-api-token.use-case.js'
@@ -32,6 +34,7 @@ import { InProcessMemberAccounts } from './infrastructure/in-process-member-acco
 import { InProcessUserDirectory } from './infrastructure/in-process-user-directory.js'
 import { PrismaApiTokenRepository } from './infrastructure/prisma-api-token.repository.js'
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
+import { SiteAllowedOrigins } from './presentation/site-allowed-origins.js'
 import { SiteApiTokenAuthenticator } from './presentation/site-api-token-authenticator.js'
 import { ApiTokensController } from './presentation/api-tokens.controller.js'
 import { EventMembersController } from './presentation/event-members.controller.js'
@@ -171,8 +174,21 @@ import { EventsController } from './presentation/events.controller.js'
         new SiteApiTokenAuthenticator(authenticate),
       inject: [AuthenticateApiTokenUseCase],
     },
+    // One per instance: it holds the cached siteUrls.
+    {
+      provide: CorsOrigins,
+      useFactory: (events: EventRepository, clock: Clock, config: AppConfig) =>
+        new CorsOrigins(events, clock, { extraOrigins: config.corsOrigins }),
+      inject: [EventRepository, Clock, AppConfig],
+    },
+    // configureApp hands it to CORS.
+    {
+      provide: AllowedOrigins,
+      useFactory: (corsOrigins: CorsOrigins) => new SiteAllowedOrigins(corsOrigins),
+      inject: [CorsOrigins],
+    },
   ],
-  exports: [ApiTokenAuthenticator],
+  exports: [ApiTokenAuthenticator, AllowedOrigins],
 })
 export class EventsModule {}
 

@@ -11,3 +11,7 @@ Em serverless, cada instância tem memória própria, então o rate limiter em m
 - Conexões com o Neon usam a URL com pooler.
 - O plano Hobby da Vercel é para uso não comercial; se a plataforma virar produto, é preciso migrar para o Pro.
 - O CORS aceita automaticamente o `siteUrl` de todo Event, ativo ou arquivado (com cache), além das origens extras da env, para que um evento novo não exija redeploy. O arquivado continua no CORS porque o Site segue lendo a parte pública dele (ADR-0011); o CORS só protege o navegador, e quem autoriza é o API token.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+Vercel Functions e o rate limit no Upstash continuam valendo. Sem Sites (ADR-0016), o CORS deixa de aceitar o `siteUrl` de cada Event e fica só com as origens da env; o app mobile (events-expo) não passa por CORS. O exemplo do `waitUntil` depois do RSVP perde o objeto, mas a regra continua: trabalho depois da resposta usa `waitUntil`. O envio agrupado de notificações pode usar o QStash como despertador (pesquisa em PROJ-116), o que se decide no ticket de notificações (PROJ-75).

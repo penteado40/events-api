@@ -1,6 +1,6 @@
 # events-api
 
-> Multi-event REST API behind event websites (weddings, birthdays, corporate events, showers): RSVPs, a gift registry paid via Pix, and guest emails. Successor to [`fawedding-api`](https://github.com/penteado40/fawedding-api), which only served weddings.
+> REST API for the schedules of artistic groups: the production builds each Event (rehearsals, recordings, multi-day trips) and every member sees their own schedule. It replaced, before reaching production, an earlier design for event websites with guests (RSVP, gift registry), which stays in [`fawedding-api`](https://github.com/penteado40/fawedding-api).
 
 [![CI](https://github.com/penteado40/events-api/actions/workflows/ci.yml/badge.svg)](https://github.com/penteado40/events-api/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
@@ -11,7 +11,7 @@
 
 ## Overview
 
-Each **Event** is a tenant with its own public **Site**. Guests confirm attendance (**RSVP**) and contribute to **Registry items** via Pix; event members (Owner, Manager, Viewer) run the event behind a login, and a Super admin manages the platform. The full vocabulary lives in the domain glossary, [`CONTEXT.md`](CONTEXT.md).
+Each **Group** (e.g. a vocal group) is a tenant. An **Event** is any commitment of the Group, with only where and when; everything else is an **Event item** made of free **Fields** (text, people or photos), shown to each person according to its **Audience**. Owners run the Group, Event managers help with a single Event, Event guests join one Event without being in the Group, and a Super admin manages the platform. The pivot is being charted in Jira ([PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51)); the code still implements the earlier design. The full vocabulary lives in the domain glossary, [`CONTEXT.md`](CONTEXT.md).
 
 The project is also a showcase of **Clean Architecture with pragmatic DDD on NestJS**, where the dependency rule is enforced by the linter rather than by discipline.
 
@@ -76,10 +76,11 @@ The full explanation, with examples from this codebase: [`docs/arquitetura.md`](
 Each one is recorded as an ADR in [`docs/adr/`](docs/adr).
 
 - **NestJS, with Zod as the single source of validation and OpenAPI** ([ADR-0009](docs/adr/0009-nestjs.md)). `nestjs-zod` DTOs validate requests and generate the docs, so the two never drift apart.
-- **Stable error codes** ([ADR-0008](docs/adr/0008-contrato-da-api.md)). The domain throws `AppError` with a code only; one global filter maps it to an HTTP status and a Portuguese message, so Sites choose their text by code.
+- **Stable error codes** ([ADR-0008](docs/adr/0008-contrato-da-api.md)). The domain throws `AppError` with a code only; one global filter maps it to an HTTP status and a Portuguese message, so clients choose their text by code.
 - **Vercel Functions + Upstash Redis** ([ADR-0007](docs/adr/0007-vercel-functions-e-upstash.md)). Serverless instead of an always-on server; rate-limit counters live in Redis because each instance has its own memory.
-- **In-process domain events, published after commit** ([ADR-0010](docs/adr/0010-domain-events-em-processo.md)). Contexts react to facts (an RSVP confirmed, then an email sent) without an outbox; delivery is best effort.
-- **New database with a full migration** ([ADR-0001](docs/adr/0001-nova-api-banco-novo-migracao-completa.md)), **keeping the old integer ids** ([ADR-0002](docs/adr/0002-ids-inteiros-preservados.md)) so Sites only change their URL prefix.
+- **In-process domain events, published after commit** ([ADR-0010](docs/adr/0010-domain-events-em-processo.md)). Contexts react to facts (an Event item changed, then people get notified) without an outbox; delivery is best effort.
+- **Pivot to Group schedules with free-form Event items** ([ADR-0016](docs/adr/0016-pivo-para-programacao-de-groups.md)). Fields instead of structured Flight/Ticket/Car types, and times always in the local time of the place, never converted.
+- **Equal Owners, managed only by the Super admin** ([ADR-0017](docs/adr/0017-owners-iguais-sem-primary-owner.md)), and a **passwordless Guest access link** for people outside the Group ([ADR-0018](docs/adr/0018-guest-access-link.md)).
 
 ## API
 

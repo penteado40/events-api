@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0016
+---
+
 # Nova API com banco novo e migração completa da fawedding-api
+
+> Substituído pelo ADR-0016 (pivô para Groups, 2026-10-02): a events-api deixou de substituir a `fawedding-api`, que continua servindo os eventos antigos, e não há mais migração.
 
 A `fawedding-api` foi modelada só para casamentos (`Wedding`, templates de email por casal escritos no código, lista de presentes obrigatória), mas já atende um aniversário (evento 4). Decidimos criar a `events-api` em um repositório e um banco (projeto Neon) novos, em vez de renomear o modelo no mesmo banco: a API antiga continua intacta como rollback, e uma migração em lugar exigiria virada simultânea de API e frontends. Todo o histórico (casamentos 1 e 2 como eventos arquivados, e o evento 4 ativo) é copiado por um script único e idempotente. Depois é só apontar os frontends para a nova API; não há janela de virada nem ensaio em staging.
 

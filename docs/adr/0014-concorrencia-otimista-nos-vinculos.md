@@ -12,3 +12,7 @@ Os use cases de membros leem o vínculo, checam o MembershipRules e só depois g
 - O MembershipRules continua decidindo sobre o que foi lido. A proteção está em a gravação falhar se esse estado mudou no meio, não em reler o estado.
 - Regras que olham para mais de uma linha não ficam protegidas por essa checagem. Quando surgir a primeira, ela é o gatilho para a serialização descrita acima.
 - **O vínculo e o Activation link do Pending user não são atômicos**, porque `identity` e `events` gravam em transações separadas. Ao adicionar, se o vínculo falhar depois do Pending user ter sido criado, o use case compensa derrubando o link, para não sobrar credencial solta. Ao remover, aceitamos uma corrida: se o mesmo Pending user for vinculado a outro Event entre a remoção e a contagem de vínculos, o link dele cai, e um Owner o reemite. A serialização descrita acima, com uma transação que atravesse os contextos, resolveria os dois casos.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+O Primary owner e o `EventMember` saem (ADR-0017), mas os vínculos continuam: Group member, Event manager e Event guest. E o modelo novo traz uma regra que olha **vários vínculos ao mesmo tempo**: um Owner pode sair ou se rebaixar, **menos o último**. Dois Owners saindo juntos passariam cada um pela checagem e deixariam o Group sem nenhum. É o gatilho descrito acima para trocar a concorrência otimista pela serialização das escritas (agora por Group, não por Event), ou por outra proteção equivalente no banco. A escolha fica para o PRD da V2.

@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0016
+---
+
 # RSVP é só confirmação de presença
+
+> Substituído pelo ADR-0016 (pivô para Groups, 2026-10-02): o RSVP saiu do produto antes de entrar em produção.
 
 O RSVP registra quem **vai**. O Site só oferece "confirmar presença": não há resposta "não vou", e um RSVP não tem `status` nem `attending`. Quem não vai simplesmente não deixa RSVP. Para os membros, a lista de RSVPs é a lista de confirmados, e o número que importa é o total dela.
 

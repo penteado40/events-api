@@ -11,3 +11,9 @@ Cada tabela guarda quem criou e quem editou por último cada registro (`createdB
 - **Autor e hora chegam juntos e obrigatórios.** Toda mutação de entidade e todo `create` de repositório recebe um `Stamp { by, at }`, e o use case lê a hora da porta `Clock`, nunca de `new Date()`. O compilador impede que alguém esqueça o Author.
 - **A API ainda não expõe a autoria.** Ela é gravada, mas as respostas do painel não a mostram. Quando mostrarem, o formato provável é `{ id, name } | null`.
 - As linhas criadas antes desta decisão ficaram com o Author `null`: ainda não havia dados reais.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+A pergunta "quem mudou o quê" apareceu: o Event passa a ter um **Change log** visível, em que cada Change guarda quem mudou, quando, o antes e o depois, recortado por pessoa e com o Last seen de cada uma (ver `CONTEXT.md`; decisão em PROJ-115). Por isso, deixa de valer a frase "Guardamos só o último editor, sem histórico; uma tabela de auditoria só entra se a pergunta 'quem mudou o quê' aparecer". O Change log é guardado enquanto o Event existir, inclusive arquivado.
+
+Continuam valendo o `createdById`/`updatedById` em toda tabela, o `Stamp { by, at }`, o `Clock`, o User nunca apagado e o "registrar o uso não é editar". O `null` no Author deixa de incluir "o Site em nome de um Guest", que saiu com os Sites (ADR-0016): passa a querer dizer só scripts da plataforma e processos automáticos. Soft delete para Registry item e Contribution sai junto com eles.

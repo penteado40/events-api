@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0017
+---
+
 # Papéis de membro com um dono principal por evento
+
+> Substituído pelo ADR-0017 (2026-10-02): os papéis passaram para o Group, os Owners são iguais e só o Super admin dá, tira ou rebaixa Owner. Não há Primary owner.
 
 Todo membro de um Event tem um papel (`OWNER`, `MANAGER`, `VIEWER`), e no máximo um Owner é o **Primary owner** (`EventMember.isPrimaryOwner`, garantido por índice único parcial criado via SQL na migration, já que o Prisma não gera esse tipo de índice). A plataforma tem só dois papéis globais: `SUPER_ADMIN` e `USER`. Só o Super admin cria Users e Events; não há cadastro aberto.
 

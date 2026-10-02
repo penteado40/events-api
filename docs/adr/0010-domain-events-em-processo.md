@@ -8,3 +8,7 @@ A implementação é mínima: a entidade registra o evento, o use case salva e *
 
 - A entrega é de melhor esforço: se a função cair entre o commit e o handler, o evento se perde. Para emails, o Email log e o reenvio manual (PROJ-62) cobrem isso. Se algum fluxo precisar de garantia de entrega (ex.: webhook de PSP na V2), a troca para outbox é um novo adaptador do mesmo port.
 - Handlers não podem assumir que rodam antes da resposta HTTP, nem na mesma transação do use case.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+A decisão continua valendo; o exemplo (`RsvpConfirmed` → e-mail de confirmação) saiu com o RSVP (ADR-0016). No modelo novo, os candidatos a domain event são as mudanças num Event e nos Event items, que alimentam as notificações (PROJ-75). Um alerta para o desenho: o Change log (ver a emenda do ADR-0013) não pode ser alimentado por um handler de melhor esforço, porque uma Change perdida apagaria o riscado que alguém deveria ver. Ou ele é gravado na mesma transação da mudança, ou a entrega precisa ser garantida (outbox, como previsto acima).

@@ -29,7 +29,7 @@ O valor de uma pessoa dentro de um Field de pessoas (ex.: o localizador dela, "d
 _Avoid_: observação (é um Field de texto), comentário
 
 **Participant** (participante):
-Uma pessoa que vai a um Event. Cada Event tem a sua lista de Participants, um recorte de quem é do Group (ex.: 20 dos 30 integrantes do Vocal Livre vão a Manaus). A lista nasce como cópia de todos os Group members (Owners e Viewers) ou, se a produção preferir, de um ou mais Teams (ex.: só a Banda, para um ensaio da Banda), e a produção ajusta quem vai; quem entra no Group depois não vira Participant de Events já criados sem ser adicionado. Vale para o Event inteiro: quem vai só em parte (ex.: só na volta) é Participant, e o recorte fica nos Audiences. Ser Participant independe do papel: um Owner que não vai continua editando o Event. Quem deixa de ser Participant sai dos Audiences, mas continua nos Fields de pessoas marcado como fora do Event, até a produção reorganizá-los.
+Uma pessoa que vai a um Event. Cada Event tem a sua lista de Participants, um recorte de quem é do Group (ex.: 20 dos 30 integrantes do Vocal Livre vão a Manaus). A lista nasce como cópia de todos os Group members (Owners e Viewers) ou, se a produção preferir, de um ou mais Teams (ex.: só a Banda, para um ensaio da Banda), e a produção ajusta quem vai; quem entra no Group depois não vira Participant de Events já criados sem ser adicionado. Vale para o Event inteiro: quem vai só em parte (ex.: só na volta) é Participant, e o recorte fica nos Audiences. Ser Participant independe do papel: um Owner que não vai continua editando o Event. Todo Group member vê a lista de Participants de qualquer Event do Group, vá ou não. Quem deixa de ser Participant sai dos Audiences, mas continua nos Fields de pessoas marcado como fora do Event, até a produção reorganizá-los.
 _Avoid_: convidado, integrante (do Event), Attendee
 
 **Audience** (público):
@@ -88,7 +88,7 @@ Group member que responde pelo Group: edita o Group, os membros, os Events e os 
 _Avoid_: dono (sem qualificador), admin do grupo, produtor
 
 **Viewer**:
-Group member que só consulta: vê os Events do Group, cada um filtrado pelos Audiences.
+Group member que só consulta: vê todos os Events do Group, cada um filtrado pelos Audiences. De um Event de que não é Participant, vê só que ele existe (onde e quando), já que nenhum Audience o alcança.
 _Avoid_: leitor, participante, convidado
 
 **Event manager**:
@@ -96,7 +96,7 @@ O vínculo entre um User e um único Event, que deixa editar os Event items daqu
 _Avoid_: Manager (sem qualificador), organizador, gerente, editor
 
 **Event guest** (convidado do evento):
-O vínculo entre um User e um único Event, para quem vai junto sem ser do Group (ex.: um baixista convidado para os shows de Manaus). Só vê os Event items cujo Audience o inclui, escolhido pelo nome ou escalado num Field de pessoas: o "Todos" não o alcança, e ele não vê nada mais do Group. Não é Group member nem Participant. Só os Owners adicionam e removem Event guests. Quem é removido perde o acesso na hora e sai dos Audiences, mas, como o Participant que sai, continua nos Fields de pessoas marcado como fora do Event até a produção reorganizá-los. Se virar presença fixa, entra no Group como Viewer, o que não muda os Events em que já é Event guest: só vira Participant deles se um Owner trocar um vínculo pelo outro, já que ninguém é Participant e Event guest do mesmo Event.
+O vínculo entre um User e um único Event, para quem vai junto sem ser do Group (ex.: um baixista convidado para os shows de Manaus). Só vê os Event items cujo Audience o inclui, escolhido pelo nome ou escalado num Field de pessoas: o "Todos" não o alcança, e ele não vê nada mais do Group. Não é Group member nem Participant. Os Group members veem quem são os Event guests de cada Event, à parte da lista de Participants; o Event guest não vê essas listas. Só os Owners adicionam e removem Event guests. Quem é removido perde o acesso na hora e sai dos Audiences, mas, como o Participant que sai, continua nos Fields de pessoas marcado como fora do Event até a produção reorganizá-los. Se virar presença fixa, entra no Group como Viewer, o que não muda os Events em que já é Event guest: só vira Participant deles se um Owner trocar um vínculo pelo outro, já que ninguém é Participant e Event guest do mesmo Event.
 _Avoid_: Guest (sem qualificador, era o convidado de RSVP), músico convidado, extra, Viewer temporário
 
 **Guest access link** (link de acesso do convidado):

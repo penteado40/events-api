@@ -123,7 +123,7 @@ Contribution que o Guest declarou ter pago. É uma declaração, não uma prova.
 _Avoid_: confirmada, concluída
 
 **Verification** (conferência):
-O ato de um membro checar se o Pix de uma Paid contribution chegou, resultando em Verified ou Rejected.
+O ato de um membro checar se o Pix de uma Paid contribution chegou, resultando em Verified ou Rejected. Pode ser revista depois, trocando um resultado pelo outro.
 _Avoid_: confirmação, aprovação
 
 **Receipt** (comprovante):

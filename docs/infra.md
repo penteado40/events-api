@@ -16,9 +16,9 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo por ambiente (PROJ-59) | mesmo banco | — |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
-| `CORS_ORIGINS` | vazia (origem do Panel pendente) | vazia (origem do Panel pendente) | vazia (localhost já é liberado em dev) |
+| `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `CORS_ORIGINS` (definida vazia até o Panel ter URL).
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
 
 ## Serviços
 

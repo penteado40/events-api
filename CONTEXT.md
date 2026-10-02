@@ -77,6 +77,18 @@ _Avoid_: dashboard, visão geral
 Os Event items com hora de um Event, em ordem, como a pessoa os vê. Os Event items sem hora são as orientações.
 _Avoid_: ordem do dia, cronograma, roteiro
 
+**Change** (alteração):
+Um passo registrado num Event ou Event item: quem mudou, quando, o antes e o depois (ex.: "Bruno mudou a hora da Passagem de som de 15h para 16h"). Mudar a ordem dos Fields ou das fotos, o Highlight ou o Item lead também é uma Change, mas só a produção a vê.
+_Avoid_: edição, log, auditoria
+
+**Change log** (histórico de alterações):
+As Changes de um Event, enquanto ele existir. A produção vê todas; cada outra pessoa vê só as dos Event items que a alcançavam antes ou depois daquela Change, e as de Personal notes conforme a visibilidade delas. As Changes de quem entra ou sai das listas de Participants e Event guests só a produção vê.
+_Avoid_: auditoria, Timeline (é a programação), histórico de email
+
+**Last seen** (visto até):
+Até onde uma pessoa já viu as Changes de um Event, marcado quando ela abre o Event. Para ela, o que mudou depois aparece no card: o valor que ela viu por último riscado ao lado do atual (só a diferença líquida, nunca os passos intermediários), o Event item que passou a alcançá-la como novo e o que deixou de alcançá-la como removido, só com o que ela já via, até ela abrir o Event de novo. O que estava em Draft nunca aparece riscado, só como novo ao ser publicado.
+_Avoid_: lido, notificado, visualizado
+
 ## Pessoas
 
 **User** (usuário):

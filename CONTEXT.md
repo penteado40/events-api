@@ -37,7 +37,7 @@ Um lugar que um Group usa com frequência (a sede, o ponto de saída, um aeropor
 _Avoid_: Venue, local (é o que o Event item guarda), endereço
 
 **Field** (campo):
-Uma informação livre dentro de um Event item, com um nome e um valor: texto, pessoas ou fotos (ex.: "Obs: despachar som", "Carro 1 - EC: Matias, Jacque", a paleta de roupa). Um Field de pessoas aceita, além de Users, nomes soltos de quem não tem login (ex.: o motorista local), que só aparecem ali. Um nome solto nunca vira User sozinho: a produção pode vinculá-lo a um User, o que troca o nome por essa pessoa em todos os Fields do Event.
+Uma informação livre dentro de um Event item, com um nome e um valor de um único tipo: texto, pessoas ou fotos (ex.: "Obs: despachar som", "Carro 1 - EC: Matias, Jacque", a paleta de roupa). A produção escolhe quais Fields cada Event item tem e como se chamam; um Event item pode ter vários, de tipos diferentes, mas um Field nunca mistura tipos. Lista, telefone e link são Fields de texto. Cada foto de um Field de fotos pode ter uma legenda curta (ex.: "Azul petróleo #1F4E5F" sob a foto da roupa). Um Field de pessoas aceita, além de Users, nomes soltos de quem não tem login (ex.: o motorista local), que só aparecem ali. Um nome solto nunca vira User sozinho: a produção pode vinculá-lo a um User, o que troca o nome por essa pessoa em todos os Fields do Event.
 _Avoid_: atributo, propriedade, bloco
 
 **Personal note** (nota individual):

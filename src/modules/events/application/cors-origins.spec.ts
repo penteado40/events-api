@@ -5,12 +5,22 @@ import { CorsOrigins } from './cors-origins.js'
 import { newEventProps, SUPER_ADMIN_STAMP } from './testing/event-fixtures.js'
 import { InMemoryEventRepository } from './testing/in-memory-event.repository.js'
 
+/** An Event repository whose `listSiteUrls` can fail, as a database outage would. */
+class FlakyEventRepository extends InMemoryEventRepository {
+  failListSiteUrls = false
+
+  override listSiteUrls(): Promise<string[]> {
+    if (this.failListSiteUrls) return Promise.reject(new Error('database unavailable'))
+    return super.listSiteUrls()
+  }
+}
+
 describe('CorsOrigins', () => {
-  let events: InMemoryEventRepository
+  let events: FlakyEventRepository
   let clock: FixedClock
 
   beforeEach(() => {
-    events = new InMemoryEventRepository()
+    events = new FlakyEventRepository()
     clock = new FixedClock(new Date('2026-10-02T12:00:00.000Z'))
   })
 

@@ -17,8 +17,6 @@ export class InMemoryEventRepository extends EventRepository {
   private readonly events = new Map<number, Event>()
   private readonly members = new Map<string, EventMember>()
   private nextId = 1
-  /** Makes `listSiteUrls` throw, as a database outage would. */
-  failListSiteUrls = false
 
   async findById(id: number): Promise<Event | null> {
     return this.events.get(id) ?? null
@@ -55,7 +53,6 @@ export class InMemoryEventRepository extends EventRepository {
   }
 
   async listSiteUrls(): Promise<string[]> {
-    if (this.failListSiteUrls) throw new Error('database unavailable')
     return [...new Set([...this.events.values()].map((e) => e.siteUrl.value))]
   }
 

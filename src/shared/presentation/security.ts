@@ -46,9 +46,10 @@ export function applySecurity(app: INestApplication, options: SecurityOptions): 
     ) => {
       if (origin === undefined) return callback(null, false)
       if (options.allowLocalhostCors && LOCALHOST_ORIGIN.test(origin)) return callback(null, true)
+      // A failed check refuses the origin; it must never fail the request itself.
       options.allowedOrigins.isAllowed(origin).then(
         (allowed) => callback(null, allowed),
-        (error: Error) => callback(error),
+        () => callback(null, false),
       )
     },
     // Credentials travel in headers only, never cookies: no `credentials`.

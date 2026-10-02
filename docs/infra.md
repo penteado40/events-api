@@ -18,7 +18,7 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
 | `CORS_ORIGINS` | vazia (origem do Panel pendente) | vazia (origem do Panel pendente) | vazia (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`.
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `CORS_ORIGINS` (definida vazia até o Panel ter URL).
 
 ## Serviços
 

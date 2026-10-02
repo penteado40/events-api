@@ -16,6 +16,22 @@ _Avoid_: Trip, viagem (como conceito separado), agenda (lembra calendário), com
 Cada peça da programação de um Event: um acontecimento com hora (uma apresentação, uma saída, um voo, um almoço) ou uma orientação sem hora (o que levar, contato da produção, voltagem). A hora é sempre a do lugar onde ele acontece, nunca convertida para onde a pessoa está.
 _Avoid_: Activity, atividade, apresentação, show (são tipos de Event item), Appearance, item do roteiro
 
+**Draft** (rascunho):
+Um Event ou Event item que a produção ainda não liberou. Um Event nasce em Draft: todo Group member já vê onde e quando, mas nenhum Event item dele aparece. Um Event item em Draft só a produção vê, mesmo num Event publicado. Num Event em Draft, o Event item nasce publicado; num Event publicado, nasce em Draft. Publicar e voltar ao Draft vale nos dois sentidos.
+_Avoid_: oculto, privado, pendente
+
+**Cancelled** (cancelado):
+Um Event ou Event item que não vai mais acontecer, mas continua visível com o selo de cancelado e congelado até a produção descancelá-lo, o que o devolve ao estado anterior. Um Event pode ser cancelado em Draft (a data dele já era visível); um Event item, só depois de publicado (um Draft que não vai acontecer é apagado). Ocupar a data com outro compromisso é criar um Event novo, e o cancelado fica ao lado.
+_Avoid_: excluído, removido, adiado
+
+**Finished event** (evento finalizado):
+Um Event cujo período já terminou. Não é um estado que alguém muda: nada acontece com ele, e ele continua visível e editável (ex.: subir as fotos do show depois da viagem).
+_Avoid_: encerrado, concluído, arquivado
+
+**Archived event** (evento arquivado):
+Um Event finalizado ou Cancelled que um Owner tirou de vista: só os Owners o veem, editam e desarquivam; Viewers, Event managers e Event guests deixam de vê-lo. Não muda o estado do Event nem o congela. Um Event futuro e ativo não pode ser arquivado: ele é editado ou cancelado.
+_Avoid_: congelado, encerrado, finalizado
+
 **Saved place** (lugar salvo):
 Um lugar que um Group usa com frequência (a sede, o ponto de saída, um aeroporto), com nome, endereço e fuso. Escolhê-lo num Event item só copia esses dados: editar o Saved place depois não muda nenhum Event item.
 _Avoid_: Venue, local (é o que o Event item guarda), endereço
@@ -88,7 +104,7 @@ Group member que responde pelo Group: edita o Group, os membros, os Events e os 
 _Avoid_: dono (sem qualificador), admin do grupo, produtor
 
 **Viewer**:
-Group member que só consulta: vê todos os Events do Group, cada um filtrado pelos Audiences. De um Event de que não é Participant, vê só que ele existe (onde e quando), já que nenhum Audience o alcança.
+Group member que só consulta: vê todos os Events do Group que não são Archived events, cada um filtrado pelos Audiences. De um Event de que não é Participant, vê só que ele existe (onde e quando), já que nenhum Audience o alcança.
 _Avoid_: leitor, participante, convidado
 
 **Event manager**:

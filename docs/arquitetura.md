@@ -95,6 +95,8 @@ export abstract class UserRepository {
 
 **Domain service (serviço de domínio).** Uma regra que não pertence naturalmente a uma entidade só. Exemplo: **AccessPolicy** decide se um ator (um User com a Membership dele, ou o Super admin) pode executar uma ação num Group, num Event ou num Event item. Envolve várias coisas, então vira um serviço de domínio puro, sem Nest nem Prisma.
 
+**Port de leitura (query service).** Repositórios servem às escritas e devolvem agregados. As telas de leitura que montam uma visão (o Summary e a Timeline de uma pessoa) usam um port declarado no `application`, implementado com Prisma no `infrastructure`, que devolve dados simples, sem hidratar entidades. A regra de quem vê o quê continua num domain service puro, chamado tanto pela leitura quanto pela escrita (ADR-0019).
+
 **Domain event (evento de domínio).** Um fato que aconteceu, nomeado no passado (`EventItemChanged`, `EventPublished`), que outros contextos podem querer saber. Quem publica não sabe quem escuta: o contexto dos Event items anuncia "um Event item mudou" e o de notificações decide quem avisar. Ver a seção 5.6 para o uso aqui.
 
 ---

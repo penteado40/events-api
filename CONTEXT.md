@@ -86,7 +86,7 @@ Um passo registrado num Event ou Event item: quem mudou, quando, o antes e o dep
 _Avoid_: edição, log, auditoria
 
 **Change log** (histórico de alterações):
-As Changes de um Event, enquanto ele existir. A produção vê todas; cada outra pessoa vê só as dos Event items que a alcançavam antes ou depois daquela Change, e as de Personal notes conforme a visibilidade delas. As Changes de quem entra ou sai das listas de Participants e Event guests só a produção vê.
+As Changes de um Event, enquanto ele existir. A produção vê todas; cada outra pessoa vê só as dos Event items que a alcançavam no momento daquela Change, antes ou depois dela, e as de Personal notes conforme a visibilidade delas. As Changes de quem entra ou sai das listas de Participants e Event guests só a produção vê.
 _Avoid_: auditoria, Timeline (é a programação), histórico de email
 
 **Last seen** (visto até):

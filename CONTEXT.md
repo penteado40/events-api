@@ -104,11 +104,11 @@ Uma pessoa com login na plataforma, única por email e independente de quantos G
 _Avoid_: conta, cliente, admin
 
 **Pending user** (usuário pendente):
-Um User que ainda não definiu a própria senha e por isso não consegue fazer login. Ninguém além dele define a senha de um User.
+Um User que ainda não definiu a própria senha e por isso não consegue fazer login. Só ele deve definir a própria senha: quando ela é definida, ele é avisado por email e, se não foi ele, recupera o acesso pelo email.
 _Avoid_: usuário inativo, desativado, convidado
 
 **Activation link** (link de ativação):
-Link de uso único pelo qual um Pending user define a própria senha e passa a poder fazer login. Quem cria o User o entrega à pessoa.
+Link de uso único pelo qual um Pending user define a própria senha e passa a poder fazer login. A plataforma o envia por email à pessoa quando cria o User e a cada novo link, e quem criou ou pediu o novo link também o recebe, para repassar por outro meio (ex.: WhatsApp).
 _Avoid_: convite, link de setup, senha inicial
 
 **Deactivated user** (usuário desativado):
@@ -148,7 +148,7 @@ O vínculo entre um User e um único Event, para quem vai junto sem ser do Group
 _Avoid_: Guest (sem qualificador, era o convidado de RSVP), músico convidado, extra, Viewer temporário
 
 **Guest access link** (link de acesso do convidado):
-Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. A produção o gera e entrega. Vale enquanto o vínculo do Event guest valer (até 7 dias depois do fim do Event), e a produção pode revogá-lo e gerar outro. Quem quiser continuar define uma senha como qualquer Pending user.
+Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. Só os Owners o geram; a plataforma o envia por email ao Event guest a cada link novo, e o Owner também o recebe, para repassar por outro meio. Vale enquanto o vínculo do Event guest valer (até 7 dias depois do fim do Event), e os Owners podem revogá-lo e gerar outro. Quem quiser continuar define uma senha como qualquer Pending user.
 _Avoid_: link mágico, convite, link público, Activation link (esse define senha)
 
 **Membership** (vínculo):
@@ -158,13 +158,13 @@ _Avoid_: viewer (Viewer é um papel), papel do usuário, acesso
 ## Emails
 
 **Email kind** (tipo de email):
-O motivo de um email para um Guest (hoje só a confirmação de RSVP). Cada kind tem textos padrão por Event type e idioma.
+O motivo de um email para um User. Os da conta: Activation link, senha definida ou trocada ("se não foi você…") e recuperação de senha. Os de um Group: Activation link de quem um Owner adicionou ao Group, entrada num Group ou como Event manager de um User já ativo, Guest access link, Notification e aviso de mensagem de Request. Cada pessoa recebe um só email por motivo: o Pending user adicionado ao Group recebe só o Activation link, e o Event guest só o Guest access link. Cada kind tem um texto fixo da plataforma, igual para todos os Groups; o único texto livre é o recado do Owner no "notificar agora". Ninguém recebe aviso de saída (remoção, expiração), e Deactivated users e vínculos removidos ou expirados não recebem email.
 _Avoid_: template (template é a forma, kind é o motivo)
 
 **Email log**:
-O registro de cada tentativa de envio de email, com status e erro.
+O registro de cada tentativa de envio de email, com status e erro. É da plataforma, para diagnóstico: os Groups não o veem e não reenviam um email a partir dele. Quando um convite não chega, o Owner gera um link novo.
 _Avoid_: histórico de email, fila
 
 **Platform sender** (remetente da plataforma):
-O endereço de envio único da plataforma, usado por todos os Groups.
+O endereço de envio único da plataforma, usado por todos os Groups. Nos emails de um Group, o nome exibido é o do Group seguido do da plataforma ("Vocal Livre via …"); nos da conta, só o da plataforma. A resposta por email vai ao Owner que convidou nos emails de convite e a ninguém nos demais, que levam a pessoa a responder pelo app, num Request.
 _Avoid_: noreply do grupo

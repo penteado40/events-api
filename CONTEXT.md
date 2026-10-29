@@ -13,7 +13,7 @@ Qualquer compromisso de um Group, de um ensaio de uma tarde a uma viagem de vár
 _Avoid_: Trip, viagem (como conceito separado), agenda (lembra calendário), compromisso, turnê
 
 **Event item** (item do evento):
-Cada peça da programação de um Event: um acontecimento com hora (uma apresentação, uma saída, um voo, um almoço) ou uma orientação sem hora (o que levar, contato da produção, voltagem). A hora é sempre a do lugar onde ele acontece, nunca convertida para onde a pessoa está.
+Cada peça da programação de um Event: um acontecimento com data e hora (uma apresentação, uma saída, um voo), um acontecimento só com data (o dia livre, o almoço com horário a confirmar) ou uma informação sem data, que vale para o Event inteiro (o que levar, contato da produção, voltagem). A hora é só a de início, sempre a do lugar onde ele acontece, nunca convertida para onde a pessoa está; fim, chegada ou check-out são Fields de texto, e um hotel de vários dias vira um item de check-in e outro de check-out, ou uma informação sem data. O dia de um Event item é a data dele no calendário, sem exceção (o translado de 00:40 depois do show de sábado é de domingo), e pode cair fora do período do Event (a Técnica que viaja um dia antes). Onde a hora não decide a ordem (entre os itens sem data, entre os do mesmo dia sem hora e entre os de mesma hora), vale a ordem da produção, e mudá-la é uma Change que só a produção vê.
 _Avoid_: Activity, atividade, apresentação, show (são tipos de Event item), Appearance, item do roteiro
 
 **Draft** (rascunho):
@@ -41,7 +41,7 @@ Uma informação livre dentro de um Event item, com um nome e um valor de um ún
 _Avoid_: atributo, propriedade, bloco
 
 **Item template** (modelo de item):
-Um Event item de molde de um Group (ex.: "Saída terrestre" com Local em Highlight e os Fields de pessoas Carro 1 e Carro 2), escolhido ao criar um Event item. Traz o nome do item, os Fields (com ou sem valor, Highlight e ordem), o Audience ("Todos" ou Teams, que só copiam quem deles está no Event) e o lugar; nunca a hora nem pessoas avulsas. Tudo é copiado: editar o Item template depois não muda nenhum Event item. Um Item template automático cria o seu Event item sozinho em todo Event novo (ex.: "O que levar"). Um Group nasce com os Item templates da plataforma, só com os nomes e tipos dos Fields, e os ajusta como quiser.
+Um Event item de molde de um Group (ex.: "Saída terrestre" com Local em Highlight e os Fields de pessoas Carro 1 e Carro 2), escolhido ao criar um Event item. Traz o nome do item, os Fields (com ou sem valor, Highlight e ordem), o Audience ("Todos" ou Teams, que só copiam quem deles está no Event) e o lugar; nunca a data, a hora nem pessoas avulsas. Tudo é copiado: editar o Item template depois não muda nenhum Event item. Um Item template automático cria o seu Event item sozinho em todo Event novo (ex.: "O que levar"). Um Group nasce com os Item templates da plataforma, só com os nomes e tipos dos Fields, e os ajusta como quiser.
 _Avoid_: tipo de item (sugere vínculo vivo), template de evento, categoria
 
 **Saved field** (Field salvo):
@@ -49,7 +49,7 @@ Um Field pronto de um Group, com nome, tipo, valor e Highlight (ex.: a paleta Az
 _Avoid_: paleta (é um Saved field de fotos), preset, valor padrão
 
 **Item lead** (responsável pelo item):
-A pessoa que cuida de um Event item, no máximo uma por item e opcional: um Owner, um Event manager ou um Viewer que seja Participant do Event, nunca um Event guest. Para o Owner, é só a marca de quem cuida; o Event manager edita os Event items de que é Item lead; o Viewer só sugere alterações, que a produção confirma ou rejeita. Quem cria um Event item vira o Item lead dele.
+A pessoa que cuida de um Event item, no máximo uma por item e opcional: um Owner, um Event manager ou um Viewer que seja Participant do Event, nunca um Event guest. Para o Owner, é só a marca de quem cuida; o Event manager edita os Event items de que é Item lead; o Viewer não edita: acompanha o item, lê e escreve nos Requests dele e pede mudanças pelo próprio Request, como qualquer pessoa que o item alcança. O Item lead está sempre no Audience do item. Quem cria um Event item vira o Item lead dele; depois, só os Owners o trocam ou o tiram. O Viewer que deixa de ser Participant do Event deixa de ser Item lead.
 _Avoid_: responsável (sem qualificador), dono do item, Author (é quem editou por último), assignee
 
 **Personal note** (nota individual):
@@ -57,7 +57,7 @@ O valor de uma pessoa dentro de um Field de pessoas (ex.: o localizador dela, "d
 _Avoid_: observação (é um Field de texto), comentário
 
 **Request** (pedido):
-O fio privado entre uma pessoa e a produção sobre um Event item, para pedir uma mudança ou tirar uma dúvida (ex.: "meu voo mudou para o das 14h", "vou direto do meu hotel"). Abre quem o item alcança e não o edita: um Viewer ou um Event guest. Cada pessoa tem um único Request por Event item. Veem o Request quem o abriu, os Owners e o Item lead do item, que escrevem nele. Está aberto ou resolvido: resolvem os Owners, o Event manager Item lead ou quem abriu (para desistir), e reabrem só os Owners, o Event manager Item lead ou quem abriu, este também ao escrever de novo. O Viewer Item lead escreve, mas não resolve nem reabre. Quem abriu continua com o Request mesmo depois que o item deixa de alcançá-lo, vendo só o nome do item, até perder o acesso ao Event. Cancelar o item resolve os Requests abertos e os deixa só para leitura, e descancelar não os reabre. O Request não é uma Change, mas a produção, ao editar qualquer Event item do Event, pode apontar Requests como o motivo das Changes daquele salvamento; esse vínculo só aparece para quem vê o Request. Uma mensagem no Request avisa os outros envolvidos na hora, fora das Notifications do Event e pelo canal que cada um escolheu; as que chegam antes de a pessoa abrir o Request só aumentam o que ela tem para ler, sem novo aviso.
+O fio privado entre uma pessoa e a produção sobre um Event item, para pedir uma mudança ou tirar uma dúvida (ex.: "meu voo mudou para o das 14h", "vou direto do meu hotel"). Abre quem o item alcança e não o edita: um Viewer ou um Event guest. Cada pessoa tem um único Request por Event item. Veem o Request quem o abriu, os Owners e o Item lead do item, que escrevem nele. Está aberto ou resolvido: resolvem os Owners, o Event manager Item lead ou quem abriu (para desistir), e reabrem só os Owners, o Event manager Item lead ou quem abriu, este também ao escrever de novo. O Viewer Item lead escreve, mas não resolve nem reabre. Quem abriu continua com o Request mesmo depois que o item deixa de alcançá-lo, vendo só o nome do item, até perder o acesso ao Event. Cancelar o item resolve os Requests abertos e os deixa só para leitura, e descancelar não os reabre. O Request não é uma Change, mas a produção, ao editar qualquer Event item do Event, pode apontar Requests como o motivo das Changes daquele salvamento; esse vínculo só aparece para quem vê o Request. Uma mensagem no Request avisa os outros envolvidos na hora, fora das Notifications do Event e pelo canal que cada um escolheu: o que vem de quem abriu avisa o Item lead que resolve (Owner ou Event manager) ou, se ele não existir ou for Viewer, todos os Owners, e também o Viewer Item lead quando não foi ele quem abriu; as que chegam antes de a pessoa abrir o Request só aumentam o que ela tem para ler, sem novo aviso.
 _Avoid_: comentário, Change request, ticket, sugestão, thread, fio
 
 **Participant** (participante):
@@ -65,7 +65,7 @@ Uma pessoa que vai a um Event. Cada Event tem a sua lista de Participants, um re
 _Avoid_: convidado, integrante (do Event), Attendee
 
 **Audience** (público):
-Quem um Event item alcança, sempre dentro dos Participants e Event guests do Event. Ou é "Todos", que acompanha a lista de Participants (quem entra no Event passa a ser alcançado) e nunca inclui Event guests, ou é uma lista de pessoas escolhidas, montada com Teams, Participants avulsos e Event guests, que não muda sozinha. Quem aparece num Field de pessoas do Event item também está no Audience dele, enquanto estiver no Field (vale para Participants e Event guests; quem está marcado como fora do Event não conta). Uma pessoa só vê os Event items cujo Audience a inclui.
+Quem um Event item alcança, sempre dentro dos Participants e Event guests do Event. Ou é "Todos", que acompanha a lista de Participants (quem entra no Event passa a ser alcançado) e nunca inclui Event guests, ou é uma lista de pessoas escolhidas, montada com Teams, Participants avulsos e Event guests, que não muda sozinha. Quem aparece num Field de pessoas do Event item também está no Audience dele, enquanto estiver no Field (vale para Participants e Event guests; quem está marcado como fora do Event não conta), e o Item lead também, enquanto o for. Uma pessoa só vê os Event items cujo Audience a inclui.
 Não é a plateia de uma apresentação.
 _Avoid_: quem, destinatários, participantes (do item), plateia
 
@@ -74,12 +74,16 @@ A marca num Field que o leva para o Summary. Independe da hora do Event item.
 _Avoid_: favorito, fixado, importante
 
 **Summary** (resumo):
-A visão rápida de um Event para uma pessoa: um cartão por Event item que tenha algum Field com Highlight, mostrando só esses Fields.
+A visão rápida de um Event para uma pessoa: um cartão por Event item que tenha algum Field com Highlight, mostrando só esses Fields, primeiro os da General info e depois os da Timeline, na mesma ordem.
 _Avoid_: dashboard, visão geral
 
 **Timeline** (linha do tempo):
-Os Event items com hora de um Event, em ordem, como a pessoa os vê. Os Event items sem hora são as orientações.
+Os Event items com data de um Event, dia a dia, como a pessoa os vê: em cada dia, primeiro os sem hora, na ordem da produção, e depois os com hora, pela hora. Mostra os dias que têm itens, mesmo fora do período do Event. Um dia da Timeline não é um conceito à parte: não tem título nem estado próprio.
 _Avoid_: ordem do dia, cronograma, roteiro
+
+**General info** (informações gerais):
+Os Event items sem data de um Event, que valem para ele inteiro (ex.: "Figurino", "O que levar", "Contatos"), na ordem da produção, como a pessoa os vê.
+_Avoid_: orientações, avisos, observações
 
 **Change** (alteração):
 Um passo registrado num Event ou Event item: quem mudou, quando, o antes e o depois (ex.: "Bruno mudou a hora da Passagem de som de 15h para 16h"). Mudar a ordem dos Fields ou das fotos, o Highlight ou o Item lead também é uma Change, mas só a produção a vê.
@@ -104,11 +108,11 @@ Uma pessoa com login na plataforma, única por email e independente de quantos G
 _Avoid_: conta, cliente, admin
 
 **Pending user** (usuário pendente):
-Um User que ainda não definiu a própria senha e por isso não consegue fazer login. Só ele deve definir a própria senha: quando ela é definida, ele é avisado por email e, se não foi ele, recupera o acesso pelo email.
+Um User que ainda não aceitou o Activation link e por isso não consegue fazer login. Aceitar é entrar pela primeira vez, definindo uma senha ou com uma conta Google ou Apple, sempre com o email do User: uma conta de outro email é recusada, e quem quiser usá-la pede à produção um convite para esse email. Só ele aceita o próprio link: quando uma senha é definida, ele é avisado por email e, se não foi ele, recupera o acesso pelo email.
 _Avoid_: usuário inativo, desativado, convidado
 
 **Activation link** (link de ativação):
-Link de uso único pelo qual um Pending user define a própria senha e passa a poder fazer login. A plataforma o envia por email à pessoa quando cria o User e a cada novo link, e quem criou ou pediu o novo link também o recebe, para repassar por outro meio (ex.: WhatsApp).
+Link de uso único pelo qual um Pending user entra pela primeira vez (definindo uma senha ou com Google ou Apple) e passa a poder fazer login. A plataforma o envia por email à pessoa quando cria o User e a cada novo link, e quem criou ou pediu o novo link também o recebe, para repassar por outro meio (ex.: WhatsApp).
 _Avoid_: convite, link de setup, senha inicial
 
 **Deactivated user** (usuário desativado):
@@ -148,8 +152,8 @@ O vínculo entre um User e um único Event, para quem vai junto sem ser do Group
 _Avoid_: Guest (sem qualificador, era o convidado de RSVP), músico convidado, extra, Viewer temporário
 
 **Guest access link** (link de acesso do convidado):
-Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. Só os Owners o geram; a plataforma o envia por email ao Event guest a cada link novo, e o Owner também o recebe, para repassar por outro meio. Vale enquanto o vínculo do Event guest valer (até 7 dias depois do fim do Event), e os Owners podem revogá-lo e gerar outro. Quem quiser continuar define uma senha como qualquer Pending user.
-_Avoid_: link mágico, convite, link público, Activation link (esse define senha)
+Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o User dele, vendo só aquele Event. Só os Owners o geram; a plataforma o envia por email ao Event guest a cada link novo, e o Owner também o recebe, para repassar por outro meio. Vale enquanto o vínculo do Event guest valer (até 7 dias depois do fim do Event), e os Owners podem revogá-lo e gerar outro. Quem quiser continuar define uma senha ou entra com Google ou Apple, como qualquer Pending user.
+_Avoid_: link mágico, convite, link público, Activation link (esse é a primeira entrada de um Pending user)
 
 **Membership** (vínculo):
 Os vínculos de quem está fazendo a requisição, vistos a partir dele: o papel no Group e os Events de que é Event manager ou Event guest. O Super admin não tem Membership.

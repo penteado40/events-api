@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0020
+---
+
 # Senha de 8 caracteres com regras de composição
+
+> Substituído pelo ADR-0020 (2026-10-26): a identidade passou para o Clerk, que define a regra de senha.
 
 A política de senha seguia o NIST 800-63B: mínimo de 12 caracteres e nenhuma regra de composição. Para reduzir o atrito na ativação e na troca de senha, decidimos baixar o mínimo para **8 caracteres** e, em troca, exigir **ao menos uma letra maiúscula (`A–Z`), uma minúscula (`a–z`), um dígito (`0–9`) e um símbolo** da pontuação ASCII (``!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~``, sem o espaço). O máximo de 72 bytes do bcrypt continua. É um desvio consciente do NIST, que desaconselha regras de composição porque empurram as pessoas para padrões previsíveis (`Senha@2026`); escolhemos a regra que o usuário reconhece como "senha forte" e que cabe numa senha mais curta.
 

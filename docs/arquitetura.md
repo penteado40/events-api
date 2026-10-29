@@ -32,10 +32,12 @@ A ideia central: **o código deve refletir o negócio**, com as mesmas palavras 
 
 | Módulo | Responsável por |
 |---|---|
-| `identity` | Users, login, senha |
+| `identity` | Users e Activation links; o login fica com o Clerk, atrás da porta `AuthVerifier` (ADR-0020) |
+| `groups` | Groups, Group members (Owner e Viewer), Teams e a regra do último Owner |
+| `events` | Events, Participants, Event items, Fields, Changes, Last seen, a regra de alcance e a leitura de Summary e Timeline |
 | `shared` | Não é contexto: a base comum (erros, value objects genéricos, Prisma, config) |
 
-Os contextos do pivô (Groups e papéis, Events e Event items, notificações, e-mails) estão em definição: ver o mapa [PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51). O módulo `events` que existe hoje é da V1 e ainda não tem destino decidido.
+O `events` pergunta ao `groups` quem é Owner ou Viewer e quem está num Team por um port `in-process-` (`GroupDirectory`); os Teams são copiados para o Event ao salvar, sem vínculo vivo. A saída de alguém do Group chega ao `events` pelo domain event `GroupMemberRemoved`. Os contextos das fatias seguintes (notificações, por exemplo) estão no mapa [PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51). O módulo `events` que existe hoje é da V1 e será reescrito do zero (PROJ-122).
 
 Regra prática: **cada regra de negócio tem um dono**. "O último Owner não sai do Group" é do contexto dos Groups. "Só dá para cancelar um Event item publicado" é do contexto dos Event items. Nada disso vai para o `shared`.
 

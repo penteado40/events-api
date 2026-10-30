@@ -8,6 +8,7 @@ import {
 import type { Response } from 'express'
 import { ZodValidationException } from 'nestjs-zod'
 import { ZodError } from 'zod'
+import { RateLimitedError } from '../application/rate-limiter.js'
 import { AppError, type ErrorCode } from '../domain/app-error.js'
 import type { ErrorResponse, ValidationDetail } from './dto/error-response.dto.js'
 import { CODE_BY_HTTP_STATUS, ERROR_CATALOG } from './error-catalog.js'
@@ -27,6 +28,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>()
     const { status, body } = this.toResponse(exception)
+    if (exception instanceof RateLimitedError) {
+      response.setHeader('Retry-After', String(exception.retryAfterSeconds))
+    }
     response.status(status).json(body)
   }
 

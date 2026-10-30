@@ -2,6 +2,7 @@ import { type DynamicModule, Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
 import { Clock } from '../../shared/application/clock.js'
+import { RateLimiter } from '../../shared/application/rate-limiter.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
 import { PasswordHasher } from './application/ports/password-hasher.js'
@@ -63,9 +64,13 @@ export class IdentityModule {
         { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
         {
           provide: LoginUseCase,
-          useFactory: (users: UserRepository, hasher: PasswordHasher, tokens: TokenIssuer) =>
-            new LoginUseCase(users, hasher, tokens),
-          inject: [UserRepository, PasswordHasher, TokenIssuer],
+          useFactory: (
+            users: UserRepository,
+            hasher: PasswordHasher,
+            tokens: TokenIssuer,
+            limiter: RateLimiter,
+          ) => new LoginUseCase(users, hasher, tokens, limiter),
+          inject: [UserRepository, PasswordHasher, TokenIssuer, RateLimiter],
         },
         {
           provide: CreateUserUseCase,

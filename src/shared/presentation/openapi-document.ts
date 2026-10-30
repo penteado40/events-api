@@ -42,6 +42,13 @@ export function completeOpenApiDocument(document: OpenAPIObject): OpenAPIObject 
   return document
 }
 
+const RETRY_AFTER_HEADER = {
+  'Retry-After': {
+    description: 'Segundos até a janela do rate limit terminar.',
+    schema: { type: 'integer' },
+  },
+}
+
 function completeOperation(
   operation: OperationObject,
   globalSecurity: NonNullable<OpenAPIObject['security']>,
@@ -68,6 +75,7 @@ function completeOperation(
   for (const [status, statusCodes] of byStatus) {
     operation.responses[String(status)] = {
       description: statusCodes.map((code) => `\`${code}\``).join(', '),
+      ...(statusCodes.includes('RATE_LIMITED') && { headers: RETRY_AFTER_HEADER }),
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/ErrorResponse' },

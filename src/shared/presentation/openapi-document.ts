@@ -37,7 +37,17 @@ export function completeOpenApiDocument(document: OpenAPIObject): OpenAPIObject 
   return document
 }
 
-function completeOperation(operation: OperationObject): void {
+const RETRY_AFTER_HEADER = {
+  'Retry-After': {
+    description: 'Segundos até a janela do rate limit terminar.',
+    schema: { type: 'integer' },
+  },
+}
+
+function completeOperation(
+  operation: OperationObject,
+  globalSecurity: NonNullable<OpenAPIObject['security']>,
+): void {
   const extensions = operation as unknown as Record<string, unknown>
   const isPublic = extensions[PUBLIC_EXTENSION] === true
   delete extensions[PUBLIC_EXTENSION]
@@ -57,6 +67,7 @@ function completeOperation(operation: OperationObject): void {
   for (const [status, statusCodes] of byStatus) {
     operation.responses[String(status)] = {
       description: statusCodes.map((code) => `\`${code}\``).join(', '),
+      ...(statusCodes.includes('RATE_LIMITED') && { headers: RETRY_AFTER_HEADER }),
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/ErrorResponse' },

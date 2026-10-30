@@ -3,6 +3,7 @@ import { ApiExcludeController } from '@nestjs/swagger'
 import type { Response } from 'express'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Public } from '../../../shared/presentation/public.decorator.js'
+import { RateLimit } from '../../../shared/presentation/rate-limit.js'
 import { LoginUseCase } from '../application/use-cases/login.use-case.js'
 import { TokenRequestSchema } from './dto/token-request.dto.js'
 
@@ -19,6 +20,7 @@ export class TokenController {
   constructor(private readonly login: LoginUseCase) {}
 
   @Public()
+  @RateLimit('login-ip')
   @Post('token')
   @HttpCode(200)
   async token(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {

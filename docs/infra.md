@@ -14,7 +14,7 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `NODE_ENV` | `production` | `production` | `development` |
 | `JWT_SECRET` | próprio | próprio (diferente da produção) | `.env` |
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
-| Redis (Upstash) | banco `events-api`, prefixo por ambiente (PROJ-59) | mesmo banco | — |
+| Redis (Upstash) | banco `events-api`, prefixo `events-api:production` | mesmo banco, prefixo `events-api:preview` | memória (ou Upstash com prefixo `events-api:local`, se configurado) |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
 | `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
@@ -26,7 +26,7 @@ Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABA
 
 **Neon**: projeto `events-api` (`patient-bar-43479758`), `us-east-1`, Postgres 17, banco e role `events_api`. A app usa a URL **com pooler**; migrations precisam da URL **direta**.
 
-**Upstash**: um banco Redis `events-api` no plano Free, `us-east-1`, compartilhado pelos ambientes com prefixo de chave por ambiente.
+**Upstash**: um banco Redis `events-api` no plano Free, `us-east-1`, compartilhado pelos ambientes com prefixo de chave por ambiente (vem do `VERCEL_ENV`). Guarda só os contadores do rate limit, com a chave em hash (nenhum IP ou email em claro). As credenciais são obrigatórias com `NODE_ENV=production`: sem elas o deploy não sobe. Se o Upstash cair ou demorar mais de 1 s, o rate limit deixa a requisição passar e registra o erro no log.
 
 **Resend**: domínio `mail.fawedding.com.br` (região `us-east-1`) como Platform sender. A chave de API `events-api` só envia por esse domínio. O `bgwedding.com.br` continua lá enquanto a `fawedding-api` estiver no ar; sai na PROJ-71.
 

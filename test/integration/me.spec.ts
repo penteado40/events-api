@@ -55,6 +55,14 @@ describe('GET /api/v1/me', () => {
     expect(res.body).toEqual(UNAUTHENTICATED)
   })
 
+  // The Site's X-Api-Key left with the Sites (ADR-0016): it is no credential.
+  it('answers 401 UNAUTHENTICATED for an X-Api-Key without a Bearer token', async () => {
+    const res = await t.http().get('/api/v1/me').set('X-Api-Key', 'evt_whatever')
+
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual(UNAUTHENTICATED)
+  })
+
   it('answers 401 UNAUTHENTICATED for a malformed or wrongly signed token', async () => {
     const forged = await new JwtService({ secret: 'x'.repeat(40) }).signAsync({ sub: '1' })
 

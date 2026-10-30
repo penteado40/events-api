@@ -5,9 +5,9 @@ export interface GeneratedSecretToken {
 }
 
 /**
- * Random secrets that are stored only as a hash (API tokens, Contribution
- * tokens). The hash is the SHA-256 of the whole value, as in the fawedding-api,
- * so migrated tokens keep working.
+ * Random secrets that are stored only as a hash (Contribution tokens). The
+ * hash is the SHA-256 of the whole value, as in the fawedding-api, so migrated
+ * tokens keep working.
  */
 export abstract class SecretTokens {
   /** The prefix makes a leaked value recognizable (in logs, by secret scanners). */

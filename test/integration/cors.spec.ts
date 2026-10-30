@@ -25,7 +25,7 @@ describe('CORS', () => {
 
     expect(res.status).toBe(204)
     expect(res.headers['access-control-allow-origin']).toBe('https://painel.com')
-    expect(res.headers['access-control-allow-headers']).toBe('Authorization,X-Api-Key,Content-Type')
+    expect(res.headers['access-control-allow-headers']).toBe('Authorization,Content-Type')
     expect(res.headers['access-control-max-age']).toBe('600')
     expect(res.headers['access-control-allow-credentials']).toBeUndefined()
   })

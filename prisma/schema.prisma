@@ -31,19 +31,12 @@ model User {
   updatedBy         User?     @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   activationLinks ActivationLink[] @relation("ActivationLinkUser")
-  memberships     EventMember[]    @relation("EventMemberUser")
 
   // Records this User is the Author of.
   createdUsers           User[]           @relation("UserCreated")
   updatedUsers           User[]           @relation("UserUpdated")
   createdActivationLinks ActivationLink[] @relation("ActivationLinkCreated")
   updatedActivationLinks ActivationLink[] @relation("ActivationLinkUpdated")
-  createdEvents          Event[]          @relation("EventCreated")
-  updatedEvents          Event[]          @relation("EventUpdated")
-  createdEventMembers    EventMember[]    @relation("EventMemberCreated")
-  updatedEventMembers    EventMember[]    @relation("EventMemberUpdated")
-  createdApiTokens       ApiToken[]       @relation("ApiTokenCreated")
-  updatedApiTokens       ApiToken[]       @relation("ApiTokenUpdated")
 
   @@map("users")
 }
@@ -65,96 +58,4 @@ model ActivationLink {
 
   @@index([userId])
   @@map("activation_links")
-}
-
-enum EventType {
-  WEDDING
-  BIRTHDAY
-  CORPORATE
-  BABY_SHOWER
-  PARTY
-  OTHER
-}
-
-enum EventStatus {
-  ACTIVE
-  ARCHIVED
-}
-
-enum EventRole {
-  OWNER
-  MANAGER
-  VIEWER
-}
-
-model Event {
-  id           Int         @id @default(autoincrement())
-  type         EventType
-  status       EventStatus @default(ACTIVE)
-  name         String
-  slug         String      @unique // never changes
-  siteUrl      String // origin only (scheme + host + port)
-  startsAt     DateTime // UTC
-  endsAt       DateTime?
-  timezone     String      @default("America/Sao_Paulo")
-  locale       String      @default("pt-BR")
-  currency     String      @default("BRL")
-  venueName    String?
-  venueAddress String?
-  city         String?
-  mapsUrl      String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  createdById  Int? // Author (ADR-0013)
-  updatedById  Int?
-  createdBy    User?       @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy    User?       @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
-
-  members   EventMember[]
-  apiTokens ApiToken[]
-
-  @@map("events")
-}
-
-model EventMember {
-  id             Int       @id @default(autoincrement())
-  eventId        Int
-  userId         Int
-  role           EventRole
-  // At most one per Event: partial unique index created in the migration SQL (ADR-0003).
-  isPrimaryOwner Boolean   @default(false)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  createdById    Int? // Author (ADR-0013)
-  updatedById    Int?
-  createdBy      User?     @relation("EventMemberCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy      User?     @relation("EventMemberUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation("EventMemberUser", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([userId])
-  @@map("event_members")
-}
-
-model ApiToken {
-  id          Int       @id @default(autoincrement())
-  eventId     Int
-  name        String
-  tokenHash   String    @unique // SHA-256 of the value; the value is never stored
-  scopes      String[]
-  isActive    Boolean   @default(true)
-  lastUsedAt  DateTime? // written at most once an hour; not an edit
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdById Int? // Author (ADR-0013)
-  updatedById Int?
-  createdBy   User?     @relation("ApiTokenCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy   User?     @relation("ApiTokenUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@map("api_tokens")
 }

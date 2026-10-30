@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { ApiExtension } from '@nestjs/swagger'
 import type { Request } from 'express'
+import { AppError } from '../domain/app-error.js'
 import { API_TOKEN_EXTENSION } from './openapi-document.js'
 
 /** The header the Site sends its API token in (ADR-0008); `Authorization` is for the JWT. */
@@ -14,10 +15,17 @@ export const ACCEPTS_API_TOKEN = 'acceptsApiToken'
 
 /**
  * Checks an `X-Api-Key` value, throwing UNAUTHENTICATED when it is not an
- * active credential. The context that owns the API tokens provides it.
+ * active credential.
  */
 export abstract class ApiTokenAuthenticator {
   abstract authenticate(value: string): Promise<object>
+}
+
+/** No API token exists since the V1 Events left (ADR-0016): every value is refused. */
+export class NoApiTokenAuthenticator extends ApiTokenAuthenticator {
+  authenticate(): Promise<object> {
+    return Promise.reject(new AppError('UNAUTHENTICATED'))
+  }
 }
 
 /** A route the Site may call with its API token, besides a User with a JWT. */

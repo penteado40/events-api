@@ -22,3 +22,7 @@ O Scalar é a interface visual de teste manual da API, então uma rota sem resum
 - `@Public()` também tira a rota da segurança global da doc, para que o cadeado do Scalar e o guard nunca divirjam.
 - **Os textos da doc são em português** (resumos, descrições de operação e de campo), embora o código e os comentários sejam em inglês. O Scalar é interface de produto e já mostra as mensagens de erro do catálogo em português; os termos do glossário ficam em inglês, como no `CONTEXT.md`. Não "corrija" esses textos para inglês.
 - Os exemplos dos request bodies funcionam contra o seed local (login do Super admin `admin@local.test`). Executar um exemplo não pode quebrar outro (a troca de senha "troca" a senha do seed por ela mesma). Valor que só existe em tempo de execução, como o token de ativação, usa um placeholder descritivo. Nunca use como exemplo uma credencial que exista fora do ambiente local: o OpenAPI dos previews é público.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+NestJS, `nestjs-zod`, Scalar e a fiscalização por lint continuam valendo. A lista de módulos acima (`events`, `rsvp`, `registry`, `emails`) é da V1: os contextos do pivô ainda estão em definição (ver `docs/arquitetura.md` e o mapa PROJ-51). A segunda estratégia do Passport para API tokens sai com os Sites (ADR-0016), e o Guest access link (ADR-0018) é a candidata natural a ocupar esse lugar. O cold start passa a ser medido contra o tráfego do app mobile, não dos Sites.

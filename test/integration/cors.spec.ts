@@ -1,43 +1,36 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
-import { createEvent } from './support/factories.js'
 
 describe('CORS', () => {
   let t: TestApp
-  let eventId: number
 
   beforeAll(async () => {
     t = await createTestApp({ env: { CORS_ORIGINS: 'https://painel.com' } })
-    eventId = (await createEvent({ siteUrl: 'https://festa-da-ana.com' })).id
-    await createEvent({ siteUrl: 'https://festa-encerrada.com', status: 'ARCHIVED' })
   })
 
   afterAll(() => t.close())
 
-  const read = (origin: string) =>
-    t.http().get(`/api/v1/events/${eventId}/public`).set('Origin', origin)
+  const read = (origin: string) => t.http().get('/api/v1/me').set('Origin', origin)
 
   const preflight = (origin: string) =>
     t
       .http()
-      .options(`/api/v1/events/${eventId}/public`)
+      .options('/api/v1/me')
       .set('Origin', origin)
       .set('Access-Control-Request-Method', 'GET')
-      .set('Access-Control-Request-Headers', 'x-api-key')
+      .set('Access-Control-Request-Headers', 'authorization')
 
-  it('answers the preflight of an Event siteUrl with the allowed headers, cached for 10 min', async () => {
-    const res = await preflight('https://festa-da-ana.com')
+  it('answers the preflight of an allowed origin with the allowed headers, cached for 10 min', async () => {
+    const res = await preflight('https://painel.com')
 
     expect(res.status).toBe(204)
-    expect(res.headers['access-control-allow-origin']).toBe('https://festa-da-ana.com')
-    expect(res.headers['access-control-allow-headers']).toBe('Authorization,X-Api-Key,Content-Type')
+    expect(res.headers['access-control-allow-origin']).toBe('https://painel.com')
+    expect(res.headers['access-control-allow-headers']).toBe('Authorization,Content-Type')
     expect(res.headers['access-control-max-age']).toBe('600')
     expect(res.headers['access-control-allow-credentials']).toBeUndefined()
   })
 
   it.each([
-    ['the siteUrl of an active Event', 'https://festa-da-ana.com'],
-    ['the siteUrl of an archived Event', 'https://festa-encerrada.com'],
     ['an origin from CORS_ORIGINS', 'https://painel.com'],
     ['localhost outside production', 'http://localhost:5173'],
   ])('lets the browser read the response for %s', async (_case, origin) => {

@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0016
+---
+
 # Comprovante opcional, privado e enviado direto ao Cloudinary
+
+> Substituído pelo ADR-0016 (pivô para Groups, 2026-10-02): o Receipt saiu junto com a Contribution. O desenho de arquivo privado com upload direto continua valendo para as fotos dos Fields.
 
 Ao marcar uma Contribution como paga, o Guest é incentivado (não obrigado) a anexar um Receipt, uma foto ou PDF do comprovante. Tornar obrigatório travaria quem pagou por outro aparelho; Contributions `PAID` sem Receipt aparecem sinalizadas na Verification.
 

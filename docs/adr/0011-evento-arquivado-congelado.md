@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0016
+---
+
 # Evento arquivado fica congelado, e só o Super admin desarquiva
+
+> Substituído pelo ADR-0016 (pivô para Groups, 2026-10-02): sem dados de Guests a proteger, o Archived event não congela mais. Um Owner arquiva um Event finalizado ou Cancelled, e só os Owners passam a vê-lo, editá-lo e desarquivá-lo (ver `CONTEXT.md`).
 
 O PRD previa que arquivar um Event recusasse apenas as escritas vindas do Site (`EVENT_ARCHIVED`), deixando os membros editarem normalmente. Decidimos que arquivar **congela o evento para todos**: qualquer escrita de membro (Owner, Manager) ou do Site num evento arquivado é recusada com `409 EVENT_ARCHIVED`, e só o Super admin escreve nele e o desarquiva (`POST /events/:id/unarchive`). Arquivar é encerrar: um evento que acabou não deve continuar mudando por mãos de membros, e o Super admin, único que cria eventos, é quem decide reabrir um.
 

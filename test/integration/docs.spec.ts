@@ -29,6 +29,7 @@ describe('docs with DOCS_ENABLED=true', () => {
     expect(res.body.components.securitySchemes.oauth2.flows.password.tokenUrl).toBe(
       '/api/v1/auth/token',
     )
+    expect(Object.keys(res.body.components.securitySchemes).sort()).toEqual(['bearer', 'oauth2'])
   })
 
   // The docs are the manual test interface of the API, so they are a tested

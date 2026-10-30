@@ -8,3 +8,10 @@ Como os Sites precisam ser alterados de qualquer forma na migração, aproveitam
 - A documentação (`/api/v1/docs`, `/api/v1/openapi`) e o `/auth/token` só são registrados com `DOCS_ENABLED=true`, desligado em produção. Em produção o único login é `POST /api/v1/auth/login`.
 - O API token do Site vai no header `X-Api-Key`, e `Authorization: Bearer` fica só para o JWT. A `fawedding-api` mandava os dois no `Authorization` e adivinhava o tipo pela presença de um `.`; aqui cada rota declara quais credenciais aceita, sem adivinhação, e o OpenAPI mostra os dois esquemas separados. O valor do token do evento 4 continua o mesmo; o Site só troca o header, junto com a URL da API.
 - Códigos das credenciais públicas: `X-Api-Key` ausente, desconhecido ou inativo, ou uma rota que não aceita API token → `401 UNAUTHENTICATED` (inativo e inexistente respondem igual); token de outro evento → `403 FORBIDDEN` (não revela se o evento existe); token do próprio evento sem o Scope da rota → `403 INSUFFICIENT_SCOPE`, para quem configura o Site diagnosticar sem abrir log.
+
+## Emenda: pivô para Groups (2026-10-02)
+
+Continuam valendo o prefixo `/api/v1`, o envelope `{ data }`, o formato de erro com `code` estável e o `/auth/token` só para o Scalar. Mudam duas coisas:
+
+- **Hora local, não UTC.** A hora de um Event item é sempre a do lugar onde ele acontece e nunca é convertida (ADR-0016). Ela trafega como hora local acompanhada do fuso do lugar, e não como ISO 8601 UTC. Instantes técnicos (`createdAt`, `updatedAt`, validade de links) continuam em ISO 8601 UTC.
+- **Sem API token de Site.** O `X-Api-Key`, os Scopes e os códigos das credenciais públicas saem junto com os Sites. A credencial nova fora do login por senha é o Guest access link (ADR-0018), cujo formato fica para o PRD.

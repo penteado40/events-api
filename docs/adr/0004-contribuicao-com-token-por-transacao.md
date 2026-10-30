@@ -1,4 +1,10 @@
+---
+status: superseded by ADR-0016
+---
+
 # Contribuição amarrada a um token por transação, com conferência pelo membro
+
+> Substituído pelo ADR-0016 (pivô para Groups, 2026-10-02): Registry e Contribution saíram do produto antes de entrar em produção.
 
 Na `fawedding-api`, o token público do site podia confirmar e cancelar **qualquer** pagamento pelo id sequencial, e "confirmado" significava só que alguém clicou em "finalizei o pagamento". Na nova API, ao abrir uma Contribution, o Guest recebe uma única vez um **Contribution token** (a API guarda só o hash). Abandonar ou marcar como paga exige esse token no header `X-Contribution-Token` e só vale para Contributions `PENDING`.
 

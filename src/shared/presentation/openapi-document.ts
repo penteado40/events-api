@@ -44,10 +44,7 @@ const RETRY_AFTER_HEADER = {
   },
 }
 
-function completeOperation(
-  operation: OperationObject,
-  globalSecurity: NonNullable<OpenAPIObject['security']>,
-): void {
+function completeOperation(operation: OperationObject): void {
   const extensions = operation as unknown as Record<string, unknown>
   const isPublic = extensions[PUBLIC_EXTENSION] === true
   delete extensions[PUBLIC_EXTENSION]

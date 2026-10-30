@@ -11,7 +11,7 @@
 
 ## Overview
 
-Each **Group** (e.g. a vocal group) is a tenant. An **Event** is any commitment of the Group, with only where and when; everything else is an **Event item** made of free **Fields** (text, people or photos), shown to each person according to its **Audience**. Owners run the Group, Event managers help with a single Event, Event guests join one Event without being in the Group, and a Super admin manages the platform. The pivot is being charted in Jira ([PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51)); the code still implements the earlier design. The full vocabulary lives in the domain glossary, [`CONTEXT.md`](CONTEXT.md).
+Each **Group** (e.g. a vocal group) is a tenant. An **Event** is any commitment of the Group, with only where and when; everything else is an **Event item** made of free **Fields** (text, people or photos), shown to each person according to its **Audience**. Owners run the Group, Event managers help with a single Event, Event guests join one Event without being in the Group, and a Super admin manages the platform. The pivot is being charted in Jira ([PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51)); the code of the earlier design is being removed, and today only `identity` is left. The full vocabulary lives in the domain glossary, [`CONTEXT.md`](CONTEXT.md).
 
 The project is also a showcase of **Clean Architecture with pragmatic DDD on NestJS**, where the dependency rule is enforced by the linter rather than by discipline.
 
@@ -30,7 +30,7 @@ Roadmap and tasks: Jira epic [PROJ-51](https://flpenteado.atlassian.net/browse/P
 
 ## Architecture
 
-One NestJS module per bounded context: `identity` (Users, login), `events` (Events, members, API tokens, access policy), `rsvp`, `registry` (Registry items, Contributions) and `emails`, plus `shared` for the common base. Each module has the same four layers, and **dependencies only point inward**:
+One NestJS module per bounded context: `identity` (Users, login) today, with `groups`, `events` and `emails` coming with the pivot ([`docs/arquitetura.md`](docs/arquitetura.md)), plus `shared` for the common base. Each module has the same four layers, and **dependencies only point inward**:
 
 ```mermaid
 flowchart LR

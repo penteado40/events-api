@@ -1,11 +1,12 @@
 import { type DynamicModule, Module } from '@nestjs/common'
 import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core'
 import { ZodValidationPipe } from 'nestjs-zod'
-import { EventsModule } from './modules/events/index.js'
 import { IdentityModule } from './modules/identity/index.js'
 import { AppConfig } from './shared/infrastructure/app-config.js'
 import { SharedModule } from './shared/infrastructure/shared.module.js'
 import { AllExceptionsFilter } from './shared/presentation/all-exceptions.filter.js'
+import { AllowedOrigins, ConfiguredAllowedOrigins } from './shared/presentation/allowed-origins.js'
+import { ApiTokenAuthenticator, NoApiTokenAuthenticator } from './shared/presentation/api-token.js'
 import { CredentialsGuard } from './shared/presentation/credentials.guard.js'
 
 @Module({})
@@ -16,11 +17,17 @@ export class AppModule {
       imports: [
         SharedModule.forRoot(config),
         IdentityModule.register({ docsEnabled: config.docsEnabled }),
-        EventsModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
+        { provide: ApiTokenAuthenticator, useClass: NoApiTokenAuthenticator },
         { provide: APP_GUARD, useClass: CredentialsGuard },
+        // configureApp hands it to CORS.
+        {
+          provide: AllowedOrigins,
+          useFactory: (c: AppConfig) => new ConfiguredAllowedOrigins(c.corsOrigins),
+          inject: [AppConfig],
+        },
         {
           provide: APP_FILTER,
           useFactory: (c: AppConfig) =>

@@ -37,7 +37,7 @@ A ideia central: **o código deve refletir o negócio**, com as mesmas palavras 
 | `events` | Events, Participants, Event items, Fields, Changes, Last seen, a regra de alcance e a leitura de Summary e Timeline |
 | `shared` | Não é contexto: a base comum (erros, value objects genéricos, Prisma, config) |
 
-O `events` pergunta ao `groups` quem é Owner ou Viewer e quem está num Team por um port `in-process-` (`GroupDirectory`); os Teams são copiados para o Event ao salvar, sem vínculo vivo. A saída de alguém do Group chega ao `events` pelo domain event `GroupMemberRemoved`. Os contextos das fatias seguintes (notificações, por exemplo) estão no mapa [PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51). O módulo `events` que existe hoje é da V1 e será reescrito do zero (PROJ-122).
+O `events` pergunta ao `groups` quem é Owner ou Viewer e quem está num Team por um port `in-process-` (`GroupDirectory`); os Teams são copiados para o Event ao salvar, sem vínculo vivo. A saída de alguém do Group chega ao `events` pelo domain event `GroupMemberRemoved`. Os contextos das fatias seguintes (notificações, por exemplo) estão no mapa [PROJ-51](https://flpenteado.atlassian.net/browse/PROJ-51). O módulo `events` da V1 foi apagado (PROJ-161) e será reescrito do zero (PROJ-122).
 
 Regra prática: **cada regra de negócio tem um dono**. "O último Owner não sai do Group" é do contexto dos Groups. "Só dá para cancelar um Event item publicado" é do contexto dos Event items. Nada disso vai para o `shared`.
 
@@ -214,7 +214,7 @@ src/
         user.presenter.ts
       identity.module.ts                # composition root do módulo
       index.ts                          # API pública do módulo (única porta para os outros)
-    events/                             # mesma estrutura (V1; os módulos do pivô estão em definição)
+    groups/, events/                    # mesma estrutura (chegam com o pivô)
   shared/
     domain/            # AppError, Email, Stamp
     application/       # ports compartilhados (RateLimiter...)

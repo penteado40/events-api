@@ -36,39 +36,6 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 410,
     message: 'Link de ativação expirado. Peça um novo a quem criou seu usuário.',
   },
-  SLUG_ALREADY_IN_USE: { status: 409, message: 'Já existe um evento com este slug.' },
-  PRIMARY_OWNER_INVALID: {
-    status: 422,
-    message: 'O Primary owner precisa ser um usuário existente que não seja Super admin.',
-  },
-  EVENT_ARCHIVED: {
-    status: 409,
-    message: 'Este evento está arquivado e não aceita alterações.',
-  },
-  INSUFFICIENT_SCOPE: {
-    status: 403,
-    message: 'Este API token não tem o Scope necessário para esta ação.',
-  },
-  MEMBER_NOT_FOUND: { status: 404, message: 'Este usuário não é membro do evento.' },
-  MEMBER_ALREADY_EXISTS: { status: 409, message: 'Este usuário já é membro do evento.' },
-  USER_IS_SUPER_ADMIN: {
-    status: 409,
-    message: 'O Super admin já tem acesso a todos os eventos e não pode ser membro.',
-  },
-  TRANSFER_TARGET_NOT_OWNER: {
-    status: 409,
-    message: 'O posto de Primary owner só pode ir para um Owner do evento.',
-  },
-  PRIMARY_OWNER_MUST_TRANSFER: {
-    status: 409,
-    message: 'Transfira o posto de Primary owner para outro Owner antes.',
-  },
-  MEMBER_CHANGED: {
-    status: 409,
-    message:
-      'Este membro foi alterado por outra pessoa ao mesmo tempo. Recarregue e tente de novo.',
-  },
-  API_TOKEN_NOT_FOUND: { status: 404, message: 'API token não encontrado neste evento.' },
   INTERNAL_ERROR: { status: 500, message: 'Erro interno. Tente novamente mais tarde.' },
 }
 

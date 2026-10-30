@@ -3,7 +3,7 @@ import { createSuperAdmin } from '../../scripts/create-super-admin.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
 import { loadTestEnv } from './support/env.js'
-import { addMember, createEvent, createUser } from './support/factories.js'
+import { createUser } from './support/factories.js'
 
 const STRONG = 'A-strong-password-1'
 
@@ -97,65 +97,6 @@ describe('Authorship of the records (ADR-0013)', () => {
     const user = await testPrisma().user.findUnique({ where: { id: ana.id } })
     expect(user?.updatedById).toBe(ana.id)
     expect(user?.updatedAt).toEqual(user?.passwordChangedAt)
-  })
-
-  it('records the Super admin as the Author of a new Event and of its Primary owner', async () => {
-    const owner = await createUser({ email: 'owner@example.com' })
-
-    const res = await t
-      .http()
-      .post('/api/v1/events')
-      .auth(adminToken, { type: 'bearer' })
-      .send({
-        type: 'BIRTHDAY',
-        name: 'Aniversário',
-        slug: 'aniversario',
-        siteUrl: 'https://festa.com',
-        startsAt: '2026-11-14T19:00:00-03:00',
-        primaryOwnerUserId: owner.id,
-      })
-      .expect(201)
-
-    const event = await testPrisma().event.findUnique({ where: { id: res.body.data.id } })
-    const member = await testPrisma().eventMember.findUnique({
-      where: { eventId_userId: { eventId: res.body.data.id, userId: owner.id } },
-    })
-    expect(authorOf(event)).toEqual({ createdById: adminId, updatedById: adminId })
-    expect(authorOf(member)).toEqual({ createdById: adminId, updatedById: adminId })
-  })
-
-  it('records the member who edited, archived or unarchived as the Author of the last change', async () => {
-    const event = await createEvent()
-    const manager = await createUser({ email: 'manager@example.com' })
-    const owner = await createUser({ email: 'owner2@example.com' })
-    await addMember({ eventId: event.id, userId: manager.id, role: 'MANAGER' })
-    await addMember({ eventId: event.id, userId: owner.id, role: 'OWNER' })
-    const managerToken = await loginAs('manager@example.com')
-    const ownerToken = await loginAs('owner2@example.com')
-    const stored = () => testPrisma().event.findUnique({ where: { id: event.id } })
-
-    await t
-      .http()
-      .patch(`/api/v1/events/${event.id}`)
-      .auth(managerToken, { type: 'bearer' })
-      .send({ name: 'Novo nome' })
-      .expect(200)
-    expect((await stored())?.updatedById).toBe(manager.id)
-
-    await t
-      .http()
-      .post(`/api/v1/events/${event.id}/archive`)
-      .auth(ownerToken, { type: 'bearer' })
-      .expect(200)
-    expect((await stored())?.updatedById).toBe(owner.id)
-
-    await t
-      .http()
-      .post(`/api/v1/events/${event.id}/unarchive`)
-      .auth(adminToken, { type: 'bearer' })
-      .expect(200)
-    const unarchived = await stored()
-    expect(authorOf(unarchived)).toEqual({ createdById: null, updatedById: adminId })
   })
 
   it('records no Author for the Super admin the platform script creates', async () => {

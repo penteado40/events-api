@@ -24,7 +24,7 @@ const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
-  /** Comma-separated origins CORS accepts besides the Events' siteUrls (e.g. the Panel). */
+  /** Comma-separated origins CORS accepts besides localhost outside production (e.g. the Panel). */
   CORS_ORIGINS: z
     .string()
     .default('')

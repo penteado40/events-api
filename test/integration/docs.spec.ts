@@ -119,9 +119,8 @@ describe('docs with DOCS_ENABLED=true', () => {
       token_type: 'bearer',
       expires_in: 43200,
     })
-
-    const me = await t.http().get('/api/v1/me').auth(res.body.access_token, { type: 'bearer' })
-    expect(me.status).toBe(200)
+    // The token is the old login's JWT, which the guard no longer accepts: the
+    // Scalar moves to the Clerk session in PROJ-169.
   })
 
   it('answers bad credentials with 400 invalid_grant (RFC 6749)', async () => {

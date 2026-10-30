@@ -62,6 +62,7 @@ describe('errors and security headers', () => {
       // Required in production; the test app keeps the counters in memory anyway.
       UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
       UPSTASH_REDIS_REST_TOKEN: 'token',
+      CLERK_SECRET_KEY: 'sk_test_unused',
     })
     try {
       const res = await prod

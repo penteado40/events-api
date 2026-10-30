@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser } from './support/factories.js'
+import { createUser, sessionTokenFor } from './support/factories.js'
 
 const error = (code: string) => ({ error: { code, message: expect.any(String) } })
 
@@ -12,18 +12,13 @@ describe('Users (Super admin)', () => {
 
   beforeAll(async () => {
     t = await createTestApp()
-    await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' })
-    await createUser({ email: 'ana@example.com' })
-    adminToken = await loginAs('admin@example.com')
-    userToken = await loginAs('ana@example.com')
+    adminToken = sessionTokenFor(
+      await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' }),
+    )
+    userToken = sessionTokenFor(await createUser({ email: 'ana@example.com' }))
   })
 
   afterAll(() => t.close())
-
-  async function loginAs(email: string, password = 'correct-password'): Promise<string> {
-    const res = await t.http().post('/api/v1/auth/login').send({ email, password })
-    return res.body.data.token as string
-  }
 
   describe('POST /api/v1/users', () => {
     it('creates a Pending user and returns the Activation token once', async () => {

@@ -196,19 +196,21 @@ src/
         user.repository.ts              # port
       application/
         ports/
+          auth-verifier.ts              # port (token do Clerk → externalId + email)
           password-hasher.ts            # port
           token-issuer.ts               # port
         use-cases/
           login.use-case.ts
           login.use-case.spec.ts        # teste unitário ao lado
-          get-current-user.use-case.ts
+          authenticate.use-case.ts      # vincula o User pelo email no primeiro acesso
       infrastructure/
         prisma-user.repository.ts       # adapter (+ mapper Prisma ↔ User)
         bcrypt-password-hasher.ts
+        clerk-auth-verifier.ts
         jwt-token-issuer.ts
-        jwt.strategy.ts
       presentation/
         auth.controller.ts
+        credentials.guard.ts            # guard global: Bearer do Clerk → User
         me.controller.ts
         dto/login.dto.ts                # Zod mora só aqui
         user.presenter.ts
@@ -219,7 +221,7 @@ src/
     domain/            # AppError, Email, Stamp
     application/       # ports compartilhados (RateLimiter...)
     infrastructure/    # PrismaService, config, UpstashRateLimitStore
-    presentation/      # filter global de erros, CredentialsGuard (JWT), @Public, @CurrentUser
+    presentation/      # filter global de erros, @Public, @CurrentUser
   app.module.ts
   main.ts
 test/

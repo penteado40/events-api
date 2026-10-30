@@ -19,6 +19,15 @@ describe('architecture lint (docs/arquitetura.md §7)', () => {
     expect(rules).toContain('no-restricted-imports')
   })
 
+  it('forbids the identity provider SDK in application/ (ADR-0020)', async () => {
+    const rules = await violations(
+      'src/modules/identity/application/example.ts',
+      "import { verifyToken } from '@clerk/backend'\nexport const x = verifyToken\n",
+    )
+
+    expect(rules).toContain('no-restricted-imports')
+  })
+
   it('forbids application/ from importing infrastructure/', async () => {
     const rules = await violations(
       'src/modules/identity/application/example.ts',

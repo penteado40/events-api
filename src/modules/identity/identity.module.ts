@@ -1,21 +1,23 @@
 import { type DynamicModule, Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
 import { JwtModule } from '@nestjs/jwt'
-import { PassportModule } from '@nestjs/passport'
 import { Clock } from '../../shared/application/clock.js'
 import { RateLimiter } from '../../shared/application/rate-limiter.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
+import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
 import { PasswordHasher } from './application/ports/password-hasher.js'
 import { TokenIssuer } from './application/ports/token-issuer.js'
 import { ActivateUserUseCase } from './application/use-cases/activate-user.use-case.js'
+import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { ChangePasswordUseCase } from './application/use-cases/change-password.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
-import { GetCurrentUserUseCase } from './application/use-cases/get-current-user.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
 import { LoginUseCase } from './application/use-cases/login.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
+import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
 import { BcryptPasswordHasher } from './infrastructure/bcrypt-password-hasher.js'
 import { CryptoActivationTokenGenerator } from './infrastructure/crypto-activation-token-generator.js'
 import {
@@ -23,8 +25,8 @@ import {
   JwtTokenIssuer,
   TOKEN_TTL_SECONDS,
 } from './infrastructure/jwt-token-issuer.js'
-import { JwtStrategy } from './infrastructure/jwt.strategy.js'
 import { AuthController } from './presentation/auth.controller.js'
+import { CredentialsGuard } from './presentation/credentials.guard.js'
 import { MeController } from './presentation/me.controller.js'
 import { TokenController } from './presentation/token.controller.js'
 import { UsersController } from './presentation/users.controller.js'
@@ -34,7 +36,10 @@ export interface IdentityModuleOptions {
   docsEnabled: boolean
 }
 
-/** Composition root of the identity context: Users, activation, login, password. */
+/**
+ * Composition root of the identity context: Users, activation, login, password,
+ * and the global guard that authenticates every request by the Clerk token.
+ */
 @Module({})
 export class IdentityModule {
   static register(options: IdentityModuleOptions): DynamicModule {
@@ -42,7 +47,6 @@ export class IdentityModule {
       module: IdentityModule,
       imports: [
         IdentityPersistenceModule,
-        PassportModule,
         JwtModule.registerAsync({
           inject: [AppConfig],
           useFactory: (config: AppConfig) => ({
@@ -62,6 +66,12 @@ export class IdentityModule {
         { provide: PasswordHasher, useClass: BcryptPasswordHasher },
         { provide: TokenIssuer, useClass: JwtTokenIssuer },
         { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
+        {
+          provide: AuthVerifier,
+          useFactory: (config: AppConfig) =>
+            new ClerkAuthVerifier({ secretKey: config.clerkSecretKey }),
+          inject: [AppConfig],
+        },
         {
           provide: LoginUseCase,
           useFactory: (
@@ -142,11 +152,12 @@ export class IdentityModule {
           inject: [UserRepository, PasswordHasher, TokenIssuer, Clock],
         },
         {
-          provide: GetCurrentUserUseCase,
-          useFactory: (users: UserRepository) => new GetCurrentUserUseCase(users),
-          inject: [UserRepository],
+          provide: AuthenticateUseCase,
+          useFactory: (users: UserRepository, verifier: AuthVerifier, clock: Clock) =>
+            new AuthenticateUseCase(users, verifier, clock),
+          inject: [UserRepository, AuthVerifier, Clock],
         },
-        JwtStrategy,
+        { provide: APP_GUARD, useClass: CredentialsGuard },
       ],
     }
   }

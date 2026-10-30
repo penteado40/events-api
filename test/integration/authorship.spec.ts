@@ -3,7 +3,7 @@ import { createSuperAdmin } from '../../scripts/create-super-admin.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
 import { loadTestEnv } from './support/env.js'
-import { createUser } from './support/factories.js'
+import { createUser, sessionTokenFor } from './support/factories.js'
 
 const STRONG = 'A-strong-password-1'
 
@@ -18,16 +18,12 @@ describe('Authorship of the records (ADR-0013)', () => {
 
   beforeAll(async () => {
     t = await createTestApp()
-    adminId = (await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' })).id
-    adminToken = await loginAs('admin@example.com')
+    const admin = await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' })
+    adminId = admin.id
+    adminToken = sessionTokenFor(admin)
   })
 
   afterAll(() => t.close())
-
-  async function loginAs(email: string, password = 'correct-password'): Promise<string> {
-    const res = await t.http().post('/api/v1/auth/login').send({ email, password })
-    return res.body.data.token as string
-  }
 
   function authorOf(row: { createdById: number | null; updatedById: number | null } | null) {
     return { createdById: row?.createdById, updatedById: row?.updatedById }
@@ -85,7 +81,7 @@ describe('Authorship of the records (ADR-0013)', () => {
 
   it('records the User as the Author of their password change', async () => {
     const ana = await createUser({ email: 'ana@example.com' })
-    const token = await loginAs('ana@example.com')
+    const token = sessionTokenFor(ana)
 
     await t
       .http()

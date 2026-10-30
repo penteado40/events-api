@@ -20,6 +20,7 @@ model User {
   name              String
   email             String    @unique
   passwordHash      String? // null while the User is a Pending user
+  clerkId           String?   @unique // Clerk user id (ADR-0020); null until the first sign-in links it
   role              Role      @default(USER)
   passwordChangedAt DateTime?
   createdAt         DateTime  @default(now())

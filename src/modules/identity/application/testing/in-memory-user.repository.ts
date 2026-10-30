@@ -11,6 +11,10 @@ export class InMemoryUserRepository extends UserRepository {
     return [...this.users.values()].find((u) => u.email.equals(email)) ?? null
   }
 
+  async findByClerkId(clerkId: string): Promise<User | null> {
+    return [...this.users.values()].find((u) => u.clerkId === clerkId) ?? null
+  }
+
   async findById(id: number): Promise<User | null> {
     return this.users.get(id) ?? null
   }
@@ -23,6 +27,7 @@ export class InMemoryUserRepository extends UserRepository {
     const user = User.restore({
       ...props,
       id: this.nextId++,
+      clerkId: null,
       passwordChangedAt: null,
       ...createdWith(stamp),
     })

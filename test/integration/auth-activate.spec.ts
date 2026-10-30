@@ -37,8 +37,6 @@ describe('POST /api/v1/auth/activate', () => {
         createdAt: pedro.createdAt.toISOString(),
       },
     })
-    const me = await t.http().get('/api/v1/me').auth(res.body.data.token, { type: 'bearer' })
-    expect(me.status).toBe(200)
     const login = await t
       .http()
       .post('/api/v1/auth/login')

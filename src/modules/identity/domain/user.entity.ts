@@ -11,6 +11,8 @@ export interface UserProps {
   email: Email
   /** Null while the User is a Pending user. */
   passwordHash: string | null
+  /** The Clerk user this User signs in as (ADR-0020); null until the first sign-in links it. */
+  clerkId: string | null
   role: Role
   passwordChangedAt: Date | null
   createdAt: Date
@@ -49,6 +51,9 @@ export class User {
   get passwordHash(): string | null {
     return this.props.passwordHash
   }
+  get clerkId(): string | null {
+    return this.props.clerkId
+  }
   get role(): Role {
     return this.props.role
   }
@@ -82,6 +87,16 @@ export class User {
     this.touch(stamp)
   }
 
+  /**
+   * The first sign-in with the invited email links the Clerk user, once: a
+   * User already linked to another Clerk user is never taken over.
+   */
+  linkToClerk(clerkId: string, stamp: Stamp): void {
+    if (this.props.clerkId !== null) throw new AppError('UNAUTHENTICATED')
+    this.props.clerkId = clerkId
+    this.touch(stamp)
+  }
+
   /** A Pending user sets their own first password; only a Pending user can. */
   activate(passwordHash: string, stamp: Stamp): void {
     if (!this.isPending) throw new AppError('USER_ALREADY_ACTIVE')
@@ -97,14 +112,5 @@ export class User {
   private touch(stamp: Stamp): void {
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
-  }
-
-  /**
-   * A session issued before the last password change is revoked. JWT `iat` has
-   * second precision, so the change time is truncated to the second as well.
-   */
-  isSessionRevoked(issuedAtSeconds: number): boolean {
-    if (!this.props.passwordChangedAt) return false
-    return issuedAtSeconds < Math.floor(this.props.passwordChangedAt.getTime() / 1000)
   }
 }

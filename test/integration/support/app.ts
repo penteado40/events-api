@@ -2,6 +2,8 @@ import type { INestApplication, ModuleMetadata } from '@nestjs/common'
 import { Test, type TestingModuleBuilder } from '@nestjs/testing'
 import request from 'supertest'
 import { AppModule } from '../../../src/app.module.js'
+import { AuthVerifier } from '../../../src/modules/identity/application/ports/auth-verifier.js'
+import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import { configureApp } from '../../../src/app.setup.js'
 import { Clock } from '../../../src/shared/application/clock.js'
 import { RateLimitStore } from '../../../src/shared/application/rate-limit-store.js'
@@ -41,6 +43,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     // Rate-limit counters in memory, never the Upstash the env may point to.
     .overrideProvider(RateLimitStore)
     .useFactory({ factory: (clock: Clock) => new InMemoryRateLimitStore(clock), inject: [Clock] })
+    // Session tokens built by sessionTokenFor, never a call to Clerk.
+    .overrideProvider(AuthVerifier)
+    .useValue(new FakeAuthVerifier())
   if (options.override) builder = options.override(builder)
   const moduleRef = await builder.compile()
 

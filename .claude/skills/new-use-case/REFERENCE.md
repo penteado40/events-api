@@ -39,7 +39,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 
 - Zod só em `dto/*.dto.ts`: entrada com `createZodDto` (o `ZodValidationPipe` global valida) e resposta também como DTO, para o OpenAPI (`@ApiOkResponse({ type })`).
 - Controller só traduz HTTP ↔ use case: sem regra de negócio. Sucesso sai como `{ data }`.
-- Toda rota exige JWT pelo guard global; `@Public()` só para acesso anônimo de fato. `@CurrentUser()` entrega o `User`.
+- Toda rota exige o token de sessão do Clerk pelo guard global (`identity/presentation/credentials.guard.ts`); `@Public()` só para acesso anônimo de fato. `@CurrentUser()` entrega o `User`.
 - Presenter converte entidade → JSON (datas com `toISOString()`, nada sensível).
 - Doc no Scalar (§5.9 da arquitetura): `@ApiOperation({ summary })` em português em todo método, `@ApiErrors(...)` em todo método com os códigos de negócio que o use case lança, `@ApiErrors()` se não houver (401 e 400 `VALIDATION_ERROR` entram sozinhos) e `.meta({ example })` em todo campo de entrada, com valores que funcionam contra o seed local.
 
@@ -68,4 +68,4 @@ Registre em `src/app.module.ts` importando de `./modules/<nome>/index.js`. Consu
 
 - `createTestApp({ env, controllers, override })` sobe o app real contra o `events_api_test`; feche com `t.close()` no `afterAll`.
 - As tabelas são truncadas antes de cada arquivo (`test/integration/setup.ts`): arrume o estado com as factories de `support/factories.ts` e adicione uma factory por entidade nova.
-- Resolva tokens antes de montar a requisição: `const token = await loginAs(...)`, depois `t.http().get(...).auth(token, { type: 'bearer' })`. Duas requisições supertest montadas ao mesmo tempo disputam o servidor efêmero.
+- Resolva tokens antes de montar a requisição: `const token = sessionTokenFor(user)` (de `support/factories.ts`; o app de teste verifica com o `FakeAuthVerifier`), depois `t.http().get(...).auth(token, { type: 'bearer' })`. Duas requisições supertest montadas ao mesmo tempo disputam o servidor efêmero.

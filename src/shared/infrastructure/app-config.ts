@@ -44,6 +44,8 @@ const EnvSchema = z
             .refine(isExactOrigin, 'cada origem precisa ser exata, ex.: https://painel.com'),
         ),
       ),
+    /** Verifies the Clerk session tokens (ADR-0020). Required in production; tests use a fake. */
+    CLERK_SECRET_KEY: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -52,6 +54,13 @@ const EnvSchema = z
     VERCEL_ENV: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.CLERK_SECRET_KEY === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLERK_SECRET_KEY'],
+        message: 'obrigatória em produção (verificação do token do Clerk)',
+      })
+    }
     const missing = UPSTASH_VARS.filter((name) => env[name] === undefined)
     const required = env.NODE_ENV === 'production' || missing.length < UPSTASH_VARS.length
     if (!required) return
@@ -76,6 +85,8 @@ export class AppConfig {
   readonly docsEnabled: boolean
   readonly activationLinkTtlSeconds: number
   readonly corsOrigins: string[]
+  /** Null outside production when unset: nothing then verifies a Clerk token. */
+  readonly clerkSecretKey: string | null
   /** Null outside production when unset: the counters then stay in memory. */
   readonly upstash: { url: string; token: string } | null
   /** Prefix of every rate-limit key, one per environment sharing the Upstash database. */
@@ -91,6 +102,7 @@ export class AppConfig {
     this.docsEnabled = env.DOCS_ENABLED
     this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
     this.corsOrigins = env.CORS_ORIGINS
+    this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
         ? { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }

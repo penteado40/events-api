@@ -21,7 +21,7 @@ The project is also a showcase of **Clean Architecture with pragmatic DDD on Nes
 
 V1 is under construction. Working today:
 
-- Login with JWT (`POST /api/v1/auth/login`) and the current user (`GET /api/v1/me`), with sessions revoked on password change
+- Sign-in through Clerk (ADR-0020): the API takes the Clerk session token as `Authorization: Bearer` and links it to the invited User by email on the first request; `GET /api/v1/me` returns that User. The own login (`POST /api/v1/auth/login`) still exists until PROJ-164, but its JWT no longer opens any route
 - The `identity` module, the reference implementation of the architecture
 - Stable error contract, security headers, OpenAPI + Scalar docs
 - Unit and integration tests, CI with migration drift check and secret scanning
@@ -88,12 +88,12 @@ Each one is recorded as an ADR in [`docs/adr/`](docs/adr).
 |---|---|---|---|
 | `POST` | `/api/v1/auth/login` | public | Email + password → JWT (12h) and the User |
 | `POST` | `/api/v1/auth/activate` | public | Activation token + new password → JWT and the User |
-| `GET` | `/api/v1/me` | JWT | The authenticated User |
-| `PATCH` | `/api/v1/me/password` | JWT | Current + new password → new JWT; older sessions are revoked |
+| `GET` | `/api/v1/me` | Clerk session | The authenticated User |
+| `PATCH` | `/api/v1/me/password` | Clerk session | Current + new password of the old login (leaves in PROJ-164) |
 | `POST` | `/api/v1/users` | Super admin | Creates a Pending user; returns the Activation token (valid 7 days) |
 | `POST` | `/api/v1/users/:id/activation-link` | Super admin | New Activation token for a Pending user; the previous one stops working |
 
-Every other route requires a JWT by default (a global guard; public routes opt out explicitly). The full, always-current reference is generated from the code: Scalar at `/api/v1/docs` and the OpenAPI document at `/api/v1/openapi`, both enabled with `DOCS_ENABLED=true` (off in production). Every route shows a summary, the error codes it can answer and a request body that works against the local seed; `test/integration/docs.spec.ts` fails the build when a route skips any of them.
+Every other route requires the Clerk session token by default (a global guard; public routes opt out explicitly). An email of no User answers `401 USER_NOT_INVITED`: there is no open sign-up. The full, always-current reference is generated from the code: Scalar at `/api/v1/docs` and the OpenAPI document at `/api/v1/openapi`, both enabled with `DOCS_ENABLED=true` (off in production). Every route shows a summary, the error codes it can answer and a request body that works against the local seed; `test/integration/docs.spec.ts` fails the build when a route skips any of them.
 
 Responses use `{ data }` on success and a stable error envelope otherwise:
 
@@ -103,7 +103,7 @@ Responses use `{ data }` on success and a stable error envelope otherwise:
 
 ## Tech stack
 
-Node 22 · TypeScript (ESM, `strict`) · NestJS 11 · Zod (`nestjs-zod`) + `@nestjs/swagger` + Scalar · Passport JWT · Prisma 7 with `@prisma/adapter-pg` · PostgreSQL (Neon in production) · Vitest + supertest · ESLint + Prettier · GitHub Actions · Vercel Functions · Upstash Redis. Coming with V1: Resend + React Email, Cloudinary.
+Node 22 · TypeScript (ESM, `strict`) · NestJS 11 · Zod (`nestjs-zod`) + `@nestjs/swagger` + Scalar · Clerk (`@clerk/backend`) · Prisma 7 with `@prisma/adapter-pg` · PostgreSQL (Neon in production) · Vitest + supertest · ESLint + Prettier · GitHub Actions · Vercel Functions · Upstash Redis. Coming with V1: Resend + React Email, Cloudinary.
 
 ## Getting started
 
@@ -137,7 +137,8 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `DATABASE_URL` | PostgreSQL connection (the pooled URL on Neon) |
 | `DATABASE_URL_TEST` | Database for the integration tests; it is truncated before each test file |
 | `SHADOW_DATABASE_URL` | Optional; only for the migration drift check |
-| `JWT_SECRET` | At least 32 characters (`openssl rand -base64 48`) |
+| `JWT_SECRET` | At least 32 characters (`openssl rand -base64 48`); signs the old login's JWT until PROJ-164 |
+| `CLERK_SECRET_KEY` | Verifies the Clerk session tokens; required in production (the tests use a fake) |
 | `DOCS_ENABLED` | `true` registers the docs, the OpenAPI document and `POST /auth/token` |
 | `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
 
@@ -164,7 +165,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 ```
 src/
   modules/identity/     # reference module: domain, application, infrastructure, presentation
-  shared/               # AppError, Email, PrismaService, config, error filter, JWT guard
+  shared/               # AppError, Email, PrismaService, config, error filter, @Public, @CurrentUser
   app.module.ts         # root module
   main.ts               # local entry
 api/index.ts            # Vercel Functions entry (same AppModule)

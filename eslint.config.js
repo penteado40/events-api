@@ -22,6 +22,7 @@ const shared = (...layers) => ({ element: { type: layers.map((l) => `shared-${l}
 
 /** Libraries the inner layers must not know (docs/arquitetura.md §7). */
 const INFRASTRUCTURE_LIBRARIES = [
+  '@clerk/*',
   '@nestjs/*',
   '@prisma/*',
   '@scalar/*',

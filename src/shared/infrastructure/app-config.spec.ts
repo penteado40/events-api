@@ -67,7 +67,12 @@ describe('AppConfig: Upstash', () => {
       /UPSTASH_REDIS_REST_URL/,
     )
     expect(
-      AppConfig.fromEnv({ ...REQUIRED, ...UPSTASH, NODE_ENV: 'production' }).upstash,
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        ...UPSTASH,
+        CLERK_SECRET_KEY: 'sk_live_x',
+        NODE_ENV: 'production',
+      }).upstash,
     ).not.toBeNull()
   })
 
@@ -83,5 +88,25 @@ describe('AppConfig: behindVercelProxy', () => {
   it('is true only when VERCEL=1', () => {
     expect(AppConfig.fromEnv(REQUIRED).behindVercelProxy).toBe(false)
     expect(AppConfig.fromEnv({ ...REQUIRED, VERCEL: '1' }).behindVercelProxy).toBe(true)
+  })
+})
+
+describe('AppConfig: CLERK_SECRET_KEY', () => {
+  it('is optional outside production, where the tests verify tokens with a fake', () => {
+    expect(AppConfig.fromEnv(REQUIRED).clerkSecretKey).toBeNull()
+    expect(AppConfig.fromEnv({ ...REQUIRED, CLERK_SECRET_KEY: 'sk_test_x' }).clerkSecretKey).toBe(
+      'sk_test_x',
+    )
+  })
+
+  it('is required in production, where every request is verified by Clerk', () => {
+    expect(() =>
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+        UPSTASH_REDIS_REST_TOKEN: 'token',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/CLERK_SECRET_KEY/)
   })
 })

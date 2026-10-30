@@ -13,18 +13,27 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `DOCS_ENABLED` | `false` | `true` | `true` |
 | `NODE_ENV` | `production` | `production` | `development` |
 | `JWT_SECRET` | próprio | próprio (diferente da produção) | `.env` |
+| `CLERK_SECRET_KEY` | instância de produção do Clerk | instância de desenvolvimento | `.env` (opcional) |
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo `events-api:production` | mesmo banco, prefixo `events-api:preview` | memória (ou Upstash com prefixo `events-api:local`, se configurado) |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
 | `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `CLERK_SECRET_KEY`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
 
 ## Serviços
 
 **Vercel**: projeto `events-api` (conta pessoal, plano Hobby), ligado ao repositório no GitHub, branch de produção `main`, região `iad1`, Node 22. O `vercel.json` não tem framework nem build: a API é só a função `api/index.ts`, que a Vercel compila com o TypeScript do projeto. A proteção de deployments (*Vercel Authentication*) cobre todas as URLs `*.vercel.app`, inclusive a de produção: para testar um preview pelo terminal, use `npx vercel curl <caminho> --deployment <url>`.
 
 **Neon**: projeto `events-api` (`patient-bar-43479758`), `us-east-1`, Postgres 17, banco e role `events_api`. A app usa a URL **com pooler**; migrations precisam da URL **direta**.
+
+**Clerk** (ADR-0020): identidade dos Users, plano Hobby. O token de sessão padrão não traz o email, então cada instância precisa destes claims em *Sessions → Customize session token* (ou `npx clerk@latest config patch`), sem eles todo token é recusado com 401:
+
+```json
+{ "email": "{{user.primary_email_address}}", "email_verified": "{{user.email_verified}}" }
+```
+
+A API verifica o token com `verifyToken` do `@clerk/backend` e a `CLERK_SECRET_KEY`. Chave inválida ou JWKS fora do ar viram 500, não 401.
 
 **Upstash**: um banco Redis `events-api` no plano Free, `us-east-1`, compartilhado pelos ambientes com prefixo de chave por ambiente (vem do `VERCEL_ENV`). Guarda só os contadores do rate limit, com a chave em hash (nenhum IP ou email em claro). As credenciais são obrigatórias com `NODE_ENV=production`: sem elas o deploy não sobe. Se o Upstash cair ou demorar mais de 1 s, o rate limit deixa a requisição passar e registra o erro no log.
 

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import bcrypt from 'bcryptjs'
+import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import type { Role } from '../../../src/modules/identity/index.js'
 import { testPrisma } from './database.js'
 
@@ -12,6 +13,8 @@ export interface CreateUserOptions {
   password?: string | null
   role?: Role
   passwordChangedAt?: Date | null
+  /** The linked Clerk user; null (the default) until the first request links one. */
+  clerkId?: string | null
 }
 
 export async function createUser(options: CreateUserOptions = {}) {
@@ -24,9 +27,26 @@ export async function createUser(options: CreateUserOptions = {}) {
       passwordHash: password === null ? null : await bcrypt.hash(password, 4),
       role: options.role ?? 'USER',
       passwordChangedAt: options.passwordChangedAt ?? null,
+      clerkId: options.clerkId ?? null,
     },
   })
   return { ...user, password }
+}
+
+/**
+ * A session token the test app accepts (it verifies with FakeAuthVerifier), as
+ * Clerk would issue for this email. Without a `clerkId`, it comes from a Clerk
+ * user derived from the User id, which the first request links.
+ */
+export function sessionTokenFor(user: {
+  id: number
+  email: string
+  clerkId?: string | null
+}): string {
+  return FakeAuthVerifier.tokenFor({
+    externalId: user.clerkId ?? `user_test_${user.id}`,
+    email: user.email,
+  })
 }
 
 export interface CreateActivationLinkOptions {

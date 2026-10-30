@@ -18,6 +18,11 @@ export class PrismaUserRepository extends UserRepository {
     return row ? toDomain(row) : null
   }
 
+  async findByClerkId(clerkId: string): Promise<User | null> {
+    const row = await this.prisma.user.findUnique({ where: { clerkId } })
+    return row ? toDomain(row) : null
+  }
+
   async findById(id: number): Promise<User | null> {
     const row = await this.prisma.user.findUnique({ where: { id } })
     return row ? toDomain(row) : null
@@ -57,6 +62,7 @@ export class PrismaUserRepository extends UserRepository {
         name: user.name,
         email: user.email.value,
         passwordHash: user.passwordHash,
+        clerkId: user.clerkId,
         role: user.role,
         passwordChangedAt: user.passwordChangedAt,
         updatedAt: user.updatedAt,
@@ -72,6 +78,7 @@ function toDomain(row: PrismaUser): User {
     name: row.name,
     email: Email.create(row.email),
     passwordHash: row.passwordHash,
+    clerkId: row.clerkId,
     role: row.role,
     passwordChangedAt: row.passwordChangedAt,
     createdAt: row.createdAt,

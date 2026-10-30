@@ -1,7 +1,8 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common'
 import type { Request } from 'express'
 
-/** The authenticated principal that the Passport strategy put on the request. */
+/** The User that the global CredentialsGuard put on the request. */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, context: ExecutionContext) => context.switchToHttp().getRequest<Request>().user,
+  (_data: unknown, context: ExecutionContext) =>
+    context.switchToHttp().getRequest<Request & { user?: unknown }>().user,
 )

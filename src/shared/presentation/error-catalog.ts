@@ -10,6 +10,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   VALIDATION_ERROR: { status: 400, message: 'Dados inválidos.' },
   INVALID_CREDENTIALS: { status: 401, message: 'Email ou senha inválidos.' },
   UNAUTHENTICATED: { status: 401, message: 'Autenticação necessária.' },
+  USER_NOT_INVITED: {
+    status: 401,
+    message: 'Este email não tem convite. Entre com o email em que você recebeu o convite.',
+  },
   FORBIDDEN: { status: 403, message: 'Você não tem permissão para esta ação.' },
   NOT_FOUND: { status: 404, message: 'Recurso não encontrado.' },
   WEAK_PASSWORD: {

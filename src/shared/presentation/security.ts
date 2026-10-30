@@ -1,15 +1,14 @@
 import type { INestApplication } from '@nestjs/common'
 import type { Express, NextFunction, Request, Response } from 'express'
 import helmet from 'helmet'
-import { API_TOKEN_HEADER } from './api-token.js'
-import type { AllowedOrigins } from './allowed-origins.js'
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
 
 export interface SecurityOptions {
   /** Any localhost port is accepted outside production, for local development. */
   allowLocalhostCors: boolean
-  allowedOrigins: AllowedOrigins
+  /** The origins listed in `CORS_ORIGINS` (e.g. the Panel), and only them. */
+  allowedOrigins: readonly string[]
 }
 
 /**
@@ -39,6 +38,7 @@ export function applySecurity(app: INestApplication, options: SecurityOptions): 
     res.vary('Origin')
     next()
   })
+  const allowedOrigins = new Set(options.allowedOrigins)
   app.enableCors({
     origin: (
       origin: string | undefined,
@@ -46,14 +46,10 @@ export function applySecurity(app: INestApplication, options: SecurityOptions): 
     ) => {
       if (origin === undefined) return callback(null, false)
       if (options.allowLocalhostCors && LOCALHOST_ORIGIN.test(origin)) return callback(null, true)
-      // A failed check refuses the origin; it must never fail the request itself.
-      options.allowedOrigins.isAllowed(origin).then(
-        (allowed) => callback(null, allowed),
-        () => callback(null, false),
-      )
+      callback(null, allowedOrigins.has(origin))
     },
     // Credentials travel in headers only, never cookies: no `credentials`.
-    allowedHeaders: ['Authorization', API_TOKEN_HEADER, 'Content-Type'],
+    allowedHeaders: ['Authorization', 'Content-Type'],
     maxAge: 600,
   })
 }

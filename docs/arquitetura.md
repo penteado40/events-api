@@ -219,7 +219,7 @@ src/
     domain/            # AppError, Email, Stamp
     application/       # ports compartilhados (RateLimiter...)
     infrastructure/    # PrismaService, config, UpstashRateLimitStore
-    presentation/      # filter global de erros, CredentialsGuard (JWT ou X-Api-Key), @Public, @AcceptsApiToken, @CurrentUser
+    presentation/      # filter global de erros, CredentialsGuard (JWT), @Public, @CurrentUser
   app.module.ts
   main.ts
 test/

@@ -1,7 +1,6 @@
 import type { INestApplication } from '@nestjs/common'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import type { AppConfig } from './shared/infrastructure/app-config.js'
-import { AllowedOrigins } from './shared/presentation/allowed-origins.js'
 import { API_PREFIX } from './shared/presentation/api-prefix.js'
 import { setupDocs } from './shared/presentation/docs.js'
 import { applySecurity } from './shared/presentation/security.js'
@@ -13,7 +12,7 @@ export function configureApp(app: INestApplication, config: AppConfig): INestApp
   if (config.behindVercelProxy) (app as NestExpressApplication).set('trust proxy', true)
   applySecurity(app, {
     allowLocalhostCors: !config.isProduction,
-    allowedOrigins: app.get(AllowedOrigins),
+    allowedOrigins: config.corsOrigins,
   })
   app.setGlobalPrefix(API_PREFIX)
   if (config.docsEnabled) setupDocs(app)

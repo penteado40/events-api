@@ -69,7 +69,11 @@ export class IdentityModule {
         {
           provide: AuthVerifier,
           useFactory: (config: AppConfig) =>
-            new ClerkAuthVerifier({ secretKey: config.clerkSecretKey }),
+            new ClerkAuthVerifier({
+              secretKey: config.clerkSecretKey,
+              jwtKey: config.clerkJwtKey,
+              authorizedParties: config.clerkAuthorizedParties,
+            }),
           inject: [AppConfig],
         },
         {

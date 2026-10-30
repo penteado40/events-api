@@ -10,6 +10,9 @@ export interface AuthenticateInput {
   token: string
 }
 
+/** The User the request runs as. */
+export type AuthenticateOutput = User
+
 /**
  * Resolves the User behind a Clerk session token (ADR-0020). The link between
  * the Clerk user and the User is born here and nowhere else: the first sign-in
@@ -23,7 +26,7 @@ export class AuthenticateUseCase {
     private readonly clock: Clock,
   ) {}
 
-  async execute(input: AuthenticateInput): Promise<User> {
+  async execute(input: AuthenticateInput): Promise<AuthenticateOutput> {
     const identity = await this.verifier.verify(input.token)
     if (!identity) throw new AppError('UNAUTHENTICATED')
 
@@ -32,9 +35,15 @@ export class AuthenticateUseCase {
 
     const user = await this.users.findByEmail(toEmail(identity.email))
     if (!user) throw new AppError('USER_NOT_INVITED')
+    // Linked to another Clerk user: the link is never taken over.
+    if (user.isLinkedToClerk) throw new AppError('UNAUTHENTICATED')
     user.linkToClerk(identity.externalId, { by: user.id, at: this.clock.now() })
-    await this.users.save(user)
-    return user
+    if (await this.users.saveClerkLink(user)) return user
+
+    // Another request linked the User first: fine only if it was this same Clerk user.
+    const winner = await this.users.findByClerkId(identity.externalId)
+    if (winner?.id === user.id) return winner
+    throw new AppError('UNAUTHENTICATED')
   }
 }
 

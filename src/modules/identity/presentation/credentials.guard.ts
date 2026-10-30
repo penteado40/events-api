@@ -1,7 +1,7 @@
 import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import type { Request } from 'express'
 import { AppError } from '../../../shared/domain/app-error.js'
+import type { AuthenticatedRequest } from '../../../shared/presentation/current-user.decorator.js'
 import { IS_PUBLIC_KEY } from '../../../shared/presentation/public.decorator.js'
 import { AuthenticateUseCase } from '../application/use-cases/authenticate.use-case.js'
 import type { User } from '../domain/user.entity.js'
@@ -28,7 +28,7 @@ export class CredentialsGuard implements CanActivate {
     ])
     if (isPublic) return true
 
-    const request = context.switchToHttp().getRequest<Request & { user?: User }>()
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest<User>>()
     const token = BEARER.exec(request.headers.authorization ?? '')?.[1]
     if (!token) throw new AppError('UNAUTHENTICATED')
     request.user = await this.authenticate.execute({ token })

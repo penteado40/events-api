@@ -51,10 +51,12 @@ describe('completeOpenApiDocument', () => {
     })
   })
 
-  it('adds 401 UNAUTHENTICATED to every route that is not public', () => {
+  it('adds the 401s of the guard to every route that is not public', () => {
     const doc = completeOpenApiDocument(docWith({}))
 
-    expect(op(doc).responses['401']).toMatchObject({ description: '`UNAUTHENTICATED`' })
+    expect(op(doc).responses['401']).toMatchObject({
+      description: '`UNAUTHENTICATED`, `USER_NOT_INVITED`',
+    })
     expect(op(doc).security).toBeUndefined()
   })
 

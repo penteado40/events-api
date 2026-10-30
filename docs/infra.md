@@ -33,7 +33,10 @@ Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABA
 { "email": "{{user.primary_email_address}}", "email_verified": "{{user.email_verified}}" }
 ```
 
-A API verifica o token com `verifyToken` do `@clerk/backend` e a `CLERK_SECRET_KEY`. Chave inválida ou JWKS fora do ar viram 500, não 401.
+A API verifica o token com `verifyToken` do `@clerk/backend` e a `CLERK_SECRET_KEY`. Chave inválida ou JWKS fora do ar viram 500, não 401. Duas variáveis opcionais endurecem a verificação:
+
+- `CLERK_JWT_KEY`: a chave pública PEM da instância (*API keys → JWT public key*). Com ela, a verificação não sai para a rede, e um token forjado com `kid` desconhecido não custa uma busca do JWKS a cada requisição. Recomendada em produção.
+- `CLERK_AUTHORIZED_PARTIES`: as origens exatas aceitas no `azp` do token, como no `CORS_ORIGINS`. Preenchida, o Clerk recusa também o token **sem** `azp`. Antes de definir, confira o que o events-expo manda.
 
 **Upstash**: um banco Redis `events-api` no plano Free, `us-east-1`, compartilhado pelos ambientes com prefixo de chave por ambiente (vem do `VERCEL_ENV`). Guarda só os contadores do rate limit, com a chave em hash (nenhum IP ou email em claro). As credenciais são obrigatórias com `NODE_ENV=production`: sem elas o deploy não sobe. Se o Upstash cair ou demorar mais de 1 s, o rate limit deixa a requisição passar e registra o erro no log.
 

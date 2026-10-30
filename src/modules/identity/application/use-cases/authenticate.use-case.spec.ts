@@ -10,13 +10,26 @@ import { AuthenticateUseCase } from './authenticate.use-case.js'
 
 const NOW = new Date('2026-10-30T12:00:00.000Z')
 
+/** Another request links the User between this request's read and its write. */
+class RacedUserRepository extends InMemoryUserRepository {
+  concurrentLink: { userId: number; clerkId: string } | null = null
+
+  override async findByEmail(email: Email): Promise<User | null> {
+    const user = await super.findByEmail(email)
+    if (this.concurrentLink) {
+      this.linkConcurrently(this.concurrentLink.userId, this.concurrentLink.clerkId)
+    }
+    return user
+  }
+}
+
 describe('AuthenticateUseCase', () => {
-  let users: InMemoryUserRepository
+  let users: RacedUserRepository
   let authenticate: AuthenticateUseCase
   let ana: User
 
   beforeEach(async () => {
-    users = new InMemoryUserRepository()
+    users = new RacedUserRepository()
     authenticate = new AuthenticateUseCase(users, new FakeAuthVerifier(), new FixedClock(NOW))
     ana = await users.create(
       { name: 'Ana', email: Email.create('ana@example.com'), passwordHash: null, role: 'USER' },
@@ -65,6 +78,24 @@ describe('AuthenticateUseCase', () => {
       authenticate.execute({ token: tokenFor('user_other', 'ana@example.com') }),
     ).rejects.toEqual(new AppError('UNAUTHENTICATED'))
     expect((await users.findById(ana.id))?.clerkId).toBe('user_ana')
+  })
+
+  it('keeps the link of another Clerk user that won a concurrent first sign-in', async () => {
+    users.concurrentLink = { userId: ana.id, clerkId: 'user_other' }
+
+    await expect(
+      authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') }),
+    ).rejects.toEqual(new AppError('UNAUTHENTICATED'))
+    expect((await users.findByClerkId('user_other'))?.id).toBe(ana.id)
+    expect(await users.findByClerkId('user_ana')).toBeNull()
+  })
+
+  it('accepts a concurrent first sign-in of the same Clerk user', async () => {
+    users.concurrentLink = { userId: ana.id, clerkId: 'user_ana' }
+
+    const user = await authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') })
+
+    expect(user.id).toBe(ana.id)
   })
 
   it('refuses a token the verifier does not accept with UNAUTHENTICATED', async () => {

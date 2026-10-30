@@ -139,6 +139,8 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `SHADOW_DATABASE_URL` | Optional; only for the migration drift check |
 | `JWT_SECRET` | At least 32 characters (`openssl rand -base64 48`); signs the old login's JWT until PROJ-164 |
 | `CLERK_SECRET_KEY` | Verifies the Clerk session tokens; required in production (the tests use a fake) |
+| `CLERK_JWT_KEY` | Optional; Clerk's PEM public key, for networkless verification |
+| `CLERK_AUTHORIZED_PARTIES` | Optional; exact origins accepted in the token's `azp` (a token without `azp` is then refused) |
 | `DOCS_ENABLED` | `true` registers the docs, the OpenAPI document and `POST /auth/token` |
 | `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
 

@@ -9,4 +9,9 @@ export abstract class UserRepository {
   abstract findManyByIds(ids: number[]): Promise<User[]>
   abstract create(props: NewUserProps, stamp: Stamp): Promise<User>
   abstract save(user: User): Promise<void>
+  /**
+   * Stores the Clerk link of `user` only while the stored User has none, and
+   * answers whether it did: false when another request linked it first.
+   */
+  abstract saveClerkLink(user: User): Promise<boolean>
 }

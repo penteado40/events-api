@@ -73,6 +73,11 @@ export class User {
     return this.props.updatedById
   }
 
+  /** Already signs in as a Clerk user, so no other one can take it over. */
+  get isLinkedToClerk(): boolean {
+    return this.props.clerkId !== null
+  }
+
   get isSuperAdmin(): boolean {
     return this.props.role === 'SUPER_ADMIN'
   }
@@ -92,7 +97,7 @@ export class User {
    * User already linked to another Clerk user is never taken over.
    */
   linkToClerk(clerkId: string, stamp: Stamp): void {
-    if (this.props.clerkId !== null) throw new AppError('UNAUTHENTICATED')
+    if (this.isLinkedToClerk) throw new AppError('UNAUTHENTICATED')
     this.props.clerkId = clerkId
     this.touch(stamp)
   }

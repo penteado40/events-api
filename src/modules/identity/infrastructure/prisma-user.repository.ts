@@ -70,6 +70,22 @@ export class PrismaUserRepository extends UserRepository {
       },
     })
   }
+
+  async saveClerkLink(user: User): Promise<boolean> {
+    try {
+      const { count } = await this.prisma.user.updateMany({
+        where: { id: user.id, clerkId: null },
+        data: { clerkId: user.clerkId, updatedAt: user.updatedAt, updatedById: user.updatedById },
+      })
+      return count === 1
+    } catch (error) {
+      // The same Clerk user was linked to another User at the same time.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return false
+      }
+      throw error
+    }
+  }
 }
 
 function toDomain(row: PrismaUser): User {

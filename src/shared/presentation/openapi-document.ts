@@ -12,13 +12,16 @@ export const ERROR_CODES_EXTENSION = 'x-error-codes'
 /** Set by `@Public()`: the route takes no token. */
 export const PUBLIC_EXTENSION = 'x-public'
 
+/** What the global guard answers on any non-public route (ADR-0020). */
+const GUARD_CODES: readonly ErrorCode[] = ['UNAUTHENTICATED', 'USER_NOT_INVITED']
+
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const
 
 /**
  * Applies what the decorators mark to every operation: a public route opts out
  * of the global security requirement, and the error responses come from the
- * ERROR_CATALOG (ADR-0008): the codes of `@ApiErrors`, plus 401 UNAUTHENTICATED
- * on every non-public route and 400 VALIDATION_ERROR on every route with a body
+ * ERROR_CATALOG (ADR-0008): the codes of `@ApiErrors`, plus the 401s of the
+ * guard (UNAUTHENTICATED, USER_NOT_INVITED) on every non-public route and 400 VALIDATION_ERROR on every route with a body
  * or parameters.
  */
 export function completeOpenApiDocument(document: OpenAPIObject): OpenAPIObject {
@@ -52,7 +55,7 @@ function completeOperation(operation: OperationObject): void {
 
   const codes = new Set<ErrorCode>()
   if (operation.requestBody || operation.parameters?.length) codes.add('VALIDATION_ERROR')
-  if (!isPublic) codes.add('UNAUTHENTICATED')
+  if (!isPublic) for (const code of GUARD_CODES) codes.add(code)
   for (const code of (extensions[ERROR_CODES_EXTENSION] ?? []) as ErrorCode[]) codes.add(code)
 
   const byStatus = new Map<number, ErrorCode[]>()

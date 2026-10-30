@@ -5,6 +5,8 @@ import { UserRepository } from '../../domain/user.repository.js'
 
 export class InMemoryUserRepository extends UserRepository {
   private readonly users = new Map<number, User>()
+  /** The stored links, apart from the entities: a test can change them behind a request's back. */
+  private readonly clerkIds = new Map<number, string>()
   private nextId = 1
 
   async findByEmail(email: Email): Promise<User | null> {
@@ -12,7 +14,8 @@ export class InMemoryUserRepository extends UserRepository {
   }
 
   async findByClerkId(clerkId: string): Promise<User | null> {
-    return [...this.users.values()].find((u) => u.clerkId === clerkId) ?? null
+    const entry = [...this.clerkIds].find(([, linked]) => linked === clerkId)
+    return entry ? (this.users.get(entry[0]) ?? null) : null
   }
 
   async findById(id: number): Promise<User | null> {
@@ -37,6 +40,19 @@ export class InMemoryUserRepository extends UserRepository {
 
   async save(user: User): Promise<void> {
     this.users.set(user.id, user)
+    if (user.clerkId !== null) this.clerkIds.set(user.id, user.clerkId)
+  }
+
+  async saveClerkLink(user: User): Promise<boolean> {
+    if (this.clerkIds.has(user.id) || user.clerkId === null) return false
+    if ([...this.clerkIds.values()].includes(user.clerkId)) return false
+    await this.save(user)
+    return true
+  }
+
+  /** Another request's link landing in storage, without touching the entities already read. */
+  linkConcurrently(userId: number, clerkId: string): void {
+    this.clerkIds.set(userId, clerkId)
   }
 
   all(): User[] {

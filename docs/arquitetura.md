@@ -230,7 +230,7 @@ test/
 
 ### 5.2 Convenções de nomes
 
-- Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`, e os papéis do Nest `.service`, `.strategy`, `.guard`, `.filter`, `.decorator`.
+- Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`, `.contract` (suíte que todo adaptador de um port precisa passar, chamada do `.spec` de cada um), e os papéis do Nest `.service`, `.strategy`, `.guard`, `.filter`, `.decorator`.
 - Arquivos sem um papel único ficam sem sufixo, com nome do que fazem: `app-config.ts`, `error-catalog.ts`, `security.ts`, `docs.ts`, `password-policy.ts`.
 - Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`, e `in-process-` para o que chama outro contexto (ou código) dentro do mesmo processo (`in-process-user-directory.ts`, `InProcessEventPublisher`). Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-password-hasher.ts`), e ficam em `application/testing/`.
 - Classes com os termos do `CONTEXT.md`: `EventItem`, `Field`, `GroupMember`. Nunca os termos da lista "_Avoid_".
@@ -344,7 +344,7 @@ O Scalar (`/api/v1/docs`, com `DOCS_ENABLED=true`) é gerado do código e é a i
 | Exemplo de cada campo do request body | `.meta({ example })` no schema Zod do DTO | `email: z.email().meta({ example: 'maria@local.test' })` |
 | Descrição de campo, quando o nome não basta | `.meta({ description })` (comentário JSDoc não vira doc) | `timezone: ... .meta({ description: 'Fuso IANA do lugar: ...' })` |
 
-- 401 `UNAUTHENTICATED` (rota sem `@Public()`) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
+- 401 `UNAUTHENTICATED` e `USER_NOT_INVITED` (rota sem `@Public()`, ADR-0020) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
 - O status e a mensagem de cada código vêm do `ERROR_CATALOG`. Código novo aparece na doc sem editar nada além do catálogo.
 - Textos em português, termos do glossário em inglês.
 - Exemplos que funcionam contra o seed local, sem que executar um quebre outro (a troca de senha usa a mesma senha do seed como nova). Valor que só existe em tempo de execução (token de ativação) usa um placeholder descritivo. Nunca uma credencial real.

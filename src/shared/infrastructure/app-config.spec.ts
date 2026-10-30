@@ -110,3 +110,29 @@ describe('AppConfig: CLERK_SECRET_KEY', () => {
     ).toThrow(/CLERK_SECRET_KEY/)
   })
 })
+
+describe('AppConfig: Clerk verification', () => {
+  it('has no JWT key and no authorized parties by default', () => {
+    const config = AppConfig.fromEnv(REQUIRED)
+
+    expect(config.clerkJwtKey).toBeNull()
+    expect(config.clerkAuthorizedParties).toEqual([])
+  })
+
+  it('reads the PEM public key and the comma-separated authorized parties', () => {
+    const config = AppConfig.fromEnv({
+      ...REQUIRED,
+      CLERK_JWT_KEY: '-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----',
+      CLERK_AUTHORIZED_PARTIES: 'https://painel.com, http://localhost:8081',
+    })
+
+    expect(config.clerkJwtKey).toContain('BEGIN PUBLIC KEY')
+    expect(config.clerkAuthorizedParties).toEqual(['https://painel.com', 'http://localhost:8081'])
+  })
+
+  it('refuses an authorized party that is not an exact origin', () => {
+    expect(() =>
+      AppConfig.fromEnv({ ...REQUIRED, CLERK_AUTHORIZED_PARTIES: 'https://painel.com/' }),
+    ).toThrow(/CLERK_AUTHORIZED_PARTIES/)
+  })
+})

@@ -9,6 +9,8 @@ export interface UpdateMeInput {
   phone?: string
 }
 
+export type UpdateMeOutput = User
+
 /** The logged-in User edits their own name and phone; what is left out stays. */
 export class UpdateMeUseCase {
   constructor(
@@ -16,7 +18,7 @@ export class UpdateMeUseCase {
     private readonly clock: Clock,
   ) {}
 
-  async execute(input: UpdateMeInput): Promise<User> {
+  async execute(input: UpdateMeInput): Promise<UpdateMeOutput> {
     const phone = input.phone === undefined ? undefined : Phone.create(input.phone)
     const { actor } = input
     actor.editProfile({ name: input.name, phone }, { by: actor.id, at: this.clock.now() })

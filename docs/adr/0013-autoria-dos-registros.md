@@ -17,3 +17,7 @@ Cada tabela guarda quem criou e quem editou por último cada registro (`createdB
 A pergunta "quem mudou o quê" apareceu: o Event passa a ter um **Change log** visível, em que cada Change guarda quem mudou, quando, o antes e o depois, recortado por pessoa e com o Last seen de cada uma (ver `CONTEXT.md`; decisão em PROJ-115). Por isso, deixa de valer a frase "Guardamos só o último editor, sem histórico; uma tabela de auditoria só entra se a pergunta 'quem mudou o quê' aparecer". O Change log é guardado enquanto o Event existir, inclusive arquivado.
 
 Continuam valendo o `createdById`/`updatedById` em toda tabela, o `Stamp { by, at }`, o `Clock`, o User nunca apagado e o "registrar o uso não é editar". O `null` no Author deixa de incluir "o Site em nome de um Guest", que saiu com os Sites (ADR-0016): passa a querer dizer só scripts da plataforma e processos automáticos. Soft delete para Registry item e Contribution sai junto com eles.
+
+## Emenda: identidade no Clerk (PROJ-164, 2026-10-31)
+
+A troca de senha e a ativação por token saíram (ADR-0020), e com elas os exemplos de escrita técnica que este ADR cita. Fica, como escrita técnica do User sobre a própria linha, o vínculo com o Clerk no primeiro acesso: o User é o Author do vínculo. O `create-super-admin` continua gravando com o Author `null`. O "último login" deixa de existir como exemplo de registro de uso; o Last seen do Event (PROJ-115) segue a mesma regra.

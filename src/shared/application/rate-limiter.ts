@@ -1,6 +1,6 @@
 import { AppError } from '../domain/app-error.js'
 import type { Clock } from './clock.js'
-import { RATE_LIMIT_POLICIES, type RateLimitPolicyName } from './rate-limit-policies.js'
+import type { RateLimitPolicy } from './rate-limit-policies.js'
 import type { RateLimitStore } from './rate-limit-store.js'
 
 /** RATE_LIMITED, with how long until the current window ends (the `Retry-After`). */
@@ -27,7 +27,7 @@ export interface RateLimiterOptions {
  * Fixed-window rate limit over a shared RateLimitStore (ADR-0007). The current
  * window comes from the Clock and is part of the counter's key, so a new
  * window starts from zero. A failing store lets everything through: the limit
- * is an extra defense, and the password or the API token still authorize.
+ * is an extra defense, never what authorizes a request.
  */
 export class RateLimiter {
   constructor(
@@ -37,22 +37,22 @@ export class RateLimiter {
   ) {}
 
   /** Counts one hit for `subject` and refuses it past the limit. */
-  async consume(policyName: RateLimitPolicyName, subject: string): Promise<void> {
-    const window = this.currentWindow(policyName, subject)
+  async consume(policy: RateLimitPolicy, subject: string): Promise<void> {
+    const window = this.currentWindow(policy, subject)
     const count = await this.increment(window)
     if (count > window.limit) throw new RateLimitedError(window.retryAfterSeconds)
   }
 
   /** Refuses `subject` once its hits reach the limit, without counting this one. */
-  async check(policyName: RateLimitPolicyName, subject: string): Promise<void> {
-    const window = this.currentWindow(policyName, subject)
+  async check(policy: RateLimitPolicy, subject: string): Promise<void> {
+    const window = this.currentWindow(policy, subject)
     const count = await this.failOpen(() => this.store.count(window.key))
     if (count >= window.limit) throw new RateLimitedError(window.retryAfterSeconds)
   }
 
   /** Counts one hit for `subject` without deciding anything; pair it with `check`. */
-  async hit(policyName: RateLimitPolicyName, subject: string): Promise<void> {
-    await this.increment(this.currentWindow(policyName, subject))
+  async hit(policy: RateLimitPolicy, subject: string): Promise<void> {
+    await this.increment(this.currentWindow(policy, subject))
   }
 
   private increment(window: Window): Promise<number> {
@@ -69,13 +69,13 @@ export class RateLimiter {
     }
   }
 
-  private currentWindow(policyName: RateLimitPolicyName, subject: string): Window {
-    const { limit, windowMs } = RATE_LIMIT_POLICIES[policyName]
+  private currentWindow(policy: RateLimitPolicy, subject: string): Window {
+    const { name, limit, windowMs } = policy
     const now = this.clock.now().getTime()
     const index = Math.floor(now / windowMs)
     const endsAt = (index + 1) * windowMs
     return {
-      key: `${policyName}:${subject}:${index}`,
+      key: `${name}:${subject}:${index}`,
       limit,
       ttlMs: windowMs,
       retryAfterSeconds: Math.ceil((endsAt - now) / 1000),

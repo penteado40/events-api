@@ -3,7 +3,6 @@ import { AppConfig } from './app-config.js'
 
 const REQUIRED = {
   DATABASE_URL: 'postgresql://localhost/events',
-  JWT_SECRET: 'x'.repeat(32),
 }
 
 describe('AppConfig: CORS_ORIGINS', () => {

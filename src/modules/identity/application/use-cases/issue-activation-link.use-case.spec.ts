@@ -4,7 +4,7 @@ import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeActivationTokenGenerator } from '../testing/fake-activation-token-generator.js'
-import { SCRIPT_STAMP } from '../testing/identity-fixtures.js'
+import { SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { IssueActivationLinkUseCase } from './issue-activation-link.use-case.js'
@@ -20,7 +20,7 @@ describe('IssueActivationLinkUseCase', () => {
 
   beforeEach(async () => {
     users = new InMemoryUserRepository()
-    links = new InMemoryActivationLinkRepository(users)
+    links = new InMemoryActivationLinkRepository()
     issueLink = new IssueActivationLinkUseCase(
       users,
       links,
@@ -28,20 +28,17 @@ describe('IssueActivationLinkUseCase', () => {
       new FixedClock(NOW),
       { ttlSeconds: 3600 },
     )
-    superAdmin = await users.create(
-      {
-        name: 'Admin',
-        email: Email.create('admin@example.com'),
-        passwordHash: 'hashed:admin-password',
-        role: 'SUPER_ADMIN',
-      },
-      SCRIPT_STAMP,
+    superAdmin = await signedIn(
+      users,
+      await users.create(
+        { name: 'Admin', email: Email.create('admin@example.com'), role: 'SUPER_ADMIN' },
+        SCRIPT_STAMP,
+      ),
     )
     pedro = await users.create(
       {
         name: 'Pedro',
         email: Email.create('pedro@example.com'),
-        passwordHash: null,
         role: 'USER',
       },
       SCRIPT_STAMP,
@@ -79,7 +76,7 @@ describe('IssueActivationLinkUseCase', () => {
     )
   })
 
-  it('refuses a User who already set a password with USER_ALREADY_ACTIVE', async () => {
+  it('refuses a User who already signed in with USER_ALREADY_ACTIVE', async () => {
     await expect(issueLink.execute({ actor: superAdmin, userId: superAdmin.id })).rejects.toEqual(
       new AppError('USER_ALREADY_ACTIVE'),
     )

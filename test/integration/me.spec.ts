@@ -1,5 +1,4 @@
 import { Controller, Get } from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { FakeAuthVerifier } from '../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import { createTestApp, type TestApp } from './support/app.js'
@@ -117,24 +116,26 @@ describe('GET /api/v1/me', () => {
     }
   })
 
-  // The old login stays until PROJ-164, but its JWT is no credential any more (ADR-0020).
-  it('answers 401 UNAUTHENTICATED for a JWT of the old login', async () => {
-    const user = await createUser({ email: 'fabi@example.com' })
-    const login = await t
-      .http()
-      .post('/api/v1/auth/login')
-      .send({ email: 'fabi@example.com', password: user.password })
-    expect(login.status).toBe(200)
-    const signed = await new JwtService({ secret: t.config.jwtSecret }).signAsync({
-      sub: String(user.id),
-    })
+  it.each([
+    ['post', '/api/v1/auth/login'],
+    ['post', '/api/v1/auth/activate'],
+    ['post', '/api/v1/auth/token'],
+    ['patch', '/api/v1/me/password'],
+  ] as const)(
+    'answers 404 for %s %s: sign-in and passwords live in Clerk',
+    async (method, path) => {
+      const user = await createUser()
 
-    for (const token of [login.body.data.token as string, signed]) {
-      const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
-      expect(res.status).toBe(401)
-      expect(res.body).toEqual(UNAUTHENTICATED)
-    }
-  })
+      const res = await t
+        .http()
+        [method](path)
+        .auth(sessionTokenFor(user), { type: 'bearer' })
+        .send({})
+
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
+    },
+  )
 
   it('protects any route without @Public() through the global guard', async () => {
     const user = await createUser({ email: 'gil@example.com' })

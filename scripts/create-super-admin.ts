@@ -1,18 +1,17 @@
 /**
  * Creates the Super admin, or promotes an existing User. Idempotent.
  *
- *   npm run create-super-admin -- --email=a@b.com --name="Ana" --password=... [--reset-password]
+ *   npm run create-super-admin -- --email=a@b.com --name="Ana"
  *
- * Each option can also come from ADMIN_EMAIL, ADMIN_NAME and ADMIN_PASSWORD.
- * The password follows the PasswordPolicy (ADR-0012). The email of a Pending
- * user is refused: they set their own password.
+ * Each option can also come from ADMIN_EMAIL and ADMIN_NAME. Only the local
+ * User: the person enters Clerk through an invitation to the same email, sent
+ * from the Clerk dashboard (docs/infra.md), and their first sign-in links it.
  */
 import { parseArgs } from 'node:util'
 import {
   type CreateSuperAdminInput,
   CreateSuperAdminUseCase,
 } from '../src/modules/identity/application/use-cases/create-super-admin.use-case.js'
-import { BcryptPasswordHasher } from '../src/modules/identity/infrastructure/bcrypt-password-hasher.js'
 import { PrismaUserRepository } from '../src/modules/identity/infrastructure/prisma-user.repository.js'
 import { AppError } from '../src/shared/domain/app-error.js'
 import { PrismaService } from '../src/shared/infrastructure/prisma.service.js'
@@ -21,11 +20,7 @@ import { SystemClock } from '../src/shared/infrastructure/system-clock.js'
 export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAdminInput) {
   const prisma = new PrismaService(databaseUrl)
   try {
-    const useCase = new CreateSuperAdminUseCase(
-      new PrismaUserRepository(prisma),
-      new BcryptPasswordHasher(),
-      new SystemClock(),
-    )
+    const useCase = new CreateSuperAdminUseCase(new PrismaUserRepository(prisma), new SystemClock())
     return await useCase.execute(input)
   } finally {
     await prisma.$disconnect()
@@ -34,9 +29,6 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
 
 const REFUSAL: Partial<Record<string, string>> = {
   VALIDATION_ERROR: 'email inválido.',
-  WEAK_PASSWORD:
-    'a senha precisa ter de 8 caracteres a 72 bytes, com ao menos uma letra maiúscula, uma minúscula, um número e um símbolo.',
-  USER_PENDING: 'o email é de um usuário pendente; ele ativa pelo Activation link.',
 }
 
 async function main(): Promise<void> {
@@ -44,28 +36,20 @@ async function main(): Promise<void> {
     options: {
       email: { type: 'string' },
       name: { type: 'string' },
-      password: { type: 'string' },
-      'reset-password': { type: 'boolean', default: false },
     },
   })
   const email = values.email ?? process.env.ADMIN_EMAIL
   const name = values.name ?? process.env.ADMIN_NAME
-  const password = values.password ?? process.env.ADMIN_PASSWORD
   const databaseUrl = process.env.DATABASE_URL
-  if (!email || !name || !password || !databaseUrl) {
-    console.error('Informe email, name e password (args ou ADMIN_*) e DATABASE_URL.')
+  if (!email || !name || !databaseUrl) {
+    console.error('Informe email e name (args ou ADMIN_*) e DATABASE_URL.')
     process.exit(1)
   }
 
   try {
-    const result = await createSuperAdmin(databaseUrl, {
-      email,
-      name,
-      password,
-      resetPassword: values['reset-password'],
-    })
-    const reset = result.passwordReset ? ', senha redefinida' : ''
-    console.log(`Super admin ${result.user.email.value}: ${result.outcome}${reset}.`)
+    const result = await createSuperAdmin(databaseUrl, { email, name })
+    const pending = result.user.isPending ? '; entra pelo convite do Clerk' : ''
+    console.log(`Super admin ${result.user.email.value}: ${result.outcome}${pending}.`)
   } catch (error) {
     if (error instanceof AppError) {
       console.error(`Recusado (${error.code}): ${REFUSAL[error.code] ?? 'dados inválidos.'}`)

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser, sessionTokenFor } from './support/factories.js'
+import { createUser, sessionTokenFor, sha256 } from './support/factories.js'
 
 const error = (code: string) => ({ error: { code, message: expect.any(String) } })
 
@@ -15,7 +15,7 @@ describe('Users (Super admin)', () => {
     adminToken = sessionTokenFor(
       await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' }),
     )
-    userToken = sessionTokenFor(await createUser({ email: 'ana@example.com' }))
+    userToken = sessionTokenFor(await createUser({ email: 'ana@example.com', clerkId: 'user_ana' }))
   })
 
   afterAll(() => t.close())
@@ -51,7 +51,7 @@ describe('Users (Super admin)', () => {
         where: { email: 'pedro@example.com' },
         include: { activationLinks: true },
       })
-      expect(stored?.passwordHash).toBeNull()
+      expect(stored?.clerkId).toBeNull()
       expect(stored?.activationLinks).toHaveLength(1)
       expect(stored?.activationLinks[0]?.tokenHash).not.toBe(res.body.data.activationToken)
     })
@@ -137,15 +137,13 @@ describe('Users (Super admin)', () => {
       })
       expect(res.body.data.activationToken).not.toBe(oldToken)
 
-      const withOld = await t
-        .http()
-        .post('/api/v1/auth/activate')
-        .send({ token: oldToken, password: 'a-strong-password' })
-      expect(withOld.status).toBe(400)
-      expect(withOld.body).toEqual(error('ACTIVATION_LINK_INVALID'))
+      const links = await testPrisma().activationLink.findMany({
+        where: { userId: created.body.data.user.id },
+      })
+      expect(links.map((l) => l.tokenHash)).toEqual([sha256(res.body.data.activationToken)])
     })
 
-    it('answers 409 USER_ALREADY_ACTIVE for a User with a password', async () => {
+    it('answers 409 USER_ALREADY_ACTIVE for a User who already signed in', async () => {
       const ana = await testPrisma().user.findUniqueOrThrow({ where: { email: 'ana@example.com' } })
 
       const res = await t
@@ -174,7 +172,7 @@ describe('Users (Super admin)', () => {
     })
 
     it('answers 403 FORBIDDEN to a User who is not the Super admin', async () => {
-      const pending = await createUser({ password: null })
+      const pending = await createUser()
 
       const res = await t
         .http()

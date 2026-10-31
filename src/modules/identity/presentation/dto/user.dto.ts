@@ -2,7 +2,7 @@ import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 import { ROLES } from '../../domain/user.entity.js'
 
-/** Public shape of a User: never the password hash. */
+/** Public shape of a User. */
 export const UserJsonSchema = z.object({
   id: z.number().int(),
   name: z.string(),

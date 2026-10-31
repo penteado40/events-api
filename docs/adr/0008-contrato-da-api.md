@@ -15,3 +15,7 @@ Continuam valendo o prefixo `/api/v1`, o envelope `{ data }`, o formato de erro 
 
 - **Hora local, não UTC.** A hora de um Event item é sempre a do lugar onde ele acontece e nunca é convertida (ADR-0016). Ela trafega como hora local acompanhada do fuso do lugar, e não como ISO 8601 UTC. Instantes técnicos (`createdAt`, `updatedAt`, validade de links) continuam em ISO 8601 UTC.
 - **Sem API token de Site.** O `X-Api-Key`, os Scopes e os códigos das credenciais públicas saem junto com os Sites. A credencial nova fora do login por senha é o Guest access link (ADR-0018), cujo formato fica para o PRD.
+
+## Emenda: identidade no Clerk (PROJ-164, 2026-10-31)
+
+Não há mais login na API (ADR-0020). Saíram `POST /api/v1/auth/login`, `POST /api/v1/auth/activate`, `PATCH /api/v1/me/password` e o `POST /api/v1/auth/token` do Scalar, e com eles os códigos `INVALID_CREDENTIALS`, `WEAK_PASSWORD`, `INVALID_CURRENT_PASSWORD`, `USER_PENDING` e `ACTIVATION_LINK_*`. Deixa de valer, portanto, a exceção ao envelope para o formato OAuth2. `Authorization: Bearer` leva o token de sessão do Clerk, e o OpenAPI tem só esse esquema. Um token recusado responde `401 UNAUTHENTICATED`, e o email de um token válido sem User responde `401 USER_NOT_INVITED`. Como o Scalar volta a se autenticar está na PROJ-169.

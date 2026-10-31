@@ -3,7 +3,7 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import { FakeActivationTokenGenerator } from './testing/fake-activation-token-generator.js'
-import { SCRIPT_STAMP } from './testing/identity-fixtures.js'
+import { SCRIPT_STAMP, signedIn } from './testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from './testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from './testing/in-memory-user.repository.js'
 import { UserAccounts } from './user-accounts.js'
@@ -19,17 +19,18 @@ describe('UserAccounts', () => {
 
   beforeEach(() => {
     users = new InMemoryUserRepository()
-    links = new InMemoryActivationLinkRepository(users)
+    links = new InMemoryActivationLinkRepository()
     accounts = new UserAccounts(users, links, new FakeActivationTokenGenerator(), {
       ttlSeconds: SEVEN_DAYS,
     })
   })
 
-  async function existing(email: string, passwordHash: string | null = 'hashed:x') {
-    return users.create(
-      { name: 'Existing', email: Email.create(email), passwordHash, role: 'USER' },
+  async function existing(email: string, { active = true } = {}) {
+    const user = await users.create(
+      { name: 'Existing', email: Email.create(email), role: 'USER' },
       SCRIPT_STAMP,
     )
+    return active ? signedIn(users, user) : user
   }
 
   describe('findOrCreatePending', () => {
@@ -58,7 +59,7 @@ describe('UserAccounts', () => {
     })
 
     it('only finds an existing User, leaving them and their link untouched', async () => {
-      const joao = await existing('joao@x.com', null)
+      const joao = await existing('joao@x.com', { active: false })
       await links.replaceForUser(
         { userId: joao.id, tokenHash: 'hash:ana-link', expiresAt: NOW },
         SCRIPT_STAMP,
@@ -92,7 +93,7 @@ describe('UserAccounts', () => {
 
   describe('reissueActivationLink', () => {
     it('issues a new link for a Pending user, dropping the previous one', async () => {
-      const joao = await existing('joao@x.com', null)
+      const joao = await existing('joao@x.com', { active: false })
       await links.replaceForUser(
         { userId: joao.id, tokenHash: 'hash:old', expiresAt: NOW },
         SCRIPT_STAMP,
@@ -114,7 +115,7 @@ describe('UserAccounts', () => {
 
   describe('dropPendingActivation', () => {
     it("drops a Pending user's Activation link", async () => {
-      const joao = await existing('joao@x.com', null)
+      const joao = await existing('joao@x.com', { active: false })
       await links.replaceForUser(
         { userId: joao.id, tokenHash: 'hash:link', expiresAt: NOW },
         SCRIPT_STAMP,

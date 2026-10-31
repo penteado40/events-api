@@ -7,7 +7,6 @@ import type {
 } from '@nestjs/swagger'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
-import { createUser } from './support/factories.js'
 import { registeredRoutes } from './support/routes.js'
 
 describe('docs with DOCS_ENABLED=true', () => {
@@ -15,21 +14,16 @@ describe('docs with DOCS_ENABLED=true', () => {
 
   beforeAll(async () => {
     t = await createTestApp({ env: { DOCS_ENABLED: 'true' } })
-    await createUser({ email: 'docs@example.com', password: 'correct-password' })
-    await createUser({ email: 'pending@example.com', password: null })
   })
 
   afterAll(() => t.close())
 
-  it('serves the OpenAPI document with the OAuth2 login of Scalar', async () => {
+  it('serves the OpenAPI document with the Bearer token as its only security scheme', async () => {
     const res = await t.http().get('/api/v1/openapi')
 
     expect(res.status).toBe(200)
     expect(res.body.openapi).toMatch(/^3\./)
-    expect(res.body.components.securitySchemes.oauth2.flows.password.tokenUrl).toBe(
-      '/api/v1/auth/token',
-    )
-    expect(Object.keys(res.body.components.securitySchemes).sort()).toEqual(['bearer', 'oauth2'])
+    expect(Object.keys(res.body.components.securitySchemes)).toEqual(['bearer'])
   })
 
   // The docs are the manual test interface of the API, so they are a tested
@@ -48,7 +42,7 @@ describe('docs with DOCS_ENABLED=true', () => {
         (key) => !documented.includes(key) && !UNDOCUMENTED_ROUTES.includes(key),
       )
 
-      expect(registered).toContain('POST /api/v1/auth/login')
+      expect(registered).toContain('GET /api/v1/me')
       expect(undocumented).toEqual([])
     })
 
@@ -74,12 +68,12 @@ describe('docs with DOCS_ENABLED=true', () => {
     })
 
     it('shows the protected routes with a lock and the public ones without', () => {
-      expect(doc.security).toEqual([{ oauth2: [] }, { bearer: [] }])
+      expect(doc.security).toEqual([{ bearer: [] }])
       const publicOnes = operationsOf(doc)
         .filter(({ operation }) => operation.security?.length === 0)
         .map(({ key }) => key)
 
-      expect(publicOnes.sort()).toEqual(['POST /api/v1/auth/activate', 'POST /api/v1/auth/login'])
+      expect(publicOnes).toEqual([])
     })
 
     it('gives every field of a request body an example', () => {
@@ -104,66 +98,10 @@ describe('docs with DOCS_ENABLED=true', () => {
     expect(csp).toMatch(/script-src 'nonce-[^']+' https:\/\/cdn\.jsdelivr\.net/)
     expect(csp).not.toContain("script-src 'unsafe-inline'")
   })
-
-  it('issues an OAuth2 token from a form-urlencoded password grant', async () => {
-    const res = await t.http().post('/api/v1/auth/token').type('form').send({
-      grant_type: 'password',
-      username: 'DOCS@example.com',
-      password: 'correct-password',
-    })
-
-    expect(res.status).toBe(200)
-    expect(res.headers['cache-control']).toBe('no-store')
-    expect(res.body).toEqual({
-      access_token: expect.any(String),
-      token_type: 'bearer',
-      expires_in: 43200,
-    })
-    // The token is the old login's JWT, which the guard no longer accepts: the
-    // Scalar moves to the Clerk session in PROJ-169.
-  })
-
-  it('answers bad credentials with 400 invalid_grant (RFC 6749)', async () => {
-    const res = await t.http().post('/api/v1/auth/token').type('form').send({
-      grant_type: 'password',
-      username: 'docs@example.com',
-      password: 'wrong-password',
-    })
-
-    expect(res.status).toBe(400)
-    expect(res.body).toEqual({ error: 'invalid_grant' })
-  })
-
-  it('answers a Pending user with 400 invalid_grant too', async () => {
-    const res = await t.http().post('/api/v1/auth/token').type('form').send({
-      grant_type: 'password',
-      username: 'pending@example.com',
-      password: 'anything',
-    })
-
-    expect(res.status).toBe(400)
-    expect(res.body).toEqual({ error: 'invalid_grant' })
-  })
-
-  it('answers other grant types with 400 unsupported_grant_type', async () => {
-    const res = await t
-      .http()
-      .post('/api/v1/auth/token')
-      .type('form')
-      .send({ grant_type: 'client_credentials', username: 'a', password: 'b' })
-
-    expect(res.status).toBe(400)
-    expect(res.body).toEqual({ error: 'unsupported_grant_type' })
-  })
 })
 
 /** Routes left out of the docs on purpose. */
-const UNDOCUMENTED_ROUTES = [
-  'GET /api/v1/docs',
-  'GET /api/v1/openapi',
-  // OAuth2 grant behind the Authorize button of Scalar, outside the API contract.
-  'POST /api/v1/auth/token',
-]
+const UNDOCUMENTED_ROUTES = ['GET /api/v1/docs', 'GET /api/v1/openapi']
 
 function operationsOf(doc: OpenAPIObject) {
   return Object.entries(doc.paths).flatMap(([path, item]) =>
@@ -204,9 +142,8 @@ describe('docs with DOCS_ENABLED=false', () => {
   it.each([
     ['GET', '/api/v1/docs'],
     ['GET', '/api/v1/openapi'],
-    ['POST', '/api/v1/auth/token'],
-  ])('%s %s answers 404', async (method, path) => {
-    const res = method === 'GET' ? await t.http().get(path) : await t.http().post(path).send({})
+  ])('%s %s answers 404', async (_method, path) => {
+    const res = await t.http().get(path)
 
     expect(res.status).toBe(404)
     expect(res.body.error.code).toBe('NOT_FOUND')

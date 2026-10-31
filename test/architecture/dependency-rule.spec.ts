@@ -46,6 +46,15 @@ describe('architecture lint (docs/arquitetura.md §7)', () => {
     expect(rules).toContain('boundaries/dependencies')
   })
 
+  it('forbids the groups domain from importing another module, even its public API', async () => {
+    const rules = await violations(
+      'src/modules/groups/domain/example.ts',
+      "import type { User } from '../../identity/index.js'\nexport type X = User\n",
+    )
+
+    expect(rules).toContain('boundaries/dependencies')
+  })
+
   it("allows importing another module's public API (index.ts)", async () => {
     const rules = await violations(
       'src/modules/events/presentation/example.ts',

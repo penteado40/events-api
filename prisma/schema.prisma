@@ -15,6 +15,11 @@ enum Role {
   USER
 }
 
+enum GroupRole {
+  OWNER
+  VIEWER
+}
+
 model User {
   id          Int      @id @default(autoincrement())
   name        String
@@ -37,6 +42,12 @@ model User {
   updatedUsers           User[]           @relation("UserUpdated")
   createdActivationLinks ActivationLink[] @relation("ActivationLinkCreated")
   updatedActivationLinks ActivationLink[] @relation("ActivationLinkUpdated")
+  createdGroups          Group[]          @relation("GroupCreated")
+  updatedGroups          Group[]          @relation("GroupUpdated")
+  createdGroupMembers    GroupMember[]    @relation("GroupMemberCreated")
+  updatedGroupMembers    GroupMember[]    @relation("GroupMemberUpdated")
+
+  groupMembers GroupMember[] @relation("GroupMemberUser")
 
   @@map("users")
 }
@@ -58,4 +69,40 @@ model ActivationLink {
 
   @@index([userId])
   @@map("activation_links")
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("GroupCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("GroupUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  members GroupMember[]
+
+  @@map("groups")
+}
+
+// The tie between a User and a Group. Written by PROJ-172 (Owners) and PROJ-177 (Viewers).
+model GroupMember {
+  id          Int       @id @default(autoincrement())
+  groupId     Int
+  userId      Int
+  role        GroupRole
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?     @relation("GroupMemberCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?     @relation("GroupMemberUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation("GroupMemberUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
 }

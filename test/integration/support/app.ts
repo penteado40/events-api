@@ -3,7 +3,9 @@ import { Test, type TestingModuleBuilder } from '@nestjs/testing'
 import request from 'supertest'
 import { AppModule } from '../../../src/app.module.js'
 import { AuthVerifier } from '../../../src/modules/identity/application/ports/auth-verifier.js'
+import { InvitationIssuer } from '../../../src/modules/identity/application/ports/invitation-issuer.js'
 import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
+import { FakeInvitationIssuer } from '../../../src/modules/identity/application/testing/fake-invitation-issuer.js'
 import { configureApp } from '../../../src/app.setup.js'
 import { Clock } from '../../../src/shared/application/clock.js'
 import { RateLimitStore } from '../../../src/shared/application/rate-limit-store.js'
@@ -23,6 +25,8 @@ export interface TestApp {
   app: INestApplication
   http: () => ReturnType<typeof request>
   config: AppConfig
+  /** The Clerk invitations the app issued: Activation links, never a call to Clerk. */
+  invitations: FakeInvitationIssuer
   close: () => Promise<void>
 }
 
@@ -36,6 +40,10 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     DATABASE_URL: databaseUrl,
   })
 
+  const invitations = new FakeInvitationIssuer(
+    { now: () => new Date() },
+    config.activationLinkTtlDays,
+  )
   let builder = Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],
     controllers: options.controllers ?? [],
@@ -46,6 +54,8 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     // Session tokens built by sessionTokenFor, never a call to Clerk.
     .overrideProvider(AuthVerifier)
     .useValue(new FakeAuthVerifier())
+    .overrideProvider(InvitationIssuer)
+    .useValue(invitations)
   if (options.override) builder = options.override(builder)
   const moduleRef = await builder.compile()
 
@@ -56,6 +66,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
   return {
     app,
     config,
+    invitations,
     http: () => request(app.getHttpServer()),
     close: () => app.close(),
   }

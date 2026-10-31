@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser, sessionTokenFor, sha256 } from './support/factories.js'
+import { createUser, sessionTokenFor } from './support/factories.js'
 
 const error = (code: string) => ({ error: { code, message: expect.any(String) } })
 
@@ -21,7 +21,7 @@ describe('Users (Super admin)', () => {
   afterAll(() => t.close())
 
   describe('POST /api/v1/users', () => {
-    it('creates a Pending user and returns the Activation token once', async () => {
+    it('creates a Pending user and returns the Activation link (a Clerk invitation)', async () => {
       const res = await t
         .http()
         .post('/api/v1/users')
@@ -39,12 +39,11 @@ describe('Users (Super admin)', () => {
             role: 'USER',
             createdAt: expect.any(String),
           },
-          activationToken: expect.stringMatching(/^[\w-]{43}$/),
-          expiresAt: expect.any(String),
+          activationLink: { url: expect.any(String), expiresAt: expect.any(String) },
         },
       })
       const sevenDays = 7 * 24 * 3600_000
-      const expiresIn = new Date(res.body.data.expiresAt).getTime() - Date.now()
+      const expiresIn = new Date(res.body.data.activationLink.expiresAt).getTime() - Date.now()
       expect(expiresIn).toBeGreaterThan(sevenDays - 60_000)
       expect(expiresIn).toBeLessThanOrEqual(sevenDays)
 
@@ -54,11 +53,27 @@ describe('Users (Super admin)', () => {
       })
       expect(stored?.phone).toBe('+5511987654321')
       expect(stored?.clerkId).toBeNull()
-      expect(stored?.activationLinks).toHaveLength(1)
-      expect(stored?.activationLinks[0]?.tokenHash).not.toBe(res.body.data.activationToken)
+      const invitationId = t.invitations.open().at(-1)
+      expect(res.body.data.activationLink.url).toContain(invitationId)
+      expect(stored?.activationLinks.map((l) => l.invitationId)).toEqual([invitationId])
     })
 
-    it('answers 409 EMAIL_ALREADY_IN_USE for an existing email, in any case', async () => {
+    it('answers 500 and creates no User when Clerk fails to issue the invitation', async () => {
+      t.invitations.failNextIssue()
+
+      const res = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Gabi', email: 'gabi@example.com', phone: '+5511987654321' })
+
+      expect(res.status).toBe(500)
+      expect(res.body.error.code).toBe('INTERNAL_ERROR')
+      expect(await testPrisma().user.count({ where: { email: 'gabi@example.com' } })).toBe(0)
+    })
+
+    it('answers 409 EMAIL_ALREADY_IN_USE for an existing email, in any case, issuing no invitation', async () => {
+      const open = t.invitations.open().length
       const res = await t
         .http()
         .post('/api/v1/users')
@@ -67,6 +82,7 @@ describe('Users (Super admin)', () => {
 
       expect(res.status).toBe(409)
       expect(res.body).toEqual(error('EMAIL_ALREADY_IN_USE'))
+      expect(t.invitations.open()).toHaveLength(open)
     })
 
     it('answers 403 FORBIDDEN to a User who is not the Super admin', async () => {
@@ -146,13 +162,13 @@ describe('Users (Super admin)', () => {
   })
 
   describe('POST /api/v1/users/:id/activation-link', () => {
-    it('issues a new token and invalidates the previous one', async () => {
+    it('issues a new Activation link and stores it in place of the previous one', async () => {
       const created = await t
         .http()
         .post('/api/v1/users')
         .auth(adminToken, { type: 'bearer' })
         .send({ name: 'Edu', email: 'edu@example.com', phone: '+5511987654321' })
-      const oldToken = created.body.data.activationToken as string
+      const oldUrl = created.body.data.activationLink.url as string
 
       const res = await t
         .http()
@@ -161,14 +177,14 @@ describe('Users (Super admin)', () => {
 
       expect(res.status).toBe(201)
       expect(res.body).toEqual({
-        data: { activationToken: expect.any(String), expiresAt: expect.any(String) },
+        data: { url: expect.any(String), expiresAt: expect.any(String) },
       })
-      expect(res.body.data.activationToken).not.toBe(oldToken)
+      expect(res.body.data.url).not.toBe(oldUrl)
 
       const links = await testPrisma().activationLink.findMany({
         where: { userId: created.body.data.user.id },
       })
-      expect(links.map((l) => l.tokenHash)).toEqual([sha256(res.body.data.activationToken)])
+      expect(links.map((l) => l.invitationId)).toEqual([t.invitations.open().at(-1)])
     })
 
     it('answers 409 USER_ALREADY_ACTIVE for a User who already signed in', async () => {

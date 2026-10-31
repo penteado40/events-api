@@ -3,8 +3,8 @@ import { APP_GUARD } from '@nestjs/core'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
-import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
 import { GroupMembers } from './application/ports/group-members.js'
+import { InvitationIssuer } from './application/ports/invitation-issuer.js'
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
 import { GetMeUseCase } from './application/use-cases/get-me.use-case.js'
@@ -12,9 +12,9 @@ import { IssueActivationLinkUseCase } from './application/use-cases/issue-activa
 import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
+import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
-import { CryptoActivationTokenGenerator } from './infrastructure/crypto-activation-token-generator.js'
 import { InMemoryGroupMembers } from './infrastructure/in-memory-group-members.js'
 import { CredentialsGuard } from './presentation/credentials.guard.js'
 import { MeController } from './presentation/me.controller.js'
@@ -25,10 +25,9 @@ import { UsersController } from './presentation/users.controller.js'
  * the global guard that authenticates every request by the Clerk token.
  */
 @Module({
-  imports: [IdentityPersistenceModule],
+  imports: [IdentityPersistenceModule, IdentityInvitationsModule],
   controllers: [MeController, UsersController],
   providers: [
-    { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
     { provide: GroupMembers, useClass: InMemoryGroupMembers },
     {
       provide: AuthVerifier,
@@ -45,40 +44,20 @@ import { UsersController } from './presentation/users.controller.js'
       useFactory: (
         users: UserRepository,
         links: ActivationLinkRepository,
-        tokens: ActivationTokenGenerator,
+        invitations: InvitationIssuer,
         clock: Clock,
-        config: AppConfig,
-      ) =>
-        new CreateUserUseCase(users, links, tokens, clock, {
-          ttlSeconds: config.activationLinkTtlSeconds,
-        }),
-      inject: [
-        UserRepository,
-        ActivationLinkRepository,
-        ActivationTokenGenerator,
-        Clock,
-        AppConfig,
-      ],
+      ) => new CreateUserUseCase(users, links, invitations, clock),
+      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer, Clock],
     },
     {
       provide: IssueActivationLinkUseCase,
       useFactory: (
         users: UserRepository,
         links: ActivationLinkRepository,
-        tokens: ActivationTokenGenerator,
+        invitations: InvitationIssuer,
         clock: Clock,
-        config: AppConfig,
-      ) =>
-        new IssueActivationLinkUseCase(users, links, tokens, clock, {
-          ttlSeconds: config.activationLinkTtlSeconds,
-        }),
-      inject: [
-        UserRepository,
-        ActivationLinkRepository,
-        ActivationTokenGenerator,
-        Clock,
-        AppConfig,
-      ],
+      ) => new IssueActivationLinkUseCase(users, links, invitations, clock),
+      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer, Clock],
     },
     {
       provide: GetMeUseCase,

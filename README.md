@@ -136,7 +136,8 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a C
 | `CLERK_JWT_KEY` | Optional; Clerk's PEM public key, for networkless verification |
 | `CLERK_AUTHORIZED_PARTIES` | Optional; exact origins accepted in the token's `azp` (a token without `azp` is then refused) |
 | `DOCS_ENABLED` | `true` registers the docs and the OpenAPI document |
-| `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
+| `ACTIVATION_LINK_TTL_DAYS` | Optional; Activation link (Clerk invitation) lifetime in whole days (default `7`) |
+| `ACTIVATION_REDIRECT_URL` | Where an accepted Activation link lands: the events-expo deep link; required in production |
 
 ## Development
 

@@ -5,70 +5,68 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { UserRepository } from '../domain/user.repository.js'
 import {
-  type ActivationLinkOptions,
   createPendingUser,
+  dropPendingActivation,
   type IssuedActivationLink,
   reissueActivationLink,
 } from './issue-activation-link.js'
-import type { ActivationTokenGenerator } from './ports/activation-token-generator.js'
+import type { InvitationIssuer } from './ports/invitation-issuer.js'
 import { toUserSummary, type UserSummary } from './user-lookup.js'
 
-export interface FoundOrCreatedUser {
+export interface EnsuredUser {
   user: UserSummary
   /** Only for a User created just now; an existing User is never touched. */
-  activation: IssuedActivationLink | null
+  activationLink: IssuedActivationLink | null
 }
 
 /**
- * The writes on Users that identity offers other contexts: adding an Event
- * member by email, and managing a Pending user's Activation link. Who may do
- * it is the caller's call; a User and their link belong to the platform, not
- * to any Event.
+ * The writes on Users that identity offers other contexts: making sure a User
+ * exists for an email (e.g. a Group member added by email), and managing a
+ * Pending user's Activation link. Who may do it is the caller's call; a User
+ * and their link belong to the platform, not to any Group.
  */
 export class UserAccounts {
   constructor(
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
-    private readonly tokens: ActivationTokenGenerator,
-    private readonly options: ActivationLinkOptions,
+    private readonly invitations: InvitationIssuer,
   ) {}
 
-  async findOrCreatePending(
+  /** The User of the email, created as a Pending user with an Activation link when there is none. */
+  async ensureUser(
     input: { email: string; name: string; phone: string },
     stamp: Stamp,
-  ): Promise<FoundOrCreatedUser> {
+  ): Promise<EnsuredUser> {
     const email = Email.create(input.email)
     const phone = Phone.create(input.phone)
     const found = await this.users.findByEmail(email)
-    if (found) return { user: toUserSummary(found), activation: null }
+    if (found) return { user: toUserSummary(found), activationLink: null }
 
     try {
-      const { user, link } = await createPendingUser(
+      const { user, activationLink } = await createPendingUser(
         this.users,
         this.links,
-        this.tokens,
+        this.invitations,
         { name: input.name, email, phone },
         stamp,
-        this.options,
       )
-      return { user: toUserSummary(user), activation: link }
+      return { user: toUserSummary(user), activationLink }
     } catch (error) {
       // Someone created the same email meanwhile: it is an existing User now.
       if (!(error instanceof AppError && error.code === 'EMAIL_ALREADY_IN_USE')) throw error
       const winner = await this.users.findByEmail(email)
       if (!winner) throw error
-      return { user: toUserSummary(winner), activation: null }
+      return { user: toUserSummary(winner), activationLink: null }
     }
   }
 
-  /** A fresh link for a Pending user; the previous one stops working. */
+  /** A fresh link for a Pending user. */
   async reissueActivationLink(userId: number, stamp: Stamp): Promise<IssuedActivationLink> {
-    return reissueActivationLink(this.users, this.links, this.tokens, userId, stamp, this.options)
+    return reissueActivationLink(this.users, this.links, this.invitations, userId, stamp)
   }
 
-  /** Drops a Pending user's link, so nobody activates an account with no purpose. */
+  /** Revokes a Pending user's link, so nobody activates an account with no purpose. */
   async dropPendingActivation(userId: number): Promise<void> {
-    const user = await this.users.findById(userId)
-    if (user?.isPending) await this.links.deleteForUser(user.id)
+    return dropPendingActivation(this.users, this.links, this.invitations, userId)
   }
 }

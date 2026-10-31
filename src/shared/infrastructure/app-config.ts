@@ -32,12 +32,13 @@ const EnvSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
     DATABASE_URL: z.string().min(1),
-    /** Activation link lifetime, in seconds (default 7 days). */
-    ACTIVATION_LINK_TTL: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(7 * 24 * 60 * 60),
+    /** Activation link lifetime, in whole days: the unit of Clerk's invitations (default 7). */
+    ACTIVATION_LINK_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    /**
+     * Where an Activation link lands once accepted: the events-expo deep link (ADR-0020).
+     * Required in production; unset elsewhere, Clerk's default page is used.
+     */
+    ACTIVATION_REDIRECT_URL: z.url().optional(),
     DOCS_ENABLED: z
       .enum(['true', 'false'])
       .default('false')
@@ -68,6 +69,13 @@ const EnvSchema = z
         message: 'obrigatória em produção (verificação do token do Clerk)',
       })
     }
+    if (env.NODE_ENV === 'production' && env.ACTIVATION_REDIRECT_URL === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ACTIVATION_REDIRECT_URL'],
+        message: 'obrigatória em produção (deep link do app no Activation link)',
+      })
+    }
     const missing = UPSTASH_VARS.filter((name) => env[name] === undefined)
     const required = env.NODE_ENV === 'production' || missing.length < UPSTASH_VARS.length
     if (!required) return
@@ -89,7 +97,9 @@ export class AppConfig {
   readonly port: number
   readonly databaseUrl: string
   readonly docsEnabled: boolean
-  readonly activationLinkTtlSeconds: number
+  readonly activationLinkTtlDays: number
+  /** Null outside production when unset: Clerk's default page then receives the invitation. */
+  readonly activationRedirectUrl: string | null
   readonly corsOrigins: string[]
   /** Null outside production when unset: nothing then verifies a Clerk token. */
   readonly clerkSecretKey: string | null
@@ -109,7 +119,8 @@ export class AppConfig {
     this.port = env.PORT
     this.databaseUrl = env.DATABASE_URL
     this.docsEnabled = env.DOCS_ENABLED
-    this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
+    this.activationLinkTtlDays = env.ACTIVATION_LINK_TTL_DAYS
+    this.activationRedirectUrl = env.ACTIVATION_REDIRECT_URL ?? null
     this.corsOrigins = env.CORS_ORIGINS
     this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.clerkJwtKey = env.CLERK_JWT_KEY ?? null

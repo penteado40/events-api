@@ -5,12 +5,8 @@ import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
-import {
-  type ActivationLinkOptions,
-  createPendingUser,
-  type IssuedActivationLink,
-} from '../issue-activation-link.js'
-import type { ActivationTokenGenerator } from '../ports/activation-token-generator.js'
+import { createPendingUser, type IssuedActivationLink } from '../issue-activation-link.js'
+import type { InvitationIssuer } from '../ports/invitation-issuer.js'
 
 export interface CreateUserInput {
   actor: User
@@ -19,8 +15,9 @@ export interface CreateUserInput {
   phone: string
 }
 
-export interface CreateUserOutput extends IssuedActivationLink {
+export interface CreateUserOutput {
   user: User
+  activationLink: IssuedActivationLink
 }
 
 /** The Super admin creates a Pending user, who activates through the returned link. */
@@ -28,9 +25,8 @@ export class CreateUserUseCase {
   constructor(
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
-    private readonly tokens: ActivationTokenGenerator,
+    private readonly invitations: InvitationIssuer,
     private readonly clock: Clock,
-    private readonly options: ActivationLinkOptions,
   ) {}
 
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
@@ -40,14 +36,12 @@ export class CreateUserUseCase {
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    const { user, link } = await createPendingUser(
+    return createPendingUser(
       this.users,
       this.links,
-      this.tokens,
+      this.invitations,
       { name: input.name, email, phone },
       stamp,
-      this.options,
     )
-    return { user, ...link }
   }
 }

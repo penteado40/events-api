@@ -70,6 +70,7 @@ describe('AppConfig: Upstash', () => {
         ...REQUIRED,
         ...UPSTASH,
         CLERK_SECRET_KEY: 'sk_live_x',
+        ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
         NODE_ENV: 'production',
       }).upstash,
     ).not.toBeNull()
@@ -107,6 +108,38 @@ describe('AppConfig: CLERK_SECRET_KEY', () => {
         NODE_ENV: 'production',
       }),
     ).toThrow(/CLERK_SECRET_KEY/)
+  })
+})
+
+describe('AppConfig: Activation link', () => {
+  it('lasts 7 days and has no redirect by default', () => {
+    const config = AppConfig.fromEnv(REQUIRED)
+
+    expect(config.activationLinkTtlDays).toBe(7)
+    expect(config.activationRedirectUrl).toBeNull()
+  })
+
+  it("reads the lifetime in days and the app's deep link", () => {
+    const config = AppConfig.fromEnv({
+      ...REQUIRED,
+      ACTIVATION_LINK_TTL_DAYS: '3',
+      ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
+    })
+
+    expect(config.activationLinkTtlDays).toBe(3)
+    expect(config.activationRedirectUrl).toBe('eventsexpo://activate')
+  })
+
+  it('requires the redirect in production, where the link must open the app', () => {
+    expect(() =>
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+        UPSTASH_REDIS_REST_TOKEN: 'token',
+        CLERK_SECRET_KEY: 'sk_live_x',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/ACTIVATION_REDIRECT_URL/)
   })
 })
 

@@ -116,6 +116,15 @@ describe('AuthenticateUseCase', () => {
     expect(await users.findByClerkId('user_ana')).toBeNull()
   })
 
+  it('refuses another Clerk user with UNAUTHENTICATED, not revealing the User is deactivated', async () => {
+    await authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') })
+    await deactivated(users, ana.id)
+
+    await expect(
+      authenticate.execute({ token: tokenFor('user_other', 'ana@example.com') }),
+    ).rejects.toEqual(new AppError('UNAUTHENTICATED'))
+  })
+
   it('refuses a token the verifier does not accept with UNAUTHENTICATED', async () => {
     await expect(authenticate.execute({ token: 'garbage' })).rejects.toEqual(
       new AppError('UNAUTHENTICATED'),

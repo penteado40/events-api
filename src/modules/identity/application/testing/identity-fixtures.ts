@@ -12,7 +12,11 @@ export async function signedIn(users: UserRepository, user: User): Promise<User>
   return user
 }
 
-/** Marks the User as a Deactivated user, as the database or a script does (no route yet, PROJ-99). */
+/**
+ * Marks the User as a Deactivated user in the in-memory repository: the real
+ * mark is set by the database or a script (no route yet, PROJ-99), and
+ * `PrismaUserRepository.save` does not write it.
+ */
 export async function deactivated(users: UserRepository, userId: number): Promise<User> {
   const user = await users.findById(userId)
   if (!user) throw new Error(`No User ${userId}`)

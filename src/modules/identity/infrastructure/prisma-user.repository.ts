@@ -54,6 +54,8 @@ export class PrismaUserRepository extends UserRepository {
     }
   }
 
+  // `deactivatedAt` is left out: it is set by the database or a script (PROJ-99
+  // brings the route), and writing an entity read earlier would undo it.
   async save(user: User): Promise<void> {
     await this.prisma.user.update({
       where: { id: user.id },

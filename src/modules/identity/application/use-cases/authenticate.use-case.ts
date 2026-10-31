@@ -32,24 +32,24 @@ export class AuthenticateUseCase {
     if (!identity) throw new AppError('UNAUTHENTICATED')
 
     const linked = await this.users.findByClerkId(identity.externalId)
-    if (linked) return active(linked)
+    if (linked) return notDeactivated(linked)
 
     const user = await this.users.findByEmail(toEmail(identity.email))
     if (!user) throw new AppError('USER_NOT_INVITED')
-    if (user.isDeactivated) throw new AppError('USER_DEACTIVATED')
     // Linked to another Clerk user: the link is never taken over.
     if (user.isLinkedToClerk) throw new AppError('UNAUTHENTICATED')
+    notDeactivated(user)
     user.linkToClerk(identity.externalId, { by: user.id, at: this.clock.now() })
     if (await this.users.saveClerkLink(user)) return user
 
     // Another request linked the User first: fine only if it was this same Clerk user.
     const winner = await this.users.findByClerkId(identity.externalId)
-    if (winner?.id === user.id) return active(winner)
+    if (winner?.id === user.id) return notDeactivated(winner)
     throw new AppError('UNAUTHENTICATED')
   }
 }
 
-function active(user: User): User {
+function notDeactivated(user: User): User {
   if (user.isDeactivated) throw new AppError('USER_DEACTIVATED')
   return user
 }

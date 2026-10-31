@@ -162,7 +162,7 @@ describe('Users (Super admin)', () => {
   })
 
   describe('POST /api/v1/users/:id/activation-link', () => {
-    it('issues a new Activation link and stores it in place of the previous one', async () => {
+    it('issues a new Activation link and revokes the previous one', async () => {
       const created = await t
         .http()
         .post('/api/v1/users')
@@ -184,7 +184,10 @@ describe('Users (Super admin)', () => {
       const links = await testPrisma().activationLink.findMany({
         where: { userId: created.body.data.user.id },
       })
-      expect(links.map((l) => l.invitationId)).toEqual([t.invitations.open().at(-1)])
+      const newId = t.invitations.open().at(-1)
+      expect(links.map((l) => l.invitationId)).toEqual([newId])
+      expect(res.body.data.url).toContain(newId)
+      expect(oldUrl).toContain(t.invitations.revoked().at(-1))
     })
 
     it('answers 409 USER_ALREADY_ACTIVE for a User who already signed in', async () => {

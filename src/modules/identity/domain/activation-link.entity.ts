@@ -1,7 +1,7 @@
 export interface ActivationLinkProps {
   id: number
   userId: number
-  /** The Clerk invitation the link is (ADR-0020); its url is never stored. */
+  /** The identity provider's invitation behind the link (ADR-0020); its url is never stored. */
   invitationId: string
   expiresAt: Date
   createdAt: Date
@@ -16,7 +16,7 @@ export interface NewActivationLinkProps {
   expiresAt: Date
 }
 
-/** The invitation through which a Pending user signs in for the first time. */
+/** The Activation link through which a Pending user signs in for the first time. */
 export class ActivationLink {
   private constructor(private readonly props: ActivationLinkProps) {}
 

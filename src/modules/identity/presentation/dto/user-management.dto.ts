@@ -13,10 +13,12 @@ export class CreateUserDto extends createZodDto(
 const ActivationLinkJsonSchema = z.object({
   url: z.url().meta({
     description:
-      'O convite do Clerk. Quem o gerou repassa à pessoa, que entra pela primeira vez com este email.',
+      'O Activation link. Quem o gerou repassa à pessoa, que entra pela primeira vez com este email.',
   }),
   expiresAt: z.iso.datetime(),
 })
+
+export type ActivationLinkJson = z.infer<typeof ActivationLinkJsonSchema>
 
 export class CreateUserResponseDto extends createZodDto(
   z.object({ data: z.object({ user: UserJsonSchema, activationLink: ActivationLinkJsonSchema }) }),

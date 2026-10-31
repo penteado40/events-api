@@ -112,6 +112,18 @@ describe('UserAccounts', () => {
       expect(invitations.revoked()).toEqual(['inv_1'])
     })
 
+    it('fails naming the open invitation when revoking it fails too', async () => {
+      links.failNextReplace()
+      invitations.failNextRevoke()
+
+      await expect(
+        accounts.ensureUser(
+          { email: 'joao@x.com', name: 'João', phone: '+5521987654321' },
+          OWNER_STAMP,
+        ),
+      ).rejects.toThrow(/inv_1/)
+    })
+
     it('finds the User another request created meanwhile, revoking its own invitation', async () => {
       users.createConcurrently({
         name: 'Winner',
@@ -152,17 +164,18 @@ describe('UserAccounts', () => {
   })
 
   describe('reissueActivationLink', () => {
-    it('issues a new link for a Pending user, replacing the stored one', async () => {
-      const joao = await existing('joao@x.com', { active: false })
-      await links.replaceForUser(
-        { userId: joao.id, invitationId: 'inv_old', expiresAt: NOW },
+    it('issues a new link for a Pending user and revokes the previous one', async () => {
+      const { user } = await accounts.ensureUser(
+        { email: 'joao@x.com', name: 'João', phone: '+5521987654321' },
         SCRIPT_STAMP,
       )
 
-      const link = await accounts.reissueActivationLink(joao.id, OWNER_STAMP)
+      const link = await accounts.reissueActivationLink(user.id, OWNER_STAMP)
 
-      expect(link.url).toBe('https://accounts.clerk.test/accept?invitation=inv_1')
-      expect(links.all().map((l) => [l.invitationId, l.createdById])).toEqual([['inv_1', 10]])
+      expect(link.url).toBe('https://accounts.clerk.test/accept?invitation=inv_2')
+      expect(links.all().map((l) => [l.invitationId, l.createdById])).toEqual([['inv_2', 10]])
+      expect(invitations.open()).toEqual(['inv_2'])
+      expect(invitations.revoked()).toEqual(['inv_1'])
     })
 
     it('refuses an active User', async () => {

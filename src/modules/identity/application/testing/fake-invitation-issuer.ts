@@ -10,6 +10,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export class FakeInvitationIssuer extends InvitationIssuer {
   private sequence = 0
   private failing = false
+  private failingRevoke = false
   private readonly invitations = new Map<string, { email: string; revoked: boolean }>()
 
   constructor(
@@ -35,6 +36,10 @@ export class FakeInvitationIssuer extends InvitationIssuer {
   }
 
   async revoke(id: string): Promise<void> {
+    if (this.failingRevoke) {
+      this.failingRevoke = false
+      throw new Error('fake invitation issuer: revoke failed')
+    }
     const invitation = this.invitations.get(id)
     if (!invitation) throw new Error(`fake invitation issuer: no invitation ${id}`)
     invitation.revoked = true
@@ -42,6 +47,10 @@ export class FakeInvitationIssuer extends InvitationIssuer {
 
   failNextIssue(): void {
     this.failing = true
+  }
+
+  failNextRevoke(): void {
+    this.failingRevoke = true
   }
 
   /** Ids of the invitations still usable. */

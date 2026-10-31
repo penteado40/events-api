@@ -14,6 +14,7 @@ const NOW = new Date('2026-09-28T12:00:00.000Z')
 describe('IssueActivationLinkUseCase', () => {
   let users: InMemoryUserRepository
   let links: InMemoryActivationLinkRepository
+  let invitations: FakeInvitationIssuer
   let issueLink: IssueActivationLinkUseCase
   let superAdmin: User
   let pedro: User
@@ -22,12 +23,8 @@ describe('IssueActivationLinkUseCase', () => {
     users = new InMemoryUserRepository()
     links = new InMemoryActivationLinkRepository()
     const clock = new FixedClock(NOW)
-    issueLink = new IssueActivationLinkUseCase(
-      users,
-      links,
-      new FakeInvitationIssuer(clock, 1),
-      clock,
-    )
+    invitations = new FakeInvitationIssuer(clock, 1)
+    issueLink = new IssueActivationLinkUseCase(users, links, invitations, clock)
     superAdmin = await signedIn(
       users,
       await users.create(
@@ -49,20 +46,22 @@ describe('IssueActivationLinkUseCase', () => {
       },
       SCRIPT_STAMP,
     )
+    const old = await invitations.issue(pedro.email.value)
     await links.replaceForUser(
-      { userId: pedro.id, invitationId: 'inv_old', expiresAt: NOW },
+      { userId: pedro.id, invitationId: old.id, expiresAt: old.expiresAt },
       SCRIPT_STAMP,
     )
   })
 
-  it('issues a new link for a Pending user, replacing the stored one', async () => {
+  it('issues a new link for a Pending user and revokes the previous one', async () => {
     const result = await issueLink.execute({ actor: superAdmin, userId: pedro.id })
 
     expect(result).toEqual({
-      url: 'https://accounts.clerk.test/accept?invitation=inv_1',
+      url: 'https://accounts.clerk.test/accept?invitation=inv_2',
       expiresAt: new Date('2026-09-29T12:00:00.000Z'),
     })
-    expect(links.all().map((l) => l.invitationId)).toEqual(['inv_1'])
+    expect(links.all().map((l) => l.invitationId)).toEqual(['inv_2'])
+    expect(invitations.open()).toEqual(['inv_2'])
   })
 
   it('records the Super admin as the Author of the new link', async () => {

@@ -11,6 +11,7 @@ import { Clock } from '../../../src/shared/application/clock.js'
 import { RateLimitStore } from '../../../src/shared/application/rate-limit-store.js'
 import { InMemoryRateLimitStore } from '../../../src/shared/application/testing/in-memory-rate-limit-store.js'
 import { AppConfig } from '../../../src/shared/infrastructure/app-config.js'
+import { SystemClock } from '../../../src/shared/infrastructure/system-clock.js'
 import { loadTestEnv } from './env.js'
 
 export interface TestAppOptions {
@@ -40,10 +41,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     DATABASE_URL: databaseUrl,
   })
 
-  const invitations = new FakeInvitationIssuer(
-    { now: () => new Date() },
-    config.activationLinkTtlDays,
-  )
+  const invitations = new FakeInvitationIssuer(new SystemClock(), config.activationLinkTtlDays)
   let builder = Test.createTestingModule({
     imports: [AppModule.forRoot(config), ...(options.imports ?? [])],
     controllers: options.controllers ?? [],

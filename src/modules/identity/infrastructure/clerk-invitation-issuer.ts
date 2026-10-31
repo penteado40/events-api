@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common'
 import { createClerkClient } from '@clerk/backend'
 import { InvitationIssuer, type IssuedInvitation } from '../application/ports/invitation-issuer.js'
 
@@ -16,6 +17,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * Activation links as Clerk invitations (ADR-0020), created with `notify: false`:
  * the email goes out through us, and the url goes back to whoever created it.
  */
+@Injectable()
 export class ClerkInvitationIssuer extends InvitationIssuer {
   private client: ReturnType<typeof createClerkClient> | null = null
 
@@ -28,7 +30,7 @@ export class ClerkInvitationIssuer extends InvitationIssuer {
     const invitation = await this.clerk().invitations.createInvitation({
       emailAddress: email,
       notify: false,
-      // A Pending user may get a new link while the old one is open (PROJ-173 revokes it).
+      // A reissued Activation link is issued before the previous one is revoked.
       ignoreExisting: true,
       expiresInDays: ttlDays,
       ...(redirectUrl && { redirectUrl }),

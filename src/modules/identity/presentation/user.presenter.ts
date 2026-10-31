@@ -1,6 +1,7 @@
 import type { IssuedActivationLink } from '../application/issue-activation-link.js'
 import type { Me } from '../application/me.js'
 import type { User } from '../domain/user.entity.js'
+import type { ActivationLinkJson } from './dto/user-management.dto.js'
 import type { MeJson, UserJson } from './dto/user.dto.js'
 
 export const UserPresenter = {
@@ -15,7 +16,7 @@ export const UserPresenter = {
     }
   },
 
-  toActivationLinkJson(link: IssuedActivationLink): { url: string; expiresAt: string } {
+  toActivationLinkJson(link: IssuedActivationLink): ActivationLinkJson {
     return { url: link.url, expiresAt: link.expiresAt.toISOString() }
   },
 

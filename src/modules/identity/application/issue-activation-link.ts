@@ -13,13 +13,11 @@ export interface IssuedActivationLink {
   expiresAt: Date
 }
 
-function toActivationLink({ url, expiresAt }: IssuedInvitation): IssuedActivationLink {
-  return { url, expiresAt }
-}
-
 /**
  * Runs `write` after the invitation exists, and revokes the invitation if the
  * write fails, so no usable link is left without a stored record (ADR-0014).
+ * The write's error is the one that reaches the caller, unless the revoke
+ * fails too: then the error names the invitation left open, for the logs.
  */
 async function withInvitation<T>(
   invitations: InvitationIssuer,
@@ -30,10 +28,31 @@ async function withInvitation<T>(
   try {
     return await write(invitation)
   } catch (error) {
-    // Best effort: the write's error is the one that matters to the caller.
-    await invitations.revoke(invitation.id).catch(() => undefined)
+    try {
+      await invitations.revoke(invitation.id)
+    } catch (revokeError) {
+      throw new AggregateError(
+        [error, revokeError],
+        `Gravação falhou e o convite ${invitation.id} ficou aberto: revogue-o no Clerk`,
+        { cause: revokeError },
+      )
+    }
     throw error
   }
+}
+
+/** Stores the invitation as the User's Activation link, in place of the previous one. */
+async function storeLink(
+  links: ActivationLinkRepository,
+  userId: number,
+  invitation: IssuedInvitation,
+  stamp: Stamp,
+): Promise<IssuedActivationLink> {
+  await links.replaceForUser(
+    { userId, invitationId: invitation.id, expiresAt: invitation.expiresAt },
+    stamp,
+  )
+  return { url: invitation.url, expiresAt: invitation.expiresAt }
 }
 
 /**
@@ -52,15 +71,14 @@ export async function createPendingUser(
       { name: props.name.trim(), email: props.email, phone: props.phone, role: 'USER' },
       stamp,
     )
-    await links.replaceForUser(
-      { userId: user.id, invitationId: invitation.id, expiresAt: invitation.expiresAt },
-      stamp,
-    )
-    return { user, activationLink: toActivationLink(invitation) }
+    return { user, activationLink: await storeLink(links, user.id, invitation, stamp) }
   })
 }
 
-/** Reissues the link of a Pending user: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active. */
+/**
+ * Reissues the link of a Pending user and revokes the previous one, so a lost
+ * or leaked link stops working: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+ */
 export async function reissueActivationLink(
   users: UserRepository,
   links: ActivationLinkRepository,
@@ -71,13 +89,12 @@ export async function reissueActivationLink(
   const user = await users.findById(userId)
   if (!user) throw new AppError('NOT_FOUND')
   if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
-  return withInvitation(invitations, user.email, async (invitation) => {
-    await links.replaceForUser(
-      { userId: user.id, invitationId: invitation.id, expiresAt: invitation.expiresAt },
-      stamp,
-    )
-    return toActivationLink(invitation)
-  })
+  const previous = await links.findForUser(user.id)
+  const link = await withInvitation(invitations, user.email, (invitation) =>
+    storeLink(links, user.id, invitation, stamp),
+  )
+  if (previous) await invitations.revoke(previous.invitationId)
+  return link
 }
 
 /** Revokes and drops a Pending user's link; an active User's link stays as history. */

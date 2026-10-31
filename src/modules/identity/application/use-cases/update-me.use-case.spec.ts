@@ -5,6 +5,7 @@ import { Email } from '../../../../shared/domain/email.vo.js'
 import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
+import { FakeGroupMembers } from '../testing/fake-group-members.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { UpdateMeUseCase } from './update-me.use-case.js'
 
@@ -12,12 +13,14 @@ const NOW = new Date('2026-10-31T12:00:00.000Z')
 
 describe('UpdateMeUseCase', () => {
   let users: InMemoryUserRepository
+  let groupMembers: FakeGroupMembers
   let updateMe: UpdateMeUseCase
   let ana: User
 
   beforeEach(async () => {
     users = new InMemoryUserRepository()
-    updateMe = new UpdateMeUseCase(users, new FixedClock(NOW))
+    groupMembers = new FakeGroupMembers()
+    updateMe = new UpdateMeUseCase(users, groupMembers, new FixedClock(NOW))
     ana = await signedIn(
       users,
       await users.create(
@@ -33,7 +36,7 @@ describe('UpdateMeUseCase', () => {
   })
 
   it('changes the name and the phone, stored normalized, authored by the User', async () => {
-    const user = await updateMe.execute({
+    const { user } = await updateMe.execute({
       actor: ana,
       name: '  Ana Souza  ',
       phone: '+55 (21) 98765-4321',
@@ -49,10 +52,22 @@ describe('UpdateMeUseCase', () => {
   })
 
   it('keeps what the request leaves out', async () => {
-    const user = await updateMe.execute({ actor: ana, phone: '+5521987654321' })
+    const { user } = await updateMe.execute({ actor: ana, phone: '+5521987654321' })
 
     expect(user.name).toBe('Ana')
     expect(user.phone.value).toBe('+5521987654321')
+  })
+
+  it('answers as GET /me does, with the Membership', async () => {
+    groupMembers.set(ana.id, [{ groupId: 1, groupName: 'Vocal Livre', role: 'VIEWER' }])
+
+    const me = await updateMe.execute({ actor: ana, name: 'Ana Souza' })
+
+    expect(me).toEqual({
+      user: ana,
+      isSuperAdmin: false,
+      memberships: [{ groupId: 1, groupName: 'Vocal Livre', role: 'VIEWER' }],
+    })
   })
 
   it('refuses an invalid phone with VALIDATION_ERROR, changing nothing', async () => {

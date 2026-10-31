@@ -50,8 +50,20 @@ describe('GET /api/v1/me', () => {
         phone: '+5511987654321',
         role: 'SUPER_ADMIN',
         createdAt: user.createdAt.toISOString(),
+        isSuperAdmin: true,
+        memberships: [],
       },
     })
+  })
+
+  // No route writes Group members yet (PROJ-172, PROJ-177): nobody has a Membership.
+  it('tells a User apart from the Super admin, with no Membership while there are no Groups', async () => {
+    const user = await createUser({ email: 'duda@example.com', clerkId: 'user_duda' })
+
+    const res = await t.http().get('/api/v1/me').auth(sessionTokenFor(user), { type: 'bearer' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({ id: user.id, isSuperAdmin: false, memberships: [] })
   })
 
   it('links an unknown Clerk user to the User with its email, then uses the link', async () => {
@@ -183,6 +195,8 @@ describe('PATCH /api/v1/me', () => {
         phone: '+5521987654321',
         role: 'USER',
         createdAt: user.createdAt.toISOString(),
+        isSuperAdmin: false,
+        memberships: [],
       },
     })
     const stored = await storedUser(user.id)

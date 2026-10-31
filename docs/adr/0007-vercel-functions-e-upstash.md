@@ -18,3 +18,7 @@ O store é primitivo: só incrementa o contador de uma chave com expiração. O 
 ## Emenda: pivô para Groups (2026-10-02)
 
 Vercel Functions e o rate limit no Upstash continuam valendo. Sem Sites (ADR-0016), o CORS deixa de aceitar o `siteUrl` de cada Event e fica só com as origens da env; o app mobile (events-expo) não passa por CORS. O exemplo do `waitUntil` depois do RSVP perde o objeto, mas a regra continua: trabalho depois da resposta usa `waitUntil`. O envio agrupado de notificações pode usar o QStash como despertador (pesquisa em PROJ-116), o que se decide no ticket de notificações (PROJ-75).
+
+## Emenda: identidade no Clerk (PROJ-164, 2026-10-31)
+
+O login próprio saiu (ADR-0020), e com ele as duas políticas que existiam, por IP e por email. A infraestrutura fica: `RateLimiter`, `RateLimitStore` com Upstash e o guard `@RateLimit`, com a tabela `RATE_LIMIT_POLICIES` vazia até uma rota pública precisar de limite. Cada política é um objeto com nome, limite e janela, passado ao `@RateLimit`. As credenciais do Upstash continuam obrigatórias em produção. Onde este ADR diz que "quem autoriza continua sendo a senha ou o API token", leia: quem autoriza é o token de sessão do Clerk.

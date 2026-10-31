@@ -9,7 +9,6 @@ import { completeOpenApiDocument } from './openapi-document.js'
 
 export const DOCS_PATH = `/${API_PREFIX}/docs`
 export const OPENAPI_PATH = `/${API_PREFIX}/openapi`
-export const TOKEN_PATH = `/${API_PREFIX}/auth/token`
 
 const SCALAR_CDN = 'https://cdn.jsdelivr.net'
 
@@ -22,13 +21,9 @@ export function setupDocs(app: INestApplication): void {
     .setTitle('events-api')
     .setDescription('API multi-evento: RSVP, lista de presentes e emails para convidados.')
     .setVersion('v1')
+    // The Clerk session token (ADR-0020), pasted by hand until PROJ-169.
     .addBearerAuth()
-    .addOAuth2(
-      { type: 'oauth2', flows: { password: { tokenUrl: TOKEN_PATH, scopes: {} } } },
-      'oauth2',
-    )
     // Every route takes a token unless it is @Public() (see completeOpenApiDocument).
-    .addSecurityRequirements('oauth2')
     .addSecurityRequirements('bearer')
     .build()
   const document = completeOpenApiDocument(
@@ -56,7 +51,7 @@ export function setupDocs(app: INestApplication): void {
     const render = apiReference({
       url: OPENAPI_PATH,
       nonce,
-      authentication: { preferredSecurityScheme: 'oauth2' },
+      authentication: { preferredSecurityScheme: 'bearer' },
     })
     render(req, res)
   })

@@ -3,7 +3,6 @@ import { AppConfig } from './app-config.js'
 
 const REQUIRED = {
   DATABASE_URL: 'postgresql://localhost/events',
-  JWT_SECRET: 'x'.repeat(32),
 }
 
 describe('AppConfig: CORS_ORIGINS', () => {
@@ -67,7 +66,12 @@ describe('AppConfig: Upstash', () => {
       /UPSTASH_REDIS_REST_URL/,
     )
     expect(
-      AppConfig.fromEnv({ ...REQUIRED, ...UPSTASH, NODE_ENV: 'production' }).upstash,
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        ...UPSTASH,
+        CLERK_SECRET_KEY: 'sk_live_x',
+        NODE_ENV: 'production',
+      }).upstash,
     ).not.toBeNull()
   })
 
@@ -83,5 +87,51 @@ describe('AppConfig: behindVercelProxy', () => {
   it('is true only when VERCEL=1', () => {
     expect(AppConfig.fromEnv(REQUIRED).behindVercelProxy).toBe(false)
     expect(AppConfig.fromEnv({ ...REQUIRED, VERCEL: '1' }).behindVercelProxy).toBe(true)
+  })
+})
+
+describe('AppConfig: CLERK_SECRET_KEY', () => {
+  it('is optional outside production, where the tests verify tokens with a fake', () => {
+    expect(AppConfig.fromEnv(REQUIRED).clerkSecretKey).toBeNull()
+    expect(AppConfig.fromEnv({ ...REQUIRED, CLERK_SECRET_KEY: 'sk_test_x' }).clerkSecretKey).toBe(
+      'sk_test_x',
+    )
+  })
+
+  it('is required in production, where every request is verified by Clerk', () => {
+    expect(() =>
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+        UPSTASH_REDIS_REST_TOKEN: 'token',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/CLERK_SECRET_KEY/)
+  })
+})
+
+describe('AppConfig: Clerk verification', () => {
+  it('has no JWT key and no authorized parties by default', () => {
+    const config = AppConfig.fromEnv(REQUIRED)
+
+    expect(config.clerkJwtKey).toBeNull()
+    expect(config.clerkAuthorizedParties).toEqual([])
+  })
+
+  it('reads the PEM public key and the comma-separated authorized parties', () => {
+    const config = AppConfig.fromEnv({
+      ...REQUIRED,
+      CLERK_JWT_KEY: '-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----',
+      CLERK_AUTHORIZED_PARTIES: 'https://painel.com, http://localhost:8081',
+    })
+
+    expect(config.clerkJwtKey).toContain('BEGIN PUBLIC KEY')
+    expect(config.clerkAuthorizedParties).toEqual(['https://painel.com', 'http://localhost:8081'])
+  })
+
+  it('refuses an authorized party that is not an exact origin', () => {
+    expect(() =>
+      AppConfig.fromEnv({ ...REQUIRED, CLERK_AUTHORIZED_PARTIES: 'https://painel.com/' }),
+    ).toThrow(/CLERK_AUTHORIZED_PARTIES/)
   })
 })

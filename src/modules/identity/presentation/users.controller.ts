@@ -25,7 +25,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Criar um User',
     description:
-      'Só o Super admin. O User nasce Pending user, sem senha; entregue o `activationToken` para ele se ativar.',
+      'Só o Super admin. O User nasce Pending user e fica ativo ao entrar pela primeira vez com este email.',
   })
   @ApiCreatedResponse({ type: CreateUserResponseDto })
   @ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')

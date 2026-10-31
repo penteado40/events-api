@@ -1,9 +1,9 @@
 import { Controller, Get } from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { FakeAuthVerifier } from '../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser } from './support/factories.js'
+import { createUser, sessionTokenFor } from './support/factories.js'
 
 /** A route with no `@Public()`: the global guard must protect it. */
 @Controller('test-private')
@@ -25,16 +25,20 @@ describe('GET /api/v1/me', () => {
 
   afterAll(() => t.close())
 
-  async function loginAs(email: string, password = 'correct-password'): Promise<string> {
-    const res = await t.http().post('/api/v1/auth/login').send({ email, password })
-    return res.body.data.token as string
+  async function clerkIdOf(userId: number): Promise<string | null> {
+    const row = await testPrisma().user.findUniqueOrThrow({ where: { id: userId } })
+    return row.clerkId
   }
 
-  it('returns the current User (without the password hash) for a valid JWT', async () => {
-    const user = await createUser({ name: 'Bia', email: 'bia@example.com', role: 'SUPER_ADMIN' })
-    const token = await loginAs('bia@example.com')
+  it('returns the User already linked to the Clerk user of the token', async () => {
+    const user = await createUser({
+      name: 'Bia',
+      email: 'bia@example.com',
+      role: 'SUPER_ADMIN',
+      clerkId: 'user_bia',
+    })
 
-    const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
+    const res = await t.http().get('/api/v1/me').auth(sessionTokenFor(user), { type: 'bearer' })
 
     expect(res.status).toBe(200)
     expect(res.body).toEqual({
@@ -46,6 +50,44 @@ describe('GET /api/v1/me', () => {
         createdAt: user.createdAt.toISOString(),
       },
     })
+  })
+
+  it('links an unknown Clerk user to the User with its email, then uses the link', async () => {
+    const user = await createUser({ email: 'caio@example.com' })
+    const first = FakeAuthVerifier.tokenFor({ externalId: 'user_caio', email: 'caio@example.com' })
+
+    const res = await t.http().get('/api/v1/me').auth(first, { type: 'bearer' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.id).toBe(user.id)
+    expect(await clerkIdOf(user.id)).toBe('user_caio')
+
+    // Linked: the Clerk user is found by its id, whatever email the token carries.
+    const later = FakeAuthVerifier.tokenFor({ externalId: 'user_caio', email: 'caio@new.example' })
+    const again = await t.http().get('/api/v1/me').auth(later, { type: 'bearer' })
+    expect(again.status).toBe(200)
+    expect(again.body.data.id).toBe(user.id)
+  })
+
+  it('answers 401 USER_NOT_INVITED when the email belongs to no User', async () => {
+    const token = FakeAuthVerifier.tokenFor({ externalId: 'user_x', email: 'nobody@example.com' })
+
+    const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
+
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual({ error: { code: 'USER_NOT_INVITED', message: expect.any(String) } })
+    expect(await testPrisma().user.count({ where: { email: 'nobody@example.com' } })).toBe(0)
+  })
+
+  it('refuses an email whose User is linked to another Clerk user, keeping the link', async () => {
+    const user = await createUser({ email: 'dani@example.com', clerkId: 'user_dani' })
+    const token = FakeAuthVerifier.tokenFor({ externalId: 'user_other', email: 'dani@example.com' })
+
+    const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
+
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual(UNAUTHENTICATED)
+    expect(await clerkIdOf(user.id)).toBe('user_dani')
   })
 
   it('answers 401 UNAUTHENTICATED without a token', async () => {
@@ -63,58 +105,41 @@ describe('GET /api/v1/me', () => {
     expect(res.body).toEqual(UNAUTHENTICATED)
   })
 
-  it('answers 401 UNAUTHENTICATED for a malformed or wrongly signed token', async () => {
-    const forged = await new JwtService({ secret: 'x'.repeat(40) }).signAsync({ sub: '1' })
+  it('answers 401 UNAUTHENTICATED for a token the verifier refuses', async () => {
+    const user = await createUser({ email: 'edu@example.com' })
+    const valid = sessionTokenFor(user)
 
-    for (const token of ['garbage', forged]) {
-      const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
-      expect(res.status).toBe(401)
+    for (const authorization of ['Bearer garbage', `Basic ${valid}`, 'Bearer', valid]) {
+      const res = await t.http().get('/api/v1/me').set('Authorization', authorization)
+      expect(res.status, authorization).toBe(401)
       expect(res.body).toEqual(UNAUTHENTICATED)
     }
   })
 
-  it('answers 401 UNAUTHENTICATED for an expired token', async () => {
-    const user = await createUser()
-    const now = Math.floor(Date.now() / 1000)
-    const expired = await new JwtService({ secret: t.config.jwtSecret }).signAsync({
-      sub: String(user.id),
-      iat: now - 13 * 3600,
-      exp: now - 3600,
-    })
+  it.each([
+    ['post', '/api/v1/auth/login'],
+    ['post', '/api/v1/auth/activate'],
+    ['post', '/api/v1/auth/token'],
+    ['patch', '/api/v1/me/password'],
+  ] as const)(
+    'answers 404 for %s %s: sign-in and passwords live in Clerk',
+    async (method, path) => {
+      const user = await createUser()
 
-    const res = await t.http().get('/api/v1/me').auth(expired, { type: 'bearer' })
+      const res = await t
+        .http()
+        [method](path)
+        .auth(sessionTokenFor(user), { type: 'bearer' })
+        .send({})
 
-    expect(res.status).toBe(401)
-    expect(res.body).toEqual(UNAUTHENTICATED)
-  })
-
-  it('answers 401 UNAUTHENTICATED for a token issued before the last password change', async () => {
-    const user = await createUser({ email: 'caio@example.com' })
-    const token = await loginAs('caio@example.com')
-    await testPrisma().user.update({
-      where: { id: user.id },
-      data: { passwordChangedAt: new Date(Date.now() + 2000) },
-    })
-
-    const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
-
-    expect(res.status).toBe(401)
-    expect(res.body).toEqual(UNAUTHENTICATED)
-  })
-
-  it('answers 401 UNAUTHENTICATED when the User no longer exists', async () => {
-    const user = await createUser({ email: 'dani@example.com' })
-    const token = await loginAs('dani@example.com')
-    await testPrisma().user.delete({ where: { id: user.id } })
-
-    const res = await t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
-
-    expect(res.status).toBe(401)
-  })
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('NOT_FOUND')
+    },
+  )
 
   it('protects any route without @Public() through the global guard', async () => {
-    await createUser({ email: 'edu@example.com' })
-    const token = await loginAs('edu@example.com')
+    const user = await createUser({ email: 'gil@example.com' })
+    const token = sessionTokenFor(user)
 
     const anonymous = await t.http().get('/api/v1/test-private')
     const authenticated = await t.http().get('/api/v1/test-private').auth(token, { type: 'bearer' })

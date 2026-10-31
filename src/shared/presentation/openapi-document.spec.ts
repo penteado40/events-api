@@ -15,23 +15,22 @@ const op = (doc: OpenAPIObject) => doc.paths['/x']!.post!
 describe('completeOpenApiDocument', () => {
   it('groups the declared codes by the status of the catalog, one example each', () => {
     const doc = completeOpenApiDocument(
-      docWith({ 'x-public': true, 'x-error-codes': ['WEAK_PASSWORD', 'EMAIL_ALREADY_IN_USE'] }),
+      docWith({ 'x-public': true, 'x-error-codes': ['FORBIDDEN', 'EMAIL_ALREADY_IN_USE'] }),
     )
 
     const responses = op(doc).responses
-    expect(Object.keys(responses)).toEqual(['200', '400', '409'])
-    expect(responses['400']).toMatchObject({
-      description: '`WEAK_PASSWORD`',
+    expect(Object.keys(responses)).toEqual(['200', '403', '409'])
+    expect(responses['409']).toMatchObject({
+      description: '`EMAIL_ALREADY_IN_USE`',
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/ErrorResponse' },
           examples: {
-            WEAK_PASSWORD: {
+            EMAIL_ALREADY_IN_USE: {
               value: {
                 error: {
-                  code: 'WEAK_PASSWORD',
-                  message:
-                    'A senha precisa ter de 8 caracteres a 72 bytes, com ao menos uma letra maiúscula, uma minúscula, um número e um símbolo.',
+                  code: 'EMAIL_ALREADY_IN_USE',
+                  message: 'Já existe um usuário com este email.',
                 },
               },
             },
@@ -51,10 +50,12 @@ describe('completeOpenApiDocument', () => {
     })
   })
 
-  it('adds 401 UNAUTHENTICATED to every route that is not public', () => {
+  it('adds the 401s of the guard to every route that is not public', () => {
     const doc = completeOpenApiDocument(docWith({}))
 
-    expect(op(doc).responses['401']).toMatchObject({ description: '`UNAUTHENTICATED`' })
+    expect(op(doc).responses['401']).toMatchObject({
+      description: '`UNAUTHENTICATED`, `USER_NOT_INVITED`',
+    })
     expect(op(doc).security).toBeUndefined()
   })
 
@@ -67,16 +68,15 @@ describe('completeOpenApiDocument', () => {
 
   it('adds 400 VALIDATION_ERROR to routes with a body or parameters, next to declared codes', () => {
     const withBody = completeOpenApiDocument(
-      docWith({ 'x-public': true, 'x-error-codes': ['WEAK_PASSWORD'], requestBody: {} }),
+      docWith({ 'x-public': true, 'x-error-codes': ['EMAIL_ALREADY_IN_USE'], requestBody: {} }),
     )
     const withParams = completeOpenApiDocument(
       docWith({ 'x-public': true, parameters: [{ name: 'id' }] }),
     )
     const bare = completeOpenApiDocument(docWith({ 'x-public': true }))
 
-    expect(op(withBody).responses['400']).toMatchObject({
-      description: '`VALIDATION_ERROR`, `WEAK_PASSWORD`',
-    })
+    expect(op(withBody).responses['400']).toMatchObject({ description: '`VALIDATION_ERROR`' })
+    expect(op(withBody).responses['409']).toMatchObject({ description: '`EMAIL_ALREADY_IN_USE`' })
     expect(op(withParams).responses['400']).toMatchObject({ description: '`VALIDATION_ERROR`' })
     expect(op(bare).responses['400']).toBeUndefined()
   })

@@ -18,6 +18,11 @@ export class PrismaUserRepository extends UserRepository {
     return row ? toDomain(row) : null
   }
 
+  async findByClerkId(clerkId: string): Promise<User | null> {
+    const row = await this.prisma.user.findUnique({ where: { clerkId } })
+    return row ? toDomain(row) : null
+  }
+
   async findById(id: number): Promise<User | null> {
     const row = await this.prisma.user.findUnique({ where: { id } })
     return row ? toDomain(row) : null
@@ -34,7 +39,6 @@ export class PrismaUserRepository extends UserRepository {
         data: {
           name: props.name,
           email: props.email.value,
-          passwordHash: props.passwordHash,
           role: props.role,
           ...createdWith(stamp),
         },
@@ -56,13 +60,28 @@ export class PrismaUserRepository extends UserRepository {
       data: {
         name: user.name,
         email: user.email.value,
-        passwordHash: user.passwordHash,
+        clerkId: user.clerkId,
         role: user.role,
-        passwordChangedAt: user.passwordChangedAt,
         updatedAt: user.updatedAt,
         updatedById: user.updatedById,
       },
     })
+  }
+
+  async saveClerkLink(user: User): Promise<boolean> {
+    try {
+      const { count } = await this.prisma.user.updateMany({
+        where: { id: user.id, clerkId: null },
+        data: { clerkId: user.clerkId, updatedAt: user.updatedAt, updatedById: user.updatedById },
+      })
+      return count === 1
+    } catch (error) {
+      // The same Clerk user was linked to another User at the same time.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return false
+      }
+      throw error
+    }
   }
 }
 
@@ -71,9 +90,8 @@ function toDomain(row: PrismaUser): User {
     id: row.id,
     name: row.name,
     email: Email.create(row.email),
-    passwordHash: row.passwordHash,
+    clerkId: row.clerkId,
     role: row.role,
-    passwordChangedAt: row.passwordChangedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

@@ -1,6 +1,6 @@
 # Identidade no Clerk atrás de uma porta
 
-O events-api tinha autenticação própria (login, bcrypt, JWT, Activation link com definição de senha, troca de senha, política de senha e rate limit do login), testada e funcionando. Para a primeira fatia da V2, decidimos entregar a identidade ao **Clerk** (plano Hobby), pelo login com Google e Apple, por não manter senhas e por ter os convites prontos. A verificação fica atrás da porta **`AuthVerifier`** no `application` (`verify(token) → { externalId }`), com um adaptador Clerk (`verifyToken` do `@clerk/backend`) e um falso para os testes de integração. O resto do código continua conhecendo só o User local.
+O events-api tinha autenticação própria (login, bcrypt, JWT, Activation link com definição de senha, troca de senha, política de senha e rate limit do login), testada e funcionando. Para a primeira fatia da V2, decidimos entregar a identidade ao **Clerk** (plano Hobby), pelo login com Google e Apple, por não manter senhas e por ter os convites prontos. A verificação fica atrás da porta **`AuthVerifier`** no `application` (`verify(token) → { externalId, email }`, com o email verificado que o vínculo usa), com um adaptador Clerk (`verifyToken` do `@clerk/backend`) e um falso para os testes de integração. O resto do código continua conhecendo só o User local.
 
 ## Regras
 

@@ -9,6 +9,22 @@ function isExactOrigin(value: string): boolean {
   }
 }
 
+/** A comma-separated list of exact origins, empty when unset or blank. */
+const originList = z
+  .string()
+  .default('')
+  .transform((value) =>
+    value
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin !== ''),
+  )
+  .pipe(
+    z.array(
+      z.string().refine(isExactOrigin, 'cada origem precisa ser exata, ex.: https://painel.com'),
+    ),
+  )
+
 const UPSTASH_VARS = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'] as const
 
 const EnvSchema = z
@@ -16,7 +32,6 @@ const EnvSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
     DATABASE_URL: z.string().min(1),
-    JWT_SECRET: z.string().min(32, 'JWT_SECRET precisa de pelo menos 32 caracteres'),
     /** Activation link lifetime, in seconds (default 7 days). */
     ACTIVATION_LINK_TTL: z.coerce
       .number()
@@ -28,22 +43,16 @@ const EnvSchema = z
       .default('false')
       .transform((value) => value === 'true'),
     /** Comma-separated origins CORS accepts besides localhost outside production (e.g. the Panel). */
-    CORS_ORIGINS: z
-      .string()
-      .default('')
-      .transform((value) =>
-        value
-          .split(',')
-          .map((origin) => origin.trim())
-          .filter((origin) => origin !== ''),
-      )
-      .pipe(
-        z.array(
-          z
-            .string()
-            .refine(isExactOrigin, 'cada origem precisa ser exata, ex.: https://painel.com'),
-        ),
-      ),
+    CORS_ORIGINS: originList,
+    /** Verifies the Clerk session tokens (ADR-0020). Required in production; tests use a fake. */
+    CLERK_SECRET_KEY: z.string().min(1).optional(),
+    /** Clerk's PEM public key: verifies tokens without fetching the JWKS (no call per unknown `kid`). */
+    CLERK_JWT_KEY: z.string().min(1).optional(),
+    /**
+     * Origins whose tokens (`azp`) are accepted. Once set, a token without `azp` is refused
+     * too: set it only after checking what the app (events-expo) sends.
+     */
+    CLERK_AUTHORIZED_PARTIES: originList,
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -52,6 +61,13 @@ const EnvSchema = z
     VERCEL_ENV: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.CLERK_SECRET_KEY === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLERK_SECRET_KEY'],
+        message: 'obrigatória em produção (verificação do token do Clerk)',
+      })
+    }
     const missing = UPSTASH_VARS.filter((name) => env[name] === undefined)
     const required = env.NODE_ENV === 'production' || missing.length < UPSTASH_VARS.length
     if (!required) return
@@ -72,10 +88,15 @@ export class AppConfig {
   readonly nodeEnv: 'development' | 'test' | 'production'
   readonly port: number
   readonly databaseUrl: string
-  readonly jwtSecret: string
   readonly docsEnabled: boolean
   readonly activationLinkTtlSeconds: number
   readonly corsOrigins: string[]
+  /** Null outside production when unset: nothing then verifies a Clerk token. */
+  readonly clerkSecretKey: string | null
+  /** Null when unset: Clerk's keys are then fetched (and cached) from its JWKS. */
+  readonly clerkJwtKey: string | null
+  /** Empty when unset: the token's `azp` is then not checked. */
+  readonly clerkAuthorizedParties: string[]
   /** Null outside production when unset: the counters then stay in memory. */
   readonly upstash: { url: string; token: string } | null
   /** Prefix of every rate-limit key, one per environment sharing the Upstash database. */
@@ -87,10 +108,12 @@ export class AppConfig {
     this.nodeEnv = env.NODE_ENV
     this.port = env.PORT
     this.databaseUrl = env.DATABASE_URL
-    this.jwtSecret = env.JWT_SECRET
     this.docsEnabled = env.DOCS_ENABLED
     this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
     this.corsOrigins = env.CORS_ORIGINS
+    this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
+    this.clerkJwtKey = env.CLERK_JWT_KEY ?? null
+    this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
         ? { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }

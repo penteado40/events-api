@@ -148,7 +148,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a C
 | `npm run test:unit` | Unit tests and the architecture lint tests, no database |
 | `npm run test:integration` | HTTP tests against the real Postgres in `DATABASE_URL_TEST` |
 | `npm run prisma:migrate` | Creates a migration from `prisma/schema.prisma` |
-| `npm run create-super-admin -- --email=... --name=...` | Creates or promotes the Super admin (idempotent); they enter Clerk through an invitation to the same email |
+| `npm run create-super-admin -- --email=... --name=... --phone=+55...` | Creates or promotes the Super admin (idempotent); they enter Clerk through an invitation to the same email |
 
 **Tests.** Use cases are unit-tested with in-memory fakes of their ports (no database). Integration tests boot the real app with `@nestjs/testing` and hit it through supertest against PostgreSQL, running migrations once and truncating every table before each file.
 

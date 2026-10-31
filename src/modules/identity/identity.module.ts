@@ -7,6 +7,7 @@ import { ActivationTokenGenerator } from './application/ports/activation-token-g
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
+import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
@@ -74,6 +75,11 @@ import { UsersController } from './presentation/users.controller.js'
         Clock,
         AppConfig,
       ],
+    },
+    {
+      provide: UpdateMeUseCase,
+      useFactory: (users: UserRepository, clock: Clock) => new UpdateMeUseCase(users, clock),
+      inject: [UserRepository, Clock],
     },
     {
       provide: AuthenticateUseCase,

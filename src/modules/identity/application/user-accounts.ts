@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
+import { Phone } from '../../../shared/domain/phone.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { UserRepository } from '../domain/user.repository.js'
@@ -33,10 +34,11 @@ export class UserAccounts {
   ) {}
 
   async findOrCreatePending(
-    input: { email: string; name: string },
+    input: { email: string; name: string; phone: string },
     stamp: Stamp,
   ): Promise<FoundOrCreatedUser> {
     const email = Email.create(input.email)
+    const phone = Phone.create(input.phone)
     const found = await this.users.findByEmail(email)
     if (found) return { user: toUserSummary(found), activation: null }
 
@@ -45,7 +47,7 @@ export class UserAccounts {
         this.users,
         this.links,
         this.tokens,
-        { name: input.name, email },
+        { name: input.name, email, phone },
         stamp,
         this.options,
       )

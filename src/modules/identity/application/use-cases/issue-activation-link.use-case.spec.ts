@@ -4,7 +4,7 @@ import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeActivationTokenGenerator } from '../testing/fake-activation-token-generator.js'
-import { SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
+import { SCRIPT_STAMP, signedIn, PHONE } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { IssueActivationLinkUseCase } from './issue-activation-link.use-case.js'
@@ -31,7 +31,12 @@ describe('IssueActivationLinkUseCase', () => {
     superAdmin = await signedIn(
       users,
       await users.create(
-        { name: 'Admin', email: Email.create('admin@example.com'), role: 'SUPER_ADMIN' },
+        {
+          name: 'Admin',
+          email: Email.create('admin@example.com'),
+          phone: PHONE,
+          role: 'SUPER_ADMIN',
+        },
         SCRIPT_STAMP,
       ),
     )
@@ -39,6 +44,7 @@ describe('IssueActivationLinkUseCase', () => {
       {
         name: 'Pedro',
         email: Email.create('pedro@example.com'),
+        phone: PHONE,
         role: 'USER',
       },
       SCRIPT_STAMP,

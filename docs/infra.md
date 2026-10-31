@@ -67,7 +67,7 @@ São dois passos, em qualquer ordem, por ambiente: o User local no banco e o con
    ```bash
    DATABASE_URL="$(npx neonctl connection-string <branch> --project-id patient-bar-43479758 \
      --role-name events_api --database-name events_api)" \
-   npm run create-super-admin -- --email=<email> --name="<nome>"
+   npm run create-super-admin -- --email=<email> --name="<nome>" --phone="<+DDI e número>"
    ```
 
 2. **Entrada no Clerk.** O Clerk só aceita quem foi convidado. No dashboard da instância do ambiente (produção ou desenvolvimento), em *Users → Invitations*, convide o mesmo email. A pessoa aceita o convite e entra por senha, Google ou Apple; a primeira requisição autenticada vincula o usuário do Clerk ao User local (ADR-0020).

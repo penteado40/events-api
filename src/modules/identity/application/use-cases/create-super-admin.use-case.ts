@@ -1,11 +1,14 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
+import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 
 export interface CreateSuperAdminInput {
   email: string
   name: string
+  /** Only for a User created now: an existing User keeps their phone. */
+  phone: string
 }
 
 export interface CreateSuperAdminOutput {
@@ -27,11 +30,15 @@ export class CreateSuperAdminUseCase {
 
   async execute(input: CreateSuperAdminInput): Promise<CreateSuperAdminOutput> {
     const email = Email.create(input.email)
+    const phone = Phone.create(input.phone)
     const existing = await this.users.findByEmail(email)
     const stamp = { by: null, at: this.clock.now() }
 
     if (!existing) {
-      const user = await this.users.create({ name: input.name, email, role: 'SUPER_ADMIN' }, stamp)
+      const user = await this.users.create(
+        { name: input.name, email, phone, role: 'SUPER_ADMIN' },
+        stamp,
+      )
       return { outcome: 'created', user }
     }
 

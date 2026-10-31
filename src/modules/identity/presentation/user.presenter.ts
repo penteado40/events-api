@@ -7,6 +7,7 @@ export const UserPresenter = {
       id: user.id,
       name: user.name,
       email: user.email.value,
+      phone: user.phone.value,
       role: user.role,
       createdAt: user.createdAt.toISOString(),
     }

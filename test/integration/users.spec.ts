@@ -26,7 +26,7 @@ describe('Users (Super admin)', () => {
         .http()
         .post('/api/v1/users')
         .auth(adminToken, { type: 'bearer' })
-        .send({ name: ' Pedro ', email: 'Pedro@Example.com' })
+        .send({ name: ' Pedro ', email: 'Pedro@Example.com', phone: '+55 (11) 98765-4321' })
 
       expect(res.status).toBe(201)
       expect(res.body).toEqual({
@@ -35,6 +35,7 @@ describe('Users (Super admin)', () => {
             id: expect.any(Number),
             name: 'Pedro',
             email: 'pedro@example.com',
+            phone: '+5511987654321',
             role: 'USER',
             createdAt: expect.any(String),
           },
@@ -51,6 +52,7 @@ describe('Users (Super admin)', () => {
         where: { email: 'pedro@example.com' },
         include: { activationLinks: true },
       })
+      expect(stored?.phone).toBe('+5511987654321')
       expect(stored?.clerkId).toBeNull()
       expect(stored?.activationLinks).toHaveLength(1)
       expect(stored?.activationLinks[0]?.tokenHash).not.toBe(res.body.data.activationToken)
@@ -61,7 +63,7 @@ describe('Users (Super admin)', () => {
         .http()
         .post('/api/v1/users')
         .auth(adminToken, { type: 'bearer' })
-        .send({ name: 'Other Ana', email: 'ANA@example.com' })
+        .send({ name: 'Other Ana', email: 'ANA@example.com', phone: '+5511987654321' })
 
       expect(res.status).toBe(409)
       expect(res.body).toEqual(error('EMAIL_ALREADY_IN_USE'))
@@ -72,7 +74,7 @@ describe('Users (Super admin)', () => {
         .http()
         .post('/api/v1/users')
         .auth(userToken, { type: 'bearer' })
-        .send({ name: 'Carla', email: 'carla@example.com' })
+        .send({ name: 'Carla', email: 'carla@example.com', phone: '+5511987654321' })
 
       expect(res.status).toBe(403)
       expect(res.body).toEqual(error('FORBIDDEN'))
@@ -83,7 +85,7 @@ describe('Users (Super admin)', () => {
       const res = await t
         .http()
         .post('/api/v1/users')
-        .send({ name: 'Carla', email: 'carla@example.com' })
+        .send({ name: 'Carla', email: 'carla@example.com', phone: '+5511987654321' })
 
       expect(res.status).toBe(401)
     })
@@ -105,12 +107,38 @@ describe('Users (Super admin)', () => {
       )
     })
 
-    it('always creates a USER, even when the body asks for another role', async () => {
+    it('answers 400 VALIDATION_ERROR without a phone, creating nothing', async () => {
       const res = await t
         .http()
         .post('/api/v1/users')
         .auth(adminToken, { type: 'bearer' })
-        .send({ name: 'Duda', email: 'duda@example.com', role: 'SUPER_ADMIN' })
+        .send({ name: 'Fabi', email: 'fabi@example.com' })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+      expect(res.body.error.details).toEqual([{ path: 'phone', message: expect.any(String) }])
+      expect(await testPrisma().user.count({ where: { email: 'fabi@example.com' } })).toBe(0)
+    })
+
+    it('answers 400 VALIDATION_ERROR for a phone without the country code', async () => {
+      const res = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Fabi', email: 'fabi@example.com', phone: '(11) 98765-4321' })
+
+      expect(res.status).toBe(400)
+      expect(res.body).toEqual(error('VALIDATION_ERROR'))
+      expect(await testPrisma().user.count({ where: { email: 'fabi@example.com' } })).toBe(0)
+    })
+
+    it('always creates a USER, even when the body asks for another role', async () => {
+      const res = await t.http().post('/api/v1/users').auth(adminToken, { type: 'bearer' }).send({
+        name: 'Duda',
+        email: 'duda@example.com',
+        phone: '+5511987654321',
+        role: 'SUPER_ADMIN',
+      })
 
       expect(res.status).toBe(201)
       expect(res.body.data.user.role).toBe('USER')
@@ -123,7 +151,7 @@ describe('Users (Super admin)', () => {
         .http()
         .post('/api/v1/users')
         .auth(adminToken, { type: 'bearer' })
-        .send({ name: 'Edu', email: 'edu@example.com' })
+        .send({ name: 'Edu', email: 'edu@example.com', phone: '+5511987654321' })
       const oldToken = created.body.data.activationToken as string
 
       const res = await t

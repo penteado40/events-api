@@ -8,6 +8,7 @@ let sequence = 0
 export interface CreateUserOptions {
   name?: string
   email?: string
+  phone?: string
   role?: Role
   /** The linked Clerk user; null (the default, a Pending user) until the first request links one. */
   clerkId?: string | null
@@ -19,6 +20,7 @@ export async function createUser(options: CreateUserOptions = {}) {
     data: {
       name: options.name ?? `User ${sequence}`,
       email: options.email ?? `user${sequence}@example.com`,
+      phone: options.phone ?? `+55119${String(sequence).padStart(8, '0')}`,
       role: options.role ?? 'USER',
       clerkId: options.clerkId ?? null,
     },

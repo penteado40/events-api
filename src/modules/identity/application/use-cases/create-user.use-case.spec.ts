@@ -4,7 +4,7 @@ import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeActivationTokenGenerator } from '../testing/fake-activation-token-generator.js'
-import { SCRIPT_STAMP } from '../testing/identity-fixtures.js'
+import { SCRIPT_STAMP, PHONE } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { CreateUserUseCase } from './create-user.use-case.js'
@@ -32,6 +32,7 @@ describe('CreateUserUseCase', () => {
       {
         name: 'Admin',
         email: Email.create('admin@example.com'),
+        phone: PHONE,
         role: 'SUPER_ADMIN',
       },
       SCRIPT_STAMP,
@@ -43,10 +44,12 @@ describe('CreateUserUseCase', () => {
       actor: superAdmin,
       name: '  Pedro  ',
       email: ' Pedro@Example.com ',
+      phone: '+55 (11) 98765-4321',
     })
 
     expect(result.user.name).toBe('Pedro')
     expect(result.user.email.value).toBe('pedro@example.com')
+    expect(result.user.phone.value).toBe('+5511987654321')
     expect(result.user.role).toBe('USER')
     expect(result.user.isPending).toBe(true)
     expect(result.activationToken).toBe('token-1')
@@ -61,6 +64,7 @@ describe('CreateUserUseCase', () => {
       actor: superAdmin,
       name: 'Pedro',
       email: 'pedro@example.com',
+      phone: '+5511987654321',
     })
 
     expect(user.createdById).toBe(1)
@@ -76,27 +80,56 @@ describe('CreateUserUseCase', () => {
       {
         name: 'Ana',
         email: Email.create('ana@example.com'),
+        phone: PHONE,
         role: 'USER',
       },
       SCRIPT_STAMP,
     )
 
     await expect(
-      createUser.execute({ actor: ana, name: 'Pedro', email: 'pedro@example.com' }),
+      createUser.execute({
+        actor: ana,
+        name: 'Pedro',
+        email: 'pedro@example.com',
+        phone: '+5511987654321',
+      }),
     ).rejects.toEqual(new AppError('FORBIDDEN'))
     expect(users.all()).toHaveLength(2)
   })
 
   it('refuses an email that already has a User with EMAIL_ALREADY_IN_USE, ignoring case', async () => {
     await expect(
-      createUser.execute({ actor: superAdmin, name: 'Other', email: 'ADMIN@example.com' }),
+      createUser.execute({
+        actor: superAdmin,
+        name: 'Other',
+        email: 'ADMIN@example.com',
+        phone: '+5511987654321',
+      }),
     ).rejects.toEqual(new AppError('EMAIL_ALREADY_IN_USE'))
     expect(links.all()).toHaveLength(0)
   })
 
   it('refuses a malformed email with VALIDATION_ERROR', async () => {
     await expect(
-      createUser.execute({ actor: superAdmin, name: 'Pedro', email: 'not-an-email' }),
+      createUser.execute({
+        actor: superAdmin,
+        name: 'Pedro',
+        email: 'not-an-email',
+        phone: '+5511987654321',
+      }),
     ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+  })
+
+  it('refuses a phone without the country code with VALIDATION_ERROR, creating nothing', async () => {
+    await expect(
+      createUser.execute({
+        actor: superAdmin,
+        name: 'Pedro',
+        email: 'pedro@example.com',
+        phone: '11 98765-4321',
+      }),
+    ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+    expect(users.all()).toHaveLength(1)
+    expect(links.all()).toHaveLength(0)
   })
 })

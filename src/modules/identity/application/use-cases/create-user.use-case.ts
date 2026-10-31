@@ -1,6 +1,7 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
+import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
@@ -15,6 +16,7 @@ export interface CreateUserInput {
   actor: User
   name: string
   email: string
+  phone: string
 }
 
 export interface CreateUserOutput extends IssuedActivationLink {
@@ -34,6 +36,7 @@ export class CreateUserUseCase {
   async execute(input: CreateUserInput): Promise<CreateUserOutput> {
     if (!input.actor.isSuperAdmin) throw new AppError('FORBIDDEN')
     const email = Email.create(input.email)
+    const phone = Phone.create(input.phone)
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
@@ -41,7 +44,7 @@ export class CreateUserUseCase {
       this.users,
       this.links,
       this.tokens,
-      { name: input.name, email },
+      { name: input.name, email, phone },
       stamp,
       this.options,
     )

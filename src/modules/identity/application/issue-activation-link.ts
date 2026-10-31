@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Email } from '../../../shared/domain/email.vo.js'
+import type { Phone } from '../../../shared/domain/phone.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { User } from '../domain/user.entity.js'
@@ -35,12 +36,12 @@ export async function createPendingUser(
   users: UserRepository,
   links: ActivationLinkRepository,
   tokens: ActivationTokenGenerator,
-  props: { name: string; email: Email },
+  props: { name: string; email: Email; phone: Phone },
   stamp: Stamp,
   options: ActivationLinkOptions,
 ): Promise<{ user: User; link: IssuedActivationLink }> {
   const user = await users.create(
-    { name: props.name.trim(), email: props.email, role: 'USER' },
+    { name: props.name.trim(), email: props.email, phone: props.phone, role: 'USER' },
     stamp,
   )
   const link = await issueActivationLink(links, tokens, user.id, stamp, options)

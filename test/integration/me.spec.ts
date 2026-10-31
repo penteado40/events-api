@@ -34,6 +34,7 @@ describe('GET /api/v1/me', () => {
     const user = await createUser({
       name: 'Bia',
       email: 'bia@example.com',
+      phone: '+5511987654321',
       role: 'SUPER_ADMIN',
       clerkId: 'user_bia',
     })
@@ -46,6 +47,7 @@ describe('GET /api/v1/me', () => {
         id: user.id,
         name: 'Bia',
         email: 'bia@example.com',
+        phone: '+5511987654321',
         role: 'SUPER_ADMIN',
         createdAt: user.createdAt.toISOString(),
       },
@@ -147,5 +149,101 @@ describe('GET /api/v1/me', () => {
     expect(anonymous.status).toBe(401)
     expect(anonymous.body).toEqual(UNAUTHENTICATED)
     expect(authenticated.status).toBe(200)
+  })
+})
+
+describe('PATCH /api/v1/me', () => {
+  let t: TestApp
+
+  beforeAll(async () => {
+    t = await createTestApp()
+  })
+
+  afterAll(() => t.close())
+
+  async function storedUser(userId: number) {
+    return testPrisma().user.findUniqueOrThrow({ where: { id: userId } })
+  }
+
+  it('changes the name and the phone, stored normalized, authored by the User', async () => {
+    const user = await createUser({ name: 'Ivo', email: 'ivo@example.com', clerkId: 'user_ivo' })
+
+    const res = await t
+      .http()
+      .patch('/api/v1/me')
+      .auth(sessionTokenFor(user), { type: 'bearer' })
+      .send({ name: ' Ivo Lima ', phone: '+55 (21) 98765-4321' })
+
+    expect(res.status).toBe(200)
+    expect(res.body).toEqual({
+      data: {
+        id: user.id,
+        name: 'Ivo Lima',
+        email: 'ivo@example.com',
+        phone: '+5521987654321',
+        role: 'USER',
+        createdAt: user.createdAt.toISOString(),
+      },
+    })
+    const stored = await storedUser(user.id)
+    expect(stored).toMatchObject({
+      name: 'Ivo Lima',
+      phone: '+5521987654321',
+      createdById: null,
+      updatedById: user.id,
+    })
+    expect(stored.updatedAt.getTime()).toBeGreaterThan(user.updatedAt.getTime())
+  })
+
+  it('keeps what the body leaves out', async () => {
+    const user = await createUser({ name: 'Jade', phone: '+5511900000001' })
+
+    const res = await t
+      .http()
+      .patch('/api/v1/me')
+      .auth(sessionTokenFor(user), { type: 'bearer' })
+      .send({ name: 'Jade Reis' })
+
+    expect(res.status).toBe(200)
+    expect(await storedUser(user.id)).toMatchObject({ name: 'Jade Reis', phone: '+5511900000001' })
+  })
+
+  it.each([
+    ['an email', { name: 'Leo', email: 'other@example.com' }],
+    ['nothing to change', {}],
+    ['a blank name', { name: '   ' }],
+  ])('answers 400 VALIDATION_ERROR for a body with %s, changing nothing', async (_, body) => {
+    const user = await createUser({ name: 'Leo' })
+
+    const res = await t
+      .http()
+      .patch('/api/v1/me')
+      .auth(sessionTokenFor(user), { type: 'bearer' })
+      .send(body)
+
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    expect(await storedUser(user.id)).toMatchObject({ name: 'Leo', email: user.email })
+  })
+
+  it('answers 400 VALIDATION_ERROR for a phone without the country code, changing nothing', async () => {
+    const user = await createUser({ name: 'Mel', phone: '+5511900000002' })
+
+    const res = await t
+      .http()
+      .patch('/api/v1/me')
+      .auth(sessionTokenFor(user), { type: 'bearer' })
+      .send({ name: 'Mel Dias', phone: '98765-4321' })
+
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: { code: 'VALIDATION_ERROR', message: expect.any(String) } })
+    expect(await storedUser(user.id)).toMatchObject({ name: 'Mel', phone: '+5511900000002' })
+  })
+
+  it('answers 401 UNAUTHENTICATED without a token', async () => {
+    const res = await t.http().patch('/api/v1/me').send({ name: 'Nina' })
+
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual(UNAUTHENTICATED)
   })
 })

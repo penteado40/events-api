@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { Prisma, type User as PrismaUser } from '../../../generated/prisma/client.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
+import { Phone } from '../../../shared/domain/phone.vo.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { type NewUserProps, User } from '../domain/user.entity.js'
@@ -39,6 +40,7 @@ export class PrismaUserRepository extends UserRepository {
         data: {
           name: props.name,
           email: props.email.value,
+          phone: props.phone.value,
           role: props.role,
           ...createdWith(stamp),
         },
@@ -60,6 +62,7 @@ export class PrismaUserRepository extends UserRepository {
       data: {
         name: user.name,
         email: user.email.value,
+        phone: user.phone.value,
         clerkId: user.clerkId,
         role: user.role,
         updatedAt: user.updatedAt,
@@ -90,6 +93,7 @@ function toDomain(row: PrismaUser): User {
     id: row.id,
     name: row.name,
     email: Email.create(row.email),
+    phone: Phone.create(row.phone),
     clerkId: row.clerkId,
     role: row.role,
     createdAt: row.createdAt,

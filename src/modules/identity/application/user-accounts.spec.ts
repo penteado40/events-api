@@ -3,7 +3,7 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import { FakeActivationTokenGenerator } from './testing/fake-activation-token-generator.js'
-import { SCRIPT_STAMP, signedIn } from './testing/identity-fixtures.js'
+import { SCRIPT_STAMP, signedIn, PHONE } from './testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from './testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from './testing/in-memory-user.repository.js'
 import { UserAccounts } from './user-accounts.js'
@@ -27,7 +27,7 @@ describe('UserAccounts', () => {
 
   async function existing(email: string, { active = true } = {}) {
     const user = await users.create(
-      { name: 'Existing', email: Email.create(email), role: 'USER' },
+      { name: 'Existing', email: Email.create(email), phone: PHONE, role: 'USER' },
       SCRIPT_STAMP,
     )
     return active ? signedIn(users, user) : user
@@ -36,7 +36,7 @@ describe('UserAccounts', () => {
   describe('findOrCreatePending', () => {
     it('creates a Pending user with an Activation link when the email is new', async () => {
       const result = await accounts.findOrCreatePending(
-        { email: ' Joao@X.com ', name: ' João ' },
+        { email: ' Joao@X.com ', name: ' João ', phone: '+55 21 98765-4321' },
         OWNER_STAMP,
       )
 
@@ -54,6 +54,7 @@ describe('UserAccounts', () => {
         },
       })
       const [stored] = users.all()
+      expect(stored?.phone.value).toBe('+5521987654321')
       expect(stored?.createdById).toBe(10)
       expect(links.all().map((l) => l.createdById)).toEqual([10])
     })
@@ -66,7 +67,7 @@ describe('UserAccounts', () => {
       )
 
       const result = await accounts.findOrCreatePending(
-        { email: 'joao@x.com', name: 'Outro nome' },
+        { email: 'joao@x.com', name: 'Outro nome', phone: '+5521987654321' },
         OWNER_STAMP,
       )
 
@@ -86,8 +87,21 @@ describe('UserAccounts', () => {
 
     it('refuses an invalid email', async () => {
       await expect(
-        accounts.findOrCreatePending({ email: 'not-an-email', name: 'X' }, OWNER_STAMP),
+        accounts.findOrCreatePending(
+          { email: 'not-an-email', name: 'X', phone: '+5521987654321' },
+          OWNER_STAMP,
+        ),
       ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+    })
+
+    it('refuses an invalid phone for a new User, creating nothing', async () => {
+      await expect(
+        accounts.findOrCreatePending(
+          { email: 'joao@x.com', name: 'João', phone: '98765-4321' },
+          OWNER_STAMP,
+        ),
+      ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+      expect(users.all()).toHaveLength(0)
     })
   })
 

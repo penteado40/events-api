@@ -17,7 +17,8 @@ export type AuthenticateOutput = User
  * Resolves the User behind a Clerk session token (ADR-0020). The link between
  * the Clerk user and the User is born here and nowhere else: the first sign-in
  * of an unknown Clerk user takes the User with its verified email. There is no
- * open sign-up, so an email of no User is refused.
+ * open sign-up, so an email of no User is refused. A Deactivated user is
+ * refused on every request, since Clerk's ban is not used (ADR-0020).
  */
 export class AuthenticateUseCase {
   constructor(
@@ -31,10 +32,11 @@ export class AuthenticateUseCase {
     if (!identity) throw new AppError('UNAUTHENTICATED')
 
     const linked = await this.users.findByClerkId(identity.externalId)
-    if (linked) return linked
+    if (linked) return active(linked)
 
     const user = await this.users.findByEmail(toEmail(identity.email))
     if (!user) throw new AppError('USER_NOT_INVITED')
+    if (user.isDeactivated) throw new AppError('USER_DEACTIVATED')
     // Linked to another Clerk user: the link is never taken over.
     if (user.isLinkedToClerk) throw new AppError('UNAUTHENTICATED')
     user.linkToClerk(identity.externalId, { by: user.id, at: this.clock.now() })
@@ -42,9 +44,14 @@ export class AuthenticateUseCase {
 
     // Another request linked the User first: fine only if it was this same Clerk user.
     const winner = await this.users.findByClerkId(identity.externalId)
-    if (winner?.id === user.id) return winner
+    if (winner?.id === user.id) return active(winner)
     throw new AppError('UNAUTHENTICATED')
   }
+}
+
+function active(user: User): User {
+  if (user.isDeactivated) throw new AppError('USER_DEACTIVATED')
+  return user
 }
 
 function toEmail(raw: string): Email {

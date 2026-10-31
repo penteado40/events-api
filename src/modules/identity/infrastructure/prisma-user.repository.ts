@@ -92,6 +92,7 @@ function toDomain(row: PrismaUser): User {
     email: Email.create(row.email),
     clerkId: row.clerkId,
     role: row.role,
+    deactivatedAt: row.deactivatedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

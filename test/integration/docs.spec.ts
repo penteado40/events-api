@@ -3,6 +3,7 @@ import type {
   OperationObject,
   ReferenceObject,
   RequestBodyObject,
+  ResponseObject,
   SchemaObject,
 } from '@nestjs/swagger'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -76,6 +77,21 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(publicOnes).toEqual([])
     })
 
+    it('documents the Membership and the Super admin flag of the me, with an example', () => {
+      for (const method of ['get', 'patch'] as const) {
+        const operation = (doc.paths['/api/v1/me'] as Record<string, OperationObject>)[method]!
+        const response = operation.responses['200'] as ResponseObject
+        const body = resolve(doc, response.content!['application/json']!.schema!)
+        const data = resolve(doc, body.properties!['data']!)
+
+        expect(data.properties!['isSuperAdmin']).toMatchObject({ type: 'boolean', example: false })
+        expect(data.properties!['memberships']).toMatchObject({
+          type: 'array',
+          example: [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }],
+        })
+      }
+    })
+
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
         const body = operation.requestBody as RequestBodyObject | undefined
@@ -112,16 +128,19 @@ function operationsOf(doc: OpenAPIObject) {
   )
 }
 
+function resolve(doc: OpenAPIObject, schemaOrRef: SchemaObject | ReferenceObject): SchemaObject {
+  return '$ref' in schemaOrRef
+    ? (doc.components!.schemas![schemaOrRef.$ref.split('/').pop()!] as SchemaObject)
+    : schemaOrRef
+}
+
 /** Fields without `example`, walking `$ref`s and nested objects. */
 function fieldsWithoutExample(
   doc: OpenAPIObject,
   schemaOrRef: SchemaObject | ReferenceObject,
   prefix: string,
 ): string[] {
-  const schema =
-    '$ref' in schemaOrRef
-      ? (doc.components!.schemas![schemaOrRef.$ref.split('/').pop()!] as SchemaObject)
-      : schemaOrRef
+  const schema = resolve(doc, schemaOrRef)
   return Object.entries(schema.properties ?? {}).flatMap(([name, field]) => {
     const path = `${prefix} ${name}`
     const nested = '$ref' in field || field.properties ? fieldsWithoutExample(doc, field, path) : []

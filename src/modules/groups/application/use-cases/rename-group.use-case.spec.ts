@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
+import { GroupName } from '../../domain/group-name.vo.js'
 import { ANA, SCRIPT_STAMP, SUPER_ADMIN } from '../testing/groups-fixtures.js'
 import { InMemoryGroupMemberRepository } from '../testing/in-memory-group-member.repository.js'
 import { InMemoryGroupRepository } from '../testing/in-memory-group.repository.js'
@@ -17,7 +18,7 @@ describe('RenameGroupUseCase', () => {
     groups = new InMemoryGroupRepository()
     members = new InMemoryGroupMemberRepository()
     renameGroup = new RenameGroupUseCase(groups, members, new FixedClock(NOW))
-    await groups.create({ name: 'Vocal Livre' }, SCRIPT_STAMP)
+    await groups.create({ name: GroupName.create('Vocal Livre') }, SCRIPT_STAMP)
   })
 
   it('renames the Group with the trimmed name, recording the Super admin as the Author', async () => {

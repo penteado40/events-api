@@ -1,7 +1,11 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
+import { GROUP_NAME_MAX_LENGTH } from '../../domain/group-name.vo.js'
 
-const GroupNameSchema = z.string().trim().min(1).max(100).meta({ example: 'Vocal Livre' })
+/** The domain checks it again (GroupName); here it is for the 400 and the docs. */
+const GroupNameBodySchema = z.strictObject({
+  name: z.string().trim().min(1).max(GROUP_NAME_MAX_LENGTH).meta({ example: 'Vocal Livre' }),
+})
 
 /** Public shape of a Group. */
 export const GroupJsonSchema = z.object({
@@ -12,9 +16,9 @@ export const GroupJsonSchema = z.object({
 
 export type GroupJson = z.infer<typeof GroupJsonSchema>
 
-export class CreateGroupDto extends createZodDto(z.strictObject({ name: GroupNameSchema })) {}
+export class CreateGroupDto extends createZodDto(GroupNameBodySchema) {}
 
-export class RenameGroupDto extends createZodDto(z.strictObject({ name: GroupNameSchema })) {}
+export class RenameGroupDto extends createZodDto(GroupNameBodySchema) {}
 
 export class GroupResponseDto extends createZodDto(z.object({ data: GroupJsonSchema })) {}
 

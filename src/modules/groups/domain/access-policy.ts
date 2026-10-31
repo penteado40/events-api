@@ -1,11 +1,11 @@
 import type { GroupRole } from './group-member.js'
 
-/** Who acts: the Super admin, or a User with the role they hold in each of their Groups. */
+/** Who acts: the Super admin, or a User with their Membership. */
 export interface Actor {
   userId: number
   isSuperAdmin: boolean
-  /** Group id → role, for every Group the User is a Group member of. */
-  groupRoles: ReadonlyMap<number, GroupRole>
+  /** The Membership: Group id → role, for every Group the User is a Group member of. */
+  membership: ReadonlyMap<number, GroupRole>
 }
 
 export type GroupAction =
@@ -28,7 +28,7 @@ export const AccessPolicy = {
       case 'renameGroup':
         return false
       case 'viewGroup':
-        return actor.groupRoles.has(action.groupId)
+        return actor.membership.has(action.groupId)
     }
   },
 }

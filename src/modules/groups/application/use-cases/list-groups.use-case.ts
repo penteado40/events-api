@@ -21,7 +21,8 @@ export class ListGroupsUseCase {
     const actor = await actorOf(input.actor, this.members)
     if (AccessPolicy.can(actor, { type: 'listAllGroups' })) return this.groups.findAll()
 
-    const groups = await this.groups.findManyByIds([...actor.groupRoles.keys()])
+    const groups = await this.groups.findManyByIds([...actor.membership.keys()])
+    // Always true today; the AccessPolicy stays the only owner of who sees what (ADR-0019).
     return groups.filter((g) => AccessPolicy.can(actor, { type: 'viewGroup', groupId: g.id }))
   }
 }

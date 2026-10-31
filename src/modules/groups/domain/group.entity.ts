@@ -1,4 +1,5 @@
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import type { GroupName } from './group-name.vo.js'
 
 export interface GroupProps {
   id: number
@@ -10,7 +11,7 @@ export interface GroupProps {
 }
 
 export interface NewGroupProps {
-  name: string
+  name: GroupName
 }
 
 /**
@@ -44,8 +45,8 @@ export class Group {
     return this.props.updatedById
   }
 
-  rename(name: string, stamp: Stamp): void {
-    this.props.name = name.trim()
+  rename(name: GroupName, stamp: Stamp): void {
+    this.props.name = name.value
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
   }

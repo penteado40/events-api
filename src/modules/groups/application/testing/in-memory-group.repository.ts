@@ -19,7 +19,11 @@ export class InMemoryGroupRepository extends GroupRepository {
   }
 
   async create(props: NewGroupProps, stamp: Stamp): Promise<Group> {
-    const group = Group.restore({ id: this.nextId++, name: props.name, ...createdWith(stamp) })
+    const group = Group.restore({
+      id: this.nextId++,
+      name: props.name.value,
+      ...createdWith(stamp),
+    })
     this.groups.set(group.id, group)
     return group
   }

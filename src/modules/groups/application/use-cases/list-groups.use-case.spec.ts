@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { GroupName } from '../../domain/group-name.vo.js'
 import { ANA, SCRIPT_STAMP, SUPER_ADMIN } from '../testing/groups-fixtures.js'
 import { InMemoryGroupMemberRepository } from '../testing/in-memory-group-member.repository.js'
 import { InMemoryGroupRepository } from '../testing/in-memory-group.repository.js'
@@ -13,9 +14,9 @@ describe('ListGroupsUseCase', () => {
     groups = new InMemoryGroupRepository()
     members = new InMemoryGroupMemberRepository()
     listGroups = new ListGroupsUseCase(groups, members)
-    await groups.create({ name: 'Vocal Livre' }, SCRIPT_STAMP)
-    await groups.create({ name: 'Coral Alegria' }, SCRIPT_STAMP)
-    await groups.create({ name: 'Banda Norte' }, SCRIPT_STAMP)
+    await groups.create({ name: GroupName.create('Vocal Livre') }, SCRIPT_STAMP)
+    await groups.create({ name: GroupName.create('Coral Alegria') }, SCRIPT_STAMP)
+    await groups.create({ name: GroupName.create('Banda Norte') }, SCRIPT_STAMP)
   })
 
   it('lists every Group to the Super admin, by name', async () => {

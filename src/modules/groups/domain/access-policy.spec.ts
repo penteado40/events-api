@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { type Actor, AccessPolicy } from './access-policy.js'
 
-const SUPER_ADMIN: Actor = { userId: 1, isSuperAdmin: true, groupRoles: new Map() }
-const NOBODY: Actor = { userId: 2, isSuperAdmin: false, groupRoles: new Map() }
-const OWNER_OF_10: Actor = { userId: 3, isSuperAdmin: false, groupRoles: new Map([[10, 'OWNER']]) }
+const SUPER_ADMIN: Actor = { userId: 1, isSuperAdmin: true, membership: new Map() }
+const NOBODY: Actor = { userId: 2, isSuperAdmin: false, membership: new Map() }
+const OWNER_OF_10: Actor = { userId: 3, isSuperAdmin: false, membership: new Map([[10, 'OWNER']]) }
 const VIEWER_OF_10: Actor = {
   userId: 4,
   isSuperAdmin: false,
-  groupRoles: new Map([[10, 'VIEWER']]),
+  membership: new Map([[10, 'VIEWER']]),
 }
 
 describe('AccessPolicy', () => {
@@ -16,13 +16,16 @@ describe('AccessPolicy', () => {
       expect(AccessPolicy.can(SUPER_ADMIN, { type: 'createGroup' })).toBe(true)
       expect(AccessPolicy.can(NOBODY, { type: 'createGroup' })).toBe(false)
       expect(AccessPolicy.can(OWNER_OF_10, { type: 'createGroup' })).toBe(false)
+      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'createGroup' })).toBe(false)
     })
   })
 
   describe('listAllGroups', () => {
     it('allows only the Super admin', () => {
       expect(AccessPolicy.can(SUPER_ADMIN, { type: 'listAllGroups' })).toBe(true)
+      expect(AccessPolicy.can(NOBODY, { type: 'listAllGroups' })).toBe(false)
       expect(AccessPolicy.can(OWNER_OF_10, { type: 'listAllGroups' })).toBe(false)
+      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'listAllGroups' })).toBe(false)
     })
   })
 

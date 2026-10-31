@@ -33,7 +33,7 @@ export class PrismaGroupRepository extends GroupRepository {
 
   async create(props: NewGroupProps, stamp: Stamp): Promise<Group> {
     const row = await this.prisma.group.create({
-      data: { name: props.name, ...createdWith(stamp) },
+      data: { name: props.name.value, ...createdWith(stamp) },
     })
     return toDomain(row)
   }

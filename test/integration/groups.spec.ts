@@ -112,6 +112,12 @@ describe('Groups', () => {
       })
     })
 
+    it('answers 401 without a token', async () => {
+      const res = await t.http().get('/api/v1/groups')
+
+      expect(res.status).toBe(401)
+    })
+
     it('lists nothing to a User who is in no Group', async () => {
       await createGroup({ name: 'Vocal Livre' })
       const caio = await createUser({ email: 'caio.list@example.com' })
@@ -145,6 +151,27 @@ describe('Groups', () => {
       })
       const row = await testPrisma().group.findUniqueOrThrow({ where: { id: group.id } })
       expect(row).toMatchObject({ name: 'Vocal Livre Oficial', updatedById: adminId })
+    })
+
+    it('refuses a name over 100 characters with 400 VALIDATION_ERROR', async () => {
+      const group = await createGroup({ name: 'Vocal Livre' })
+
+      const res = await t
+        .http()
+        .patch(`/api/v1/groups/${group.id}`)
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'x'.repeat(101) })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    })
+
+    it('answers 401 without a token', async () => {
+      const group = await createGroup({ name: 'Vocal Livre' })
+
+      const res = await t.http().patch(`/api/v1/groups/${group.id}`).send({ name: 'Vocal' })
+
+      expect(res.status).toBe(401)
     })
 
     it('answers 404 NOT_FOUND for a Group that does not exist', async () => {

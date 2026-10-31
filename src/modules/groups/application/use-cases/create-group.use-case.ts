@@ -1,6 +1,7 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { AccessPolicy } from '../../domain/access-policy.js'
+import { GroupName } from '../../domain/group-name.vo.js'
 import type { Group } from '../../domain/group.entity.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRepository } from '../../domain/group.repository.js'
@@ -25,7 +26,8 @@ export class CreateGroupUseCase {
     const actor = await actorOf(input.actor, this.members)
     if (!AccessPolicy.can(actor, { type: 'createGroup' })) throw new AppError('FORBIDDEN')
 
+    const name = GroupName.create(input.name)
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return this.groups.create({ name: input.name.trim() }, stamp)
+    return this.groups.create({ name }, stamp)
   }
 }

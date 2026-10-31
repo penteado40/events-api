@@ -1,6 +1,7 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { AccessPolicy } from '../../domain/access-policy.js'
+import { GroupName } from '../../domain/group-name.vo.js'
 import type { Group } from '../../domain/group.entity.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRepository } from '../../domain/group.repository.js'
@@ -34,7 +35,7 @@ export class RenameGroupUseCase {
     if (!group) throw new AppError('NOT_FOUND')
     if (!AccessPolicy.can(actor, { type: 'renameGroup', groupId })) throw new AppError('FORBIDDEN')
 
-    group.rename(input.name, { by: input.actor.id, at: this.clock.now() })
+    group.rename(GroupName.create(input.name), { by: input.actor.id, at: this.clock.now() })
     await this.groups.save(group)
     return group
   }

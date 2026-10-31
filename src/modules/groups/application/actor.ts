@@ -13,6 +13,6 @@ export async function actorOf(user: ActingUser, members: GroupMemberRepository):
   return {
     userId: user.id,
     isSuperAdmin: user.isSuperAdmin,
-    groupRoles: new Map(groupMembers.map((m) => [m.groupId, m.role])),
+    membership: new Map(groupMembers.map((m) => [m.groupId, m.role])),
   }
 }

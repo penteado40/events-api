@@ -1,11 +1,9 @@
-import { createHash } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser, sessionTokenFor } from './support/factories.js'
+import { createUser, sessionTokenFor, sha256 } from './support/factories.js'
 
 const error = (code: string) => ({ error: { code, message: expect.any(String) } })
-const sha256 = (value: string) => createHash('sha256').update(value).digest('hex')
 
 describe('Users (Super admin)', () => {
   let t: TestApp

@@ -49,6 +49,11 @@ export interface CreateActivationLinkOptions {
   usedAt?: Date | null
 }
 
+/** How the app stores an Activation token. */
+export function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
+}
+
 /** An Activation link with a known token (stored as its SHA-256, like the app does). */
 export async function createActivationLink(options: CreateActivationLinkOptions) {
   sequence += 1
@@ -56,7 +61,7 @@ export async function createActivationLink(options: CreateActivationLinkOptions)
   const link = await testPrisma().activationLink.create({
     data: {
       userId: options.userId,
-      tokenHash: createHash('sha256').update(token).digest('hex'),
+      tokenHash: sha256(token),
       expiresAt: options.expiresAt ?? new Date(Date.now() + 3600_000),
       usedAt: options.usedAt ?? null,
     },

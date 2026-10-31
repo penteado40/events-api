@@ -321,8 +321,8 @@ Arquivos: `shared/domain/domain-event.ts` (tipo base e `AggregateRoot` com `reco
 | `updatedById` | O Author da última escrita: FK anulável para `users`, `onDelete: Restrict` |
 
 - **`null` quer dizer que a escrita não partiu de um User**: scripts da plataforma (`create-super-admin`) e processos automáticos. Nunca quer dizer "não sei".
-- **Toda escrita persistida na linha atualiza `updatedAt`/`updatedById`**, inclusive as técnicas (troca de senha, uso de um Activation link, archive). Na criação, `updatedById = createdById`. A exceção é o registro de uso (ex.: o último login), que não é edição e grava só a própria coluna (ADR-0013).
-- **O `Stamp` carrega autor e hora juntos** (`shared/domain/stamp.ts`: `{ by: number | null, at: Date }`). Toda mutação de entidade recebe um (`event.update(changes, stamp)`, `user.changePassword(hash, stamp)`), e todo `create` de repositório também (`users.create(props, stamp)`). Sem default: o compilador impede que alguém esqueça o Author.
+- **Toda escrita persistida na linha atualiza `updatedAt`/`updatedById`**, inclusive as técnicas (vínculo com o Clerk no primeiro acesso, archive). Na criação, `updatedById = createdById`. A exceção é o registro de uso (ex.: o Last seen), que não é edição e grava só a própria coluna (ADR-0013).
+- **O `Stamp` carrega autor e hora juntos** (`shared/domain/stamp.ts`: `{ by: number | null, at: Date }`). Toda mutação de entidade recebe um (`event.update(changes, stamp)`, `user.linkToClerk(clerkId, stamp)`), e todo `create` de repositório também (`users.create(props, stamp)`). Sem default: o compilador impede que alguém esqueça o Author.
 - **A hora vem da porta `Clock`** (`shared/application/clock.ts`), injetada pelo Nest (`SystemClock`, no `SharedModule`) e trocada por `FixedClock` nos testes. Use case e entidade nunca chamam `new Date()`. O use case monta o stamp: `{ by: input.actor.id, at: this.clock.now() }`.
 - O repositório Prisma grava as quatro colunas explicitamente. Na criação, use `...createdWith(stamp)` (`shared/domain/stamp.ts`, também usado pelos repositórios em memória); no `save`, passe `updatedAt` e `updatedById` da entidade.
 - As colunas guardam só o **último** editor. O histórico de um Event (quem mudou o quê, antes e depois) é o **Change log**, um conceito do domínio, e não estas colunas (emenda do ADR-0013).
@@ -344,7 +344,7 @@ O Scalar (`/api/v1/docs`, com `DOCS_ENABLED=true`) é gerado do código e é a i
 - 401 `UNAUTHENTICATED` e `USER_NOT_INVITED` (rota sem `@Public()`, ADR-0020) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
 - O status e a mensagem de cada código vêm do `ERROR_CATALOG`. Código novo aparece na doc sem editar nada além do catálogo.
 - Textos em português, termos do glossário em inglês.
-- Exemplos que funcionam contra o seed local, sem que executar um quebre outro (a troca de senha usa a mesma senha do seed como nova). Valor que só existe em tempo de execução (token de ativação) usa um placeholder descritivo. Nunca uma credencial real.
+- Exemplos que funcionam contra o seed local, sem que executar um quebre outro. Valor que só existe em tempo de execução (o id de um User criado na hora) usa um placeholder descritivo. Nunca uma credencial real.
 - Rota que não deve aparecer na doc (`@ApiExcludeController`) entra na allowlist `UNDOCUMENTED_ROUTES` do `docs.spec.ts`, com o motivo.
 
 ---

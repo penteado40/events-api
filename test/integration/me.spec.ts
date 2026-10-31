@@ -116,22 +116,26 @@ describe('GET /api/v1/me', () => {
     }
   })
 
-  // The own login, password and activation left for Clerk (ADR-0020).
-  it('answers 404 for the routes of the old login, password change and activation', async () => {
-    const user = await createUser({ email: 'fabi@example.com' })
-    const token = sessionTokenFor(user)
+  it.each([
+    ['post', '/api/v1/auth/login'],
+    ['post', '/api/v1/auth/activate'],
+    ['post', '/api/v1/auth/token'],
+    ['patch', '/api/v1/me/password'],
+  ] as const)(
+    'answers 404 for %s %s: sign-in and passwords live in Clerk',
+    async (method, path) => {
+      const user = await createUser()
 
-    for (const [method, path] of [
-      ['post', '/api/v1/auth/login'],
-      ['post', '/api/v1/auth/activate'],
-      ['post', '/api/v1/auth/token'],
-      ['patch', '/api/v1/me/password'],
-    ] as const) {
-      const res = await t.http()[method](path).auth(token, { type: 'bearer' }).send({})
-      expect(res.status, `${method} ${path}`).toBe(404)
+      const res = await t
+        .http()
+        [method](path)
+        .auth(sessionTokenFor(user), { type: 'bearer' })
+        .send({})
+
+      expect(res.status).toBe(404)
       expect(res.body.error.code).toBe('NOT_FOUND')
-    }
-  })
+    },
+  )
 
   it('protects any route without @Public() through the global guard', async () => {
     const user = await createUser({ email: 'gil@example.com' })

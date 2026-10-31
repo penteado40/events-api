@@ -12,7 +12,7 @@ export class CreateUserDto extends createZodDto(
 const ActivationLinkJsonSchema = z.object({
   activationToken: z.string().meta({
     description:
-      'Aparece só nesta resposta. Ainda não ativa nada: vira convite do Clerk na PROJ-170.',
+      'Aparece só nesta resposta. Por enquanto não ativa nada: o User fica ativo ao entrar com este email.',
   }),
   expiresAt: z.iso.datetime(),
 })

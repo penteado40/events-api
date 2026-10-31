@@ -12,7 +12,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   USER_NOT_INVITED: {
     status: 401,
     message:
-      'Nenhum usuário da plataforma tem este email. Entre com o email que recebeu o link de ativação.',
+      'Nenhum usuário da plataforma tem este email. Entre com o email que foi cadastrado para você.',
   },
   FORBIDDEN: { status: 403, message: 'Você não tem permissão para esta ação.' },
   NOT_FOUND: { status: 404, message: 'Recurso não encontrado.' },

@@ -37,7 +37,6 @@ export class MeController {
   @ApiOkResponse({ type: MeResponseDto })
   @ApiErrors()
   async updateMe(@CurrentUser() actor: User, @Body() body: UpdateMeDto): Promise<MeResponseDto> {
-    const user = await this.updateMeUseCase.execute({ actor, ...body })
-    return { data: UserPresenter.toMeJson(await this.getMeUseCase.execute({ actor: user })) }
+    return { data: UserPresenter.toMeJson(await this.updateMeUseCase.execute({ actor, ...body })) }
   }
 }

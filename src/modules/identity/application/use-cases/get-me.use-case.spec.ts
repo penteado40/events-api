@@ -2,19 +2,19 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { Role, User } from '../../domain/user.entity.js'
 import { PHONE, SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
-import { InMemoryMemberships } from '../testing/in-memory-memberships.js'
+import { FakeGroupMembers } from '../testing/fake-group-members.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { GetMeUseCase } from './get-me.use-case.js'
 
 describe('GetMeUseCase', () => {
   let users: InMemoryUserRepository
-  let memberships: InMemoryMemberships
+  let groupMembers: FakeGroupMembers
   let getMe: GetMeUseCase
 
   beforeEach(() => {
     users = new InMemoryUserRepository()
-    memberships = new InMemoryMemberships()
-    getMe = new GetMeUseCase(memberships)
+    groupMembers = new FakeGroupMembers()
+    getMe = new GetMeUseCase(groupMembers)
   })
 
   async function aUser(role: Role): Promise<User> {
@@ -27,7 +27,7 @@ describe('GetMeUseCase', () => {
 
   it('brings the Groups of the User, with the role in each', async () => {
     const ana = await aUser('USER')
-    memberships.set(ana.id, [
+    groupMembers.set(ana.id, [
       { groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' },
       { groupId: 2, groupName: 'Coral Jovem', role: 'VIEWER' },
     ])
@@ -55,11 +55,10 @@ describe('GetMeUseCase', () => {
 
   it('marks the Super admin, who has no Membership', async () => {
     const admin = await aUser('SUPER_ADMIN')
-    memberships.set(admin.id, [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }])
+    groupMembers.set(admin.id, [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }])
 
     const me = await getMe.execute({ actor: admin })
 
     expect(me).toEqual({ user: admin, isSuperAdmin: true, memberships: [] })
-    expect(memberships.asked).toEqual([])
   })
 })

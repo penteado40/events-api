@@ -1,6 +1,6 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
-import { GROUP_ROLES } from '../../application/ports/memberships.js'
+import { GROUP_ROLES } from '../../domain/group-member.js'
 import { ROLES } from '../../domain/user.entity.js'
 
 const NameSchema = z.string().trim().min(1).max(100)
@@ -32,9 +32,9 @@ export const MeJsonSchema = UserJsonSchema.extend({
   memberships: z
     .array(
       z.object({
-        groupId: z.number().int(),
-        groupName: z.string(),
-        role: z.enum(GROUP_ROLES),
+        groupId: z.number().int().meta({ example: 1 }),
+        groupName: z.string().meta({ example: 'Vocal Livre' }),
+        role: z.enum(GROUP_ROLES).meta({ example: 'OWNER' }),
       }),
     )
     .meta({

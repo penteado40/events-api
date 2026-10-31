@@ -1,4 +1,4 @@
-import type { GetMeOutput } from '../application/use-cases/get-me.use-case.js'
+import type { Me } from '../application/me.js'
 import type { User } from '../domain/user.entity.js'
 import type { MeJson, UserJson } from './dto/user.dto.js'
 
@@ -14,7 +14,7 @@ export const UserPresenter = {
     }
   },
 
-  toMeJson(me: GetMeOutput): MeJson {
+  toMeJson(me: Me): MeJson {
     return {
       ...UserPresenter.toJson(me.user),
       isSuperAdmin: me.isSuperAdmin,

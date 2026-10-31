@@ -1,25 +1,18 @@
 import type { User } from '../../domain/user.entity.js'
-import type { GroupMembership, Memberships } from '../ports/memberships.js'
+import { type Me, meOf } from '../me.js'
+import type { GroupMembers } from '../ports/group-members.js'
 
 export interface GetMeInput {
   actor: User
 }
 
-export interface GetMeOutput {
-  user: User
-  isSuperAdmin: boolean
-  memberships: GroupMembership[]
-}
+export type GetMeOutput = Me
 
-/**
- * The logged-in User, their Membership and whether they are the Super admin,
- * so the app knows what to show. The Super admin is never a Group member.
- */
+/** The logged-in User sees themselves, with their Membership. */
 export class GetMeUseCase {
-  constructor(private readonly memberships: Memberships) {}
+  constructor(private readonly groupMembers: GroupMembers) {}
 
-  async execute({ actor }: GetMeInput): Promise<GetMeOutput> {
-    if (actor.isSuperAdmin) return { user: actor, isSuperAdmin: true, memberships: [] }
-    return { user: actor, isSuperAdmin: false, memberships: await this.memberships.of(actor.id) }
+  execute({ actor }: GetMeInput): Promise<GetMeOutput> {
+    return meOf(actor, this.groupMembers)
   }
 }

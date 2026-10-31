@@ -244,6 +244,7 @@ HTTP ─► CredentialsGuard (presentation, global)
           │  users.findByClerkId(...)      → port; em runtime é PrismaUserRepository
           │  senão users.findByEmail(...)  → primeiro acesso: vincula o Clerk ao User
           │  email de ninguém? throw AppError('USER_NOT_INVITED')
+          │  Deactivated user? throw AppError('USER_DEACTIVATED')
           ▼
         request.user = User
           ▼
@@ -341,7 +342,7 @@ O Scalar (`/api/v1/docs`, com `DOCS_ENABLED=true`) é gerado do código e é a i
 | Exemplo de cada campo do request body | `.meta({ example })` no schema Zod do DTO | `email: z.email().meta({ example: 'maria@local.test' })` |
 | Descrição de campo, quando o nome não basta | `.meta({ description })` (comentário JSDoc não vira doc) | `timezone: ... .meta({ description: 'Fuso IANA do lugar: ...' })` |
 
-- 401 `UNAUTHENTICATED` e `USER_NOT_INVITED` (rota sem `@Public()`, ADR-0020) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
+- 401 `UNAUTHENTICATED`, `USER_NOT_INVITED` e `USER_DEACTIVATED` (rota sem `@Public()`, ADR-0020) e 400 `VALIDATION_ERROR` (rota com body, path ou query) entram sozinhos; não declare.
 - O status e a mensagem de cada código vêm do `ERROR_CATALOG`. Código novo aparece na doc sem editar nada além do catálogo.
 - Textos em português, termos do glossário em inglês.
 - Exemplos que funcionam contra o seed local, sem que executar um quebre outro. Valor que só existe em tempo de execução (o id de um User criado na hora) usa um placeholder descritivo. Nunca uma credencial real.

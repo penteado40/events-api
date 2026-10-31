@@ -4,8 +4,10 @@ import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
+import { Memberships } from './application/ports/memberships.js'
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
+import { GetMeUseCase } from './application/use-cases/get-me.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
 import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
@@ -13,6 +15,7 @@ import { UserRepository } from './domain/user.repository.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
 import { CryptoActivationTokenGenerator } from './infrastructure/crypto-activation-token-generator.js'
+import { NoGroupsMemberships } from './infrastructure/no-groups-memberships.js'
 import { CredentialsGuard } from './presentation/credentials.guard.js'
 import { MeController } from './presentation/me.controller.js'
 import { UsersController } from './presentation/users.controller.js'
@@ -26,6 +29,7 @@ import { UsersController } from './presentation/users.controller.js'
   controllers: [MeController, UsersController],
   providers: [
     { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
+    { provide: Memberships, useClass: NoGroupsMemberships },
     {
       provide: AuthVerifier,
       useFactory: (config: AppConfig) =>
@@ -75,6 +79,11 @@ import { UsersController } from './presentation/users.controller.js'
         Clock,
         AppConfig,
       ],
+    },
+    {
+      provide: GetMeUseCase,
+      useFactory: (memberships: Memberships) => new GetMeUseCase(memberships),
+      inject: [Memberships],
     },
     {
       provide: UpdateMeUseCase,

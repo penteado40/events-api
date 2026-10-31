@@ -26,3 +26,7 @@ O Scalar é a interface visual de teste manual da API, então uma rota sem resum
 ## Emenda: pivô para Groups (2026-10-02)
 
 NestJS, `nestjs-zod`, Scalar e a fiscalização por lint continuam valendo. A lista de módulos acima (`events`, `rsvp`, `registry`, `emails`) é da V1: os contextos do pivô ainda estão em definição (ver `docs/arquitetura.md` e o mapa PROJ-51). A segunda estratégia do Passport para API tokens sai com os Sites (ADR-0016), e o Guest access link (ADR-0018) é a candidata natural a ocupar esse lugar. O cold start passa a ser medido contra o tráfego do app mobile, não dos Sites.
+
+## Emenda: identidade no Clerk (PROJ-164, 2026-10-31)
+
+O Passport nunca chegou a ser usado com o Clerk e saiu de vez. O guard global `CredentialsGuard` verifica o token de sessão pela porta `AuthVerifier` (ADR-0020) e mantém o `@Public()` para as exceções: esquecer o decorator continua fechando a rota. Os 401 vêm do guard como `AppError` (`UNAUTHENTICATED`, `USER_NOT_INVITED`) e passam pelo mesmo catálogo. Os exemplos do Scalar não têm mais login nem troca de senha: funcionam contra o seed local com o token do Clerk do `admin@local.test`.

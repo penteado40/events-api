@@ -11,10 +11,7 @@ export class AppModule {
   static forRoot(config: AppConfig): DynamicModule {
     return {
       module: AppModule,
-      imports: [
-        SharedModule.forRoot(config),
-        IdentityModule.register({ docsEnabled: config.docsEnabled }),
-      ],
+      imports: [SharedModule.forRoot(config), IdentityModule],
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
         {

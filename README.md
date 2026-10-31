@@ -21,7 +21,7 @@ The project is also a showcase of **Clean Architecture with pragmatic DDD on Nes
 
 V1 is under construction. Working today:
 
-- Sign-in through Clerk (ADR-0020): the API takes the Clerk session token as `Authorization: Bearer` and links it to the invited User by email on the first request; `GET /api/v1/me` returns that User. The own login (`POST /api/v1/auth/login`) still exists until PROJ-164, but its JWT no longer opens any route
+- Sign-in through Clerk (ADR-0020): the API takes the Clerk session token as `Authorization: Bearer` and links it to the invited User by email on the first request; `GET /api/v1/me` returns that User. There is no own login, password or JWT
 - The `identity` module, the reference implementation of the architecture
 - Stable error contract, security headers, OpenAPI + Scalar docs
 - Unit and integration tests, CI with migration drift check and secret scanning
@@ -30,12 +30,12 @@ Roadmap and tasks: Jira epic [PROJ-51](https://flpenteado.atlassian.net/browse/P
 
 ## Architecture
 
-One NestJS module per bounded context: `identity` (Users, login) today, with `groups`, `events` and `emails` coming with the pivot ([`docs/arquitetura.md`](docs/arquitetura.md)), plus `shared` for the common base. Each module has the same four layers, and **dependencies only point inward**:
+One NestJS module per bounded context: `identity` (Users, sign-in) today, with `groups`, `events` and `emails` coming with the pivot ([`docs/arquitetura.md`](docs/arquitetura.md)), plus `shared` for the common base. Each module has the same four layers, and **dependencies only point inward**:
 
 ```mermaid
 flowchart LR
   P["presentation<br/>controllers, Zod DTOs, presenters"] --> A
-  I["infrastructure<br/>Prisma, bcrypt, JWT, Resend..."] --> A
+  I["infrastructure<br/>Prisma, Clerk, Resend..."] --> A
   A["application<br/>use cases, ports"] --> D["domain<br/>entities, value objects, repository ports"]
   M["*.module.ts<br/>composition root"] -.->|wires| P & I & A
 ```
@@ -44,28 +44,26 @@ flowchart LR
 - Modules talk to each other only through their `index.ts`.
 - ESLint enforces all of it (`eslint-plugin-boundaries` + `no-restricted-imports`), in the editor and in CI, and a test checks the rules themselves still fire.
 
-How a login request flows through the layers:
+How every authenticated request flows through the layers:
 
 ```mermaid
 sequenceDiagram
   participant C as Client
-  participant Ctrl as AuthController
-  participant UC as LoginUseCase
+  participant G as CredentialsGuard
+  participant UC as AuthenticateUseCase
+  participant V as AuthVerifier (Clerk)
   participant R as UserRepository (Prisma)
-  participant H as PasswordHasher (bcrypt)
-  participant T as TokenIssuer (JWT)
-  C->>Ctrl: POST /api/v1/auth/login
-  Note over Ctrl: body already validated by the Zod DTO
-  Ctrl->>UC: execute({ email, password })
-  UC->>R: findByEmail(Email)
-  UC->>H: compare(password, hash or null)
-  alt unknown email or wrong password
-    UC-->>Ctrl: throw AppError('INVALID_CREDENTIALS')
-    Ctrl-->>C: 401 { error: { code, message } }
-  else valid
-    UC->>T: issue(user)
-    UC-->>Ctrl: { token, user }
-    Ctrl-->>C: 200 { data: { token, user } }
+  C->>G: GET /api/v1/me, Authorization: Bearer <Clerk token>
+  G->>UC: execute({ token })
+  UC->>V: verify(token)
+  alt token refused
+    UC-->>G: throw AppError('UNAUTHENTICATED')
+    G-->>C: 401 { error: { code, message } }
+  else verified { externalId, email }
+    UC->>R: findByClerkId(externalId), else findByEmail(email)
+    Note over UC,R: first sign-in links the Clerk user to the invited User
+    UC-->>G: User
+    G-->>C: the route runs as that User
   end
 ```
 
@@ -86,14 +84,11 @@ Each one is recorded as an ADR in [`docs/adr/`](docs/adr).
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/login` | public | Email + password → JWT (12h) and the User |
-| `POST` | `/api/v1/auth/activate` | public | Activation token + new password → JWT and the User |
 | `GET` | `/api/v1/me` | Clerk session | The authenticated User |
-| `PATCH` | `/api/v1/me/password` | Clerk session | Current + new password of the old login (leaves in PROJ-164) |
 | `POST` | `/api/v1/users` | Super admin | Creates a Pending user; returns the Activation token (valid 7 days) |
 | `POST` | `/api/v1/users/:id/activation-link` | Super admin | New Activation token for a Pending user; the previous one stops working |
 
-Every other route requires the Clerk session token by default (a global guard; public routes opt out explicitly). An email of no User answers `401 USER_NOT_INVITED`: there is no open sign-up. The full, always-current reference is generated from the code: Scalar at `/api/v1/docs` and the OpenAPI document at `/api/v1/openapi`, both enabled with `DOCS_ENABLED=true` (off in production). Every route shows a summary, the error codes it can answer and a request body that works against the local seed; `test/integration/docs.spec.ts` fails the build when a route skips any of them.
+Every route requires the Clerk session token by default (a global guard; public routes opt out explicitly). An email of no User answers `401 USER_NOT_INVITED`: there is no open sign-up. The full, always-current reference is generated from the code: Scalar at `/api/v1/docs` and the OpenAPI document at `/api/v1/openapi`, both enabled with `DOCS_ENABLED=true` (off in production). Every route shows a summary, the error codes it can answer and a request body that works against the local seed; `test/integration/docs.spec.ts` fails the build when a route skips any of them.
 
 Responses use `{ data }` on success and a stable error envelope otherwise:
 
@@ -120,13 +115,13 @@ nvm use
 cp .env.example .env
 npm install                  # also runs prisma generate
 npx prisma migrate deploy
-npx prisma db seed           # local Super admin: admin@local.test / Admin-local-123
+npx prisma db seed           # local Super admin: admin@local.test
 npm run dev                  # http://localhost:3000/api/v1
 ```
 
-A database seeded before PROJ-98 keeps the old `admin-local-123`, since the seed never overwrites a password. Reset it once with `npm run create-super-admin -- --email=admin@local.test --name="Super admin local" --password=Admin-local-123 --reset-password`.
+To sign in as the seeded Super admin, invite `admin@local.test` from the dashboard of the Clerk development instance (see [`docs/infra.md`](docs/infra.md#super-admin)); the first request with its session token links the two.
 
-With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in with the seeded Super admin through the Authorize button.
+With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a Clerk session token in the Authorize button.
 
 ### Environment variables
 
@@ -137,11 +132,10 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `DATABASE_URL` | PostgreSQL connection (the pooled URL on Neon) |
 | `DATABASE_URL_TEST` | Database for the integration tests; it is truncated before each test file |
 | `SHADOW_DATABASE_URL` | Optional; only for the migration drift check |
-| `JWT_SECRET` | At least 32 characters (`openssl rand -base64 48`); signs the old login's JWT until PROJ-164 |
 | `CLERK_SECRET_KEY` | Verifies the Clerk session tokens; required in production (the tests use a fake) |
 | `CLERK_JWT_KEY` | Optional; Clerk's PEM public key, for networkless verification |
 | `CLERK_AUTHORIZED_PARTIES` | Optional; exact origins accepted in the token's `azp` (a token without `azp` is then refused) |
-| `DOCS_ENABLED` | `true` registers the docs, the OpenAPI document and `POST /auth/token` |
+| `DOCS_ENABLED` | `true` registers the docs and the OpenAPI document |
 | `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
 
 ## Development
@@ -154,7 +148,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and log in wi
 | `npm run test:unit` | Unit tests and the architecture lint tests, no database |
 | `npm run test:integration` | HTTP tests against the real Postgres in `DATABASE_URL_TEST` |
 | `npm run prisma:migrate` | Creates a migration from `prisma/schema.prisma` |
-| `npm run create-super-admin -- --email=... --name=... --password=... [--reset-password]` | Creates or promotes the Super admin (idempotent; the password follows the PasswordPolicy, ADR-0012) |
+| `npm run create-super-admin -- --email=... --name=...` | Creates or promotes the Super admin (idempotent); they enter Clerk through an invitation to the same email |
 
 **Tests.** Use cases are unit-tested with in-memory fakes of their ports (no database). Integration tests boot the real app with `@nestjs/testing` and hit it through supertest against PostgreSQL, running migrations once and truncating every table before each file.
 

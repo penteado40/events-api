@@ -12,9 +12,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  JWT_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
-
 jobs:
   checks:
     runs-on: ubuntu-latest

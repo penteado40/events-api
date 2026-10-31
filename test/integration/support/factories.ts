@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto'
-import bcrypt from 'bcryptjs'
 import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import type { Role } from '../../../src/modules/identity/index.js'
 import { testPrisma } from './database.js'
@@ -9,28 +8,22 @@ let sequence = 0
 export interface CreateUserOptions {
   name?: string
   email?: string
-  /** `null` creates a Pending user. */
-  password?: string | null
   role?: Role
-  passwordChangedAt?: Date | null
-  /** The linked Clerk user; null (the default) until the first request links one. */
+  /** The linked Clerk user; null (the default, a Pending user) until the first request links one. */
   clerkId?: string | null
 }
 
 export async function createUser(options: CreateUserOptions = {}) {
   sequence += 1
-  const password = options.password === undefined ? 'correct-password' : options.password
   const user = await testPrisma().user.create({
     data: {
       name: options.name ?? `User ${sequence}`,
       email: options.email ?? `user${sequence}@example.com`,
-      passwordHash: password === null ? null : await bcrypt.hash(password, 4),
       role: options.role ?? 'USER',
-      passwordChangedAt: options.passwordChangedAt ?? null,
       clerkId: options.clerkId ?? null,
     },
   })
-  return { ...user, password }
+  return user
 }
 
 /**

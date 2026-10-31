@@ -12,7 +12,7 @@ const BEARER = /^Bearer\s+(\S+)$/i
  * Global guard: every route requires the Clerk session token in
  * `Authorization: Bearer` unless marked `@Public()` (ADR-0008, ADR-0020), and
  * puts the User on the request for `@CurrentUser()`. A missing or refused
- * token is UNAUTHENTICATED; the JWT of the old login is no longer accepted.
+ * token is UNAUTHENTICATED.
  */
 @Injectable()
 export class CredentialsGuard implements CanActivate {

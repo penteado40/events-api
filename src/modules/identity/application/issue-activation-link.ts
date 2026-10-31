@@ -40,7 +40,7 @@ export async function createPendingUser(
   options: ActivationLinkOptions,
 ): Promise<{ user: User; link: IssuedActivationLink }> {
   const user = await users.create(
-    { name: props.name.trim(), email: props.email, passwordHash: null, role: 'USER' },
+    { name: props.name.trim(), email: props.email, role: 'USER' },
     stamp,
   )
   const link = await issueActivationLink(links, tokens, user.id, stamp, options)

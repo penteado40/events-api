@@ -32,7 +32,7 @@ describe('AuthenticateUseCase', () => {
     users = new RacedUserRepository()
     authenticate = new AuthenticateUseCase(users, new FakeAuthVerifier(), new FixedClock(NOW))
     ana = await users.create(
-      { name: 'Ana', email: Email.create('ana@example.com'), passwordHash: null, role: 'USER' },
+      { name: 'Ana', email: Email.create('ana@example.com'), role: 'USER' },
       SCRIPT_STAMP,
     )
   })

@@ -16,20 +16,18 @@ enum Role {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  name              String
-  email             String    @unique
-  passwordHash      String? // null while the User is a Pending user
-  clerkId           String?   @unique // Clerk user id (ADR-0020); null until the first sign-in links it
-  role              Role      @default(USER)
-  passwordChangedAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  clerkId     String?  @unique // Clerk user id (ADR-0020); null while a Pending user
+  role        Role     @default(USER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   // Author (ADR-0013): null when no User made the write. A User is never deleted.
-  createdById       Int?
-  updatedById       Int?
-  createdBy         User?     @relation("UserCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy         User?     @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdById Int?
+  updatedById Int?
+  createdBy   User?    @relation("UserCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   activationLinks ActivationLink[] @relation("ActivationLinkUser")
 

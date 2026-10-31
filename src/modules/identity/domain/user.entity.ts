@@ -9,12 +9,9 @@ export interface UserProps {
   id: number
   name: string
   email: Email
-  /** Null while the User is a Pending user. */
-  passwordHash: string | null
-  /** The Clerk user this User signs in as (ADR-0020); null until the first sign-in links it. */
+  /** The Clerk user this User signs in as (ADR-0020); null while a Pending user. */
   clerkId: string | null
   role: Role
-  passwordChangedAt: Date | null
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -24,13 +21,13 @@ export interface UserProps {
 export interface NewUserProps {
   name: string
   email: Email
-  passwordHash: string | null
   role: Role
 }
 
 /**
- * A person with a login on the platform. Born a Pending user (no password)
- * and activated through an Activation link; nobody else sets their password.
+ * A person with a login on the platform, whose identity lives in Clerk
+ * (ADR-0020). Born a Pending user, and active once their first sign-in links
+ * the Clerk user.
  */
 export class User {
   private constructor(private readonly props: UserProps) {}
@@ -48,17 +45,11 @@ export class User {
   get email(): Email {
     return this.props.email
   }
-  get passwordHash(): string | null {
-    return this.props.passwordHash
-  }
   get clerkId(): string | null {
     return this.props.clerkId
   }
   get role(): Role {
     return this.props.role
-  }
-  get passwordChangedAt(): Date | null {
-    return this.props.passwordChangedAt
   }
   get createdAt(): Date {
     return this.props.createdAt
@@ -82,9 +73,9 @@ export class User {
     return this.props.role === 'SUPER_ADMIN'
   }
 
-  /** Has not set a password yet, so cannot log in. */
+  /** Has not signed in yet: no Clerk user is linked. */
   get isPending(): boolean {
-    return this.props.passwordHash === null
+    return !this.isLinkedToClerk
   }
 
   promoteToSuperAdmin(stamp: Stamp): void {
@@ -99,18 +90,6 @@ export class User {
   linkToClerk(clerkId: string, stamp: Stamp): void {
     if (this.isLinkedToClerk) throw new AppError('UNAUTHENTICATED')
     this.props.clerkId = clerkId
-    this.touch(stamp)
-  }
-
-  /** A Pending user sets their own first password; only a Pending user can. */
-  activate(passwordHash: string, stamp: Stamp): void {
-    if (!this.isPending) throw new AppError('USER_ALREADY_ACTIVE')
-    this.changePassword(passwordHash, stamp)
-  }
-
-  changePassword(passwordHash: string, stamp: Stamp): void {
-    this.props.passwordHash = passwordHash
-    this.props.passwordChangedAt = stamp.at
     this.touch(stamp)
   }
 

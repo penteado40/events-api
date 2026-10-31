@@ -113,8 +113,8 @@ Proposta por Robert C. Martin ("Uncle Bob"). A ideia é organizar o código em *
         ┌──────────────────────────────────────────┐
         │  presentation   (controllers, DTOs Zod)  │
         │  ┌────────────────────────────────────┐  │
-        │  │ infrastructure (Prisma, bcrypt,    │  │
-        │  │                 JWT, Resend...)    │  │
+        │  │ infrastructure (Prisma, Clerk,     │  │
+        │  │                 Resend...)         │  │
         │  │  ┌──────────────────────────────┐  │  │
         │  │  │ application  (use cases,     │  │  │
         │  │  │               ports)         │  │  │
@@ -132,42 +132,43 @@ Proposta por Robert C. Martin ("Uncle Bob"). A ideia é organizar o código em *
 
 | Camada | O que mora aqui | Pode importar | **Não** pode importar |
 |---|---|---|---|
-| **domain** | Entities, value objects, ports de repositório, domain services, erros de domínio | Só o próprio domínio e `shared/domain` | Nest, Prisma, Zod, bcrypt, qualquer lib de infraestrutura |
-| **application** | Use cases (um por ação) e ports de serviços técnicos (`PasswordHasher`, `TokenIssuer`, `MediaStorage`) | domain | Nest HTTP, Prisma, Zod |
-| **infrastructure** | Implementações dos ports: `PrismaUserRepository`, `BcryptPasswordHasher`, `JwtTokenIssuer`, adaptadores do Resend e do Cloudinary | application, domain, libs externas | presentation |
+| **domain** | Entities, value objects, ports de repositório, domain services, erros de domínio | Só o próprio domínio e `shared/domain` | Nest, Prisma, Zod, Clerk, qualquer lib de infraestrutura |
+| **application** | Use cases (um por ação) e ports de serviços técnicos (`AuthVerifier`, `Clock`, `MediaStorage`) | domain | Nest HTTP, Prisma, Zod |
+| **infrastructure** | Implementações dos ports: `PrismaUserRepository`, `ClerkAuthVerifier`, adaptadores do Resend e do Cloudinary | application, domain, libs externas | presentation |
 | **presentation** | Controllers, DTOs Zod, presenters (entidade → JSON), guards e filters HTTP | application (use cases) | infrastructure diretamente, Prisma |
 
 O `*.module.ts` do Nest é a exceção: ele é o "composition root", o único lugar que conhece todas as camadas, porque é ali que se diz "quando alguém pedir `UserRepository`, entregue `PrismaUserRepository`".
 
 ### 3.2 Por que isso importa
 
-- **Testar sem banco.** O `LoginUseCase` depende de `UserRepository` e `PasswordHasher` (abstrações). No teste, passamos versões em memória e testamos a regra em milissegundos.
+- **Testar sem banco.** O `AuthenticateUseCase` depende de `UserRepository` e `AuthVerifier` (abstrações). No teste, passamos versões em memória e testamos a regra em milissegundos.
 - **Trocar tecnologia sem reescrever regra.** Trocamos Hono por NestJS antes de começar. Com o domínio isolado, uma troca dessas no futuro mexeria só em presentation e em infrastructure. Mesma coisa se o Cloudinary for trocado, ou se o push sair do Expo: é um adaptador novo, o ciclo de vida do Event item não muda.
 - **Saber onde procurar.** Regra de negócio? `domain`. Fluxo de uma ação? `application/use-cases`. Formato do JSON? `presentation`.
 
 ### 3.3 Ports and adapters (o "como" da regra da dependência)
 
-Se o use case precisa gerar hash de senha, mas não pode importar o bcrypt, como faz? Ele declara uma **porta** (port), uma abstração do que precisa, e a infraestrutura fornece um **adaptador** (adapter), a implementação:
+Se o use case precisa verificar o token de sessão, mas não pode importar o SDK do Clerk, como faz? Ele declara uma **porta** (port), uma abstração do que precisa, e a infraestrutura fornece um **adaptador** (adapter), a implementação:
 
 ```ts
-// identity/application/ports/password-hasher.ts  (PORT: camada interna)
-export abstract class PasswordHasher {
-  abstract hash(plain: string): Promise<string>
-  abstract compare(plain: string, hash: string | null): Promise<boolean>  // null: User inexistente, ainda gasta o tempo de um compare
+// identity/application/ports/auth-verifier.ts  (PORT: camada interna)
+export abstract class AuthVerifier {
+  abstract verify(token: string): Promise<VerifiedIdentity | null>  // null: token recusado, sem dizer por quê
 }
 
-// identity/infrastructure/bcrypt-password-hasher.ts  (ADAPTER: camada externa)
+// identity/infrastructure/clerk-auth-verifier.ts  (ADAPTER: camada externa)
 @Injectable()
-export class BcryptPasswordHasher extends PasswordHasher {
-  hash(plain: string) { return bcrypt.hash(plain, 10) }
-  compare(plain: string, hash: string) { return bcrypt.compare(plain, hash) }
+export class ClerkAuthVerifier extends AuthVerifier {
+  async verify(token: string) {
+    const claims = await verifyToken(token, { secretKey })  // @clerk/backend
+    return { externalId: claims.sub, email: claims.email }
+  }
 }
 
 // identity/identity.module.ts  (COMPOSITION ROOT: liga um no outro)
-providers: [{ provide: PasswordHasher, useClass: BcryptPasswordHasher }]
+providers: [{ provide: AuthVerifier, useFactory: (c: AppConfig) => new ClerkAuthVerifier(...), inject: [AppConfig] }]
 ```
 
-**Por que `abstract class` e não `interface`?** Interfaces do TypeScript somem na compilação, então o Nest não consegue usá-las como chave de injeção (precisaria de `@Inject(SYMBOL)` em todo lugar). Uma `abstract class` existe em runtime e serve de token direto: `constructor(private hasher: PasswordHasher)`.
+**Por que `abstract class` e não `interface`?** Interfaces do TypeScript somem na compilação, então o Nest não consegue usá-las como chave de injeção (precisaria de `@Inject(SYMBOL)` em todo lugar). Uma `abstract class` existe em runtime e serve de token direto: `constructor(private verifier: AuthVerifier)`.
 
 ---
 
@@ -175,10 +176,10 @@ providers: [{ provide: PasswordHasher, useClass: BcryptPasswordHasher }]
 
 | Princípio | Em uma frase | Onde aparece aqui |
 |---|---|---|
-| **S**ingle Responsibility | Uma classe, um motivo para mudar | Um use case por ação (`LoginUseCase`, `CancelEventItemUseCase`). O controller só traduz HTTP; o presenter só formata JSON. |
+| **S**ingle Responsibility | Uma classe, um motivo para mudar | Um use case por ação (`CreateUserUseCase`, `CancelEventItemUseCase`). O controller só traduz HTTP; o presenter só formata JSON. |
 | **O**pen/Closed | Aberto para extensão, fechado para modificação | Um novo canal de notificação (push, e-mail) entra como um novo adaptador, sem mexer em quem decide o que avisar. |
 | **L**iskov Substitution | Qualquer implementação de um contrato funciona no lugar de outra | `InMemoryRateLimitStore` (testes) e `UpstashRateLimitStore` (produção) são intercambiáveis para o `RateLimiter`. |
-| **I**nterface Segregation | Contratos pequenos e focados | `PasswordHasher` e `TokenIssuer` são ports separados, em vez de um `AuthService` gigante. |
+| **I**nterface Segregation | Contratos pequenos e focados | `AuthVerifier` só verifica o token; criar convites será outro port (`InvitationIssuer`), em vez de um `AuthService` gigante. |
 | **D**ependency Inversion | Dependa de abstrações, não de implementações | Use cases dependem de `UserRepository` (abstrato), nunca de `PrismaUserRepository`. |
 
 ---
@@ -197,22 +198,18 @@ src/
       application/
         ports/
           auth-verifier.ts              # port (token do Clerk → externalId + email)
-          password-hasher.ts            # port
-          token-issuer.ts               # port
         use-cases/
-          login.use-case.ts
-          login.use-case.spec.ts        # teste unitário ao lado
           authenticate.use-case.ts      # vincula o User pelo email no primeiro acesso
+          authenticate.use-case.spec.ts # teste unitário ao lado
+          create-user.use-case.ts
       infrastructure/
         prisma-user.repository.ts       # adapter (+ mapper Prisma ↔ User)
-        bcrypt-password-hasher.ts
         clerk-auth-verifier.ts
-        jwt-token-issuer.ts
       presentation/
-        auth.controller.ts
         credentials.guard.ts            # guard global: Bearer do Clerk → User
         me.controller.ts
-        dto/login.dto.ts                # Zod mora só aqui
+        users.controller.ts
+        dto/user-management.dto.ts      # Zod mora só aqui
         user.presenter.ts
       identity.module.ts                # composition root do módulo
       index.ts                          # API pública do módulo (única porta para os outros)
@@ -231,29 +228,29 @@ test/
 ### 5.2 Convenções de nomes
 
 - Arquivos em kebab-case com sufixo de papel: `.entity`, `.vo`, `.repository`, `.use-case`, `.controller`, `.dto`, `.presenter`, `.module`, `.spec`, `.contract` (suíte que todo adaptador de um port precisa passar, chamada do `.spec` de cada um), e os papéis do Nest `.service`, `.strategy`, `.guard`, `.filter`, `.decorator`.
-- Arquivos sem um papel único ficam sem sufixo, com nome do que fazem: `app-config.ts`, `error-catalog.ts`, `security.ts`, `docs.ts`, `password-policy.ts`.
-- Adaptadores prefixados pela tecnologia: `prisma-`, `bcrypt-`, `jwt-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`, e `in-process-` para o que chama outro contexto (ou código) dentro do mesmo processo (`in-process-user-directory.ts`, `InProcessEventPublisher`). Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-password-hasher.ts`), e ficam em `application/testing/`.
+- Arquivos sem um papel único ficam sem sufixo, com nome do que fazem: `app-config.ts`, `error-catalog.ts`, `security.ts`, `docs.ts`.
+- Adaptadores prefixados pela tecnologia: `prisma-`, `clerk-`, `crypto-`, `resend-`, `cloudinary-`, `upstash-`, `in-memory-`, e `in-process-` para o que chama outro contexto (ou código) dentro do mesmo processo (`in-process-user-directory.ts`, `InProcessEventPublisher`). Dublês de teste de ports técnicos que não guardam estado real usam `fake-` (`fake-auth-verifier.ts`), e ficam em `application/testing/`.
 - Classes com os termos do `CONTEXT.md`: `EventItem`, `Field`, `GroupMember`. Nunca os termos da lista "_Avoid_".
 
-### 5.3 O caminho de uma requisição: `POST /api/v1/auth/login`
+### 5.3 O caminho de uma requisição: `GET /api/v1/me`
 
 ```
-HTTP ─► AuthController (presentation)
-          │  LoginDto (Zod) já validou o corpo
+HTTP ─► CredentialsGuard (presentation, global)
+          │  lê Authorization: Bearer <token do Clerk>
           ▼
-        LoginUseCase.execute({ email, password })   (application)
-          │  Email.create(email)          → value object normaliza
-          │  users.findByEmail(email)     → port; em runtime é PrismaUserRepository
-          │  hasher.compare(...)          → port; em runtime é BcryptPasswordHasher
-          │  falhou? throw AppError('INVALID_CREDENTIALS')
-          │  tokens.issue(user)           → port; em runtime é JwtTokenIssuer
+        AuthenticateUseCase.execute({ token })   (application)
+          │  verifier.verify(token)        → port; em runtime é ClerkAuthVerifier
+          │  recusado? throw AppError('UNAUTHENTICATED')
+          │  users.findByClerkId(...)      → port; em runtime é PrismaUserRepository
+          │  senão users.findByEmail(...)  → primeiro acesso: vincula o Clerk ao User
+          │  email de ninguém? throw AppError('USER_NOT_INVITED')
           ▼
-        { token, user: User }
+        request.user = User
           ▼
-AuthController ─► UserPresenter.toJson(user) ─► { data: { token, user } }
+MeController ─► UserPresenter.toJson(user) ─► { data: user }
 ```
 
-Se algo lança `AppError`, o filter global (presentation) consulta o catálogo, descobre o status HTTP (`INVALID_CREDENTIALS` → 401) e monta `{ error: { code, message } }`.
+Se algo lança `AppError`, o filter global (presentation) consulta o catálogo, descobre o status HTTP (`UNAUTHENTICATED` → 401) e monta `{ error: { code, message } }`.
 
 ### 5.4 Erros
 
@@ -377,7 +374,7 @@ A pergunta para decidir: *"existe uma regra que pode ser quebrada se alguém alt
 A regra da dependência não depende de disciplina: o ESLint barra as violações no editor e no CI.
 
 - **Camadas** (`eslint-plugin-boundaries`): `domain` → só `domain` e `shared/domain`; `application` → + `domain`; `infrastructure` → + `application`; `presentation` → `application` (não `infrastructure`). O `*.module.ts` é a exceção, por ser o composition root.
-- **Bibliotecas** (`no-restricted-imports` por pasta): em `domain/` e `application/` são proibidos `@prisma/*`, `@nestjs/*`, `zod`, `bcryptjs`, `resend`, `cloudinary` e afins. Por isso entidades, domain services e use cases **não têm `@Injectable()`**: o `*.module.ts` os registra com `useFactory` ou `useClass`.
+- **Bibliotecas** (`no-restricted-imports` por pasta): em `domain/` e `application/` são proibidos `@prisma/*`, `@nestjs/*`, `@clerk/*`, `zod`, `resend`, `cloudinary` e afins. Por isso entidades, domain services e use cases **não têm `@Injectable()`**: o `*.module.ts` os registra com `useFactory` ou `useClass`.
 - **Fronteira entre módulos**: cada módulo tem um `index.ts` que é a sua API pública (o módulo Nest, o que ele oferece para consulta e os seus domain events). Outros módulos importam só o `index.ts` (`../../<nome>/index.js`), nunca uma pasta interna.
 
 Se o lint reclamar, a pergunta não é "como calo o lint?", e sim "em que camada esse código deveria estar?".

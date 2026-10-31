@@ -9,19 +9,19 @@ Cada seção aponta o arquivo do `identity` que serve de gabarito. O código é 
 - Uma classe injetada pelo construtor (use case, port, `PrismaService`, `AppConfig`) entra como **import de valor**, nunca `import type`: o Nest lê o tipo pelo metadata do decorator.
 - O ESLint classifica pelo caminho (`src/modules/*/<camada>`): pasta nova no lugar certo já nasce fiscalizada, sem mexer no `eslint.config.js`.
 
-## domain/ — `identity/domain/user.entity.ts`, `user.repository.ts`, `password-policy.ts`
+## domain/ — `identity/domain/user.entity.ts`, `user.repository.ts`
 
-- TypeScript puro: sem Nest, Prisma, Zod, bcrypt. Sem `@Injectable()`.
+- TypeScript puro: sem Nest, Prisma, Zod, Clerk. Sem `@Injectable()`.
 - Entidade com construtor privado, `restore(props)` para reidratar, getters e métodos com nome do negócio (`promoteToSuperAdmin()`, `markPaid()`), nunca setters.
 - Regra quebrada lança `new AppError('<CODIGO>')` (`shared/domain/app-error.ts`).
 - Todo método que muda a entidade recebe um `Stamp` (`shared/domain/stamp.ts`), sem default, e marca `updatedAt`/`updatedById` com ele. Nunca `new Date()` no domínio.
 - Repositório é `abstract class` (token de injeção). Id é `Int` gerado pelo banco (ADR-0002): criar é `create(props): Promise<Entidade>`, alterar é `save(entidade)`.
 
-## application/ — `identity/application/use-cases/login.use-case.ts`
+## application/ — `identity/application/use-cases/create-user.use-case.ts`
 
 - Um use case por ação, classe `<Acao>UseCase` com `execute(input)`; tipos `<Acao>Input` e `<Acao>Output` no mesmo arquivo. Use case não chama outro use case.
-- Serviço técnico vira port em `application/ports/` (`abstract class`, ver `password-hasher.ts`).
-- Use case que escreve recebe o `Clock` (`shared/application/clock.ts`) pelo construtor e monta o stamp: `{ by: input.actor.id, at: this.clock.now() }`. Escrita sem User logado usa `by: null` (script, Site); na ativação, o Author é o próprio User. Nos testes, `FixedClock` (`shared/application/testing/fixed-clock.ts`).
+- Serviço técnico vira port em `application/ports/` (`abstract class`, ver `auth-verifier.ts`).
+- Use case que escreve recebe o `Clock` (`shared/application/clock.ts`) pelo construtor e monta o stamp: `{ by: input.actor.id, at: this.clock.now() }`. Escrita sem User logado usa `by: null` (script); no vínculo com o Clerk, o Author é o próprio User. Nos testes, `FixedClock` (`shared/application/testing/fixed-clock.ts`).
 - Dublês para os testes em `application/testing/`: `in-memory-<x>.repository.ts` para repositórios, `fake-<x>.ts` para ports técnicos. Teste pelo `execute()`, com valores esperados literais.
 
 ## Erros — `shared/domain/app-error.ts` + `shared/presentation/error-catalog.ts`
@@ -35,7 +35,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Todo model nasce com autoria (§5.8 da arquitetura, ADR-0013): `createdAt`, `updatedAt` e as FKs anuláveis `createdById`/`updatedById` para `users`, com `onDelete: Restrict` e relações nomeadas (`@relation("<Model>Created")`, `@relation("<Model>Updated")`, com as listas inversas no `User`). No repositório, `create(props, stamp)` grava `...createdWith(stamp)` e `save` grava `updatedAt`/`updatedById` da entidade; o `toDomain` lê as quatro colunas.
 - Adaptador prefixado pela tecnologia (`prisma-`, `resend-`, `cloudinary-`, `upstash-`), com `@Injectable()` e `extends <Port>`.
 
-## presentation/ — `identity/presentation/auth.controller.ts`, `me.controller.ts`, `dto/`, `user.presenter.ts`
+## presentation/ — `identity/presentation/users.controller.ts`, `me.controller.ts`, `dto/`, `user.presenter.ts`
 
 - Zod só em `dto/*.dto.ts`: entrada com `createZodDto` (o `ZodValidationPipe` global valida) e resposta também como DTO, para o OpenAPI (`@ApiOkResponse({ type })`).
 - Controller só traduz HTTP ↔ use case: sem regra de negócio. Sucesso sai como `{ data }`.

@@ -20,7 +20,7 @@ describe('CreateUserUseCase', () => {
 
   beforeEach(async () => {
     users = new InMemoryUserRepository()
-    links = new InMemoryActivationLinkRepository(users)
+    links = new InMemoryActivationLinkRepository()
     createUser = new CreateUserUseCase(
       users,
       links,
@@ -32,7 +32,6 @@ describe('CreateUserUseCase', () => {
       {
         name: 'Admin',
         email: Email.create('admin@example.com'),
-        passwordHash: 'hashed:admin-password',
         role: 'SUPER_ADMIN',
       },
       SCRIPT_STAMP,
@@ -77,7 +76,6 @@ describe('CreateUserUseCase', () => {
       {
         name: 'Ana',
         email: Email.create('ana@example.com'),
-        passwordHash: 'hashed:x',
         role: 'USER',
       },
       SCRIPT_STAMP,

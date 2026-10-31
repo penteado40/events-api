@@ -12,14 +12,13 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | Banco (Neon `events-api`) | branch `main` | branch `dev` | Postgres local (`docker-local`) |
 | `DOCS_ENABLED` | `false` | `true` | `true` |
 | `NODE_ENV` | `production` | `production` | `development` |
-| `JWT_SECRET` | próprio | próprio (diferente da produção) | `.env` |
 | `CLERK_SECRET_KEY` | instância de produção do Clerk | instância de desenvolvimento | `.env` (opcional) |
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo `events-api:production` | mesmo banco, prefixo `events-api:preview` | memória (ou Upstash com prefixo `events-api:local`, se configurado) |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
 | `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `JWT_SECRET`, `CLERK_SECRET_KEY`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `CLERK_SECRET_KEY`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
 
 ## Serviços
 
@@ -61,19 +60,23 @@ A automação vai rodar no GitHub Actions, não no build da Vercel: lá a migrat
 
 ## Super admin
 
-Criado em cada banco com o script, a senha digitada sem eco e fora do histórico do shell:
+São dois passos, em qualquer ordem, por ambiente: o User local no banco e o convite no Clerk, os dois com o mesmo email.
 
-```bash
-read -rs ADMIN_PASSWORD && export ADMIN_PASSWORD
-DATABASE_URL="$(npx neonctl connection-string <branch> --project-id patient-bar-43479758 \
-  --role-name events_api --database-name events_api)" \
-NODE_ENV=production npm run create-super-admin -- --email=<email> --name="<nome>"
-unset ADMIN_PASSWORD
-```
+1. **User local.** O script cria o User como Super admin, ou promove um User que já existe. É idempotente e não tem senha:
+
+   ```bash
+   DATABASE_URL="$(npx neonctl connection-string <branch> --project-id patient-bar-43479758 \
+     --role-name events_api --database-name events_api)" \
+   npm run create-super-admin -- --email=<email> --name="<nome>"
+   ```
+
+2. **Entrada no Clerk.** O Clerk só aceita quem foi convidado. No dashboard da instância do ambiente (produção ou desenvolvimento), em *Users → Invitations*, convide o mesmo email. A pessoa aceita o convite e entra por senha, Google ou Apple; a primeira requisição autenticada vincula o usuário do Clerk ao User local (ADR-0020).
+
+O convite pelo script fica para quando existir o `InvitationIssuer` (PROJ-170). No banco local, o `npx prisma db seed` faz o passo 1 para `admin@local.test`; o passo 2 é na instância de desenvolvimento.
 
 ## Limitações conhecidas
 
-- **`vercel dev` não sobe a API.** Ele roda o TypeScript pelo `tsx` (esbuild), que não emite o metadata de decorators do qual a injeção de dependência do NestJS depende, e o `JwtStrategy` recebe `undefined` no construtor. Localmente, use `npm run dev`; o deploy da Vercel compila com o `tsc` e funciona. A correção, se um dia for preciso, é declarar a injeção explicitamente com `@Inject(Token)` em cada parâmetro de construtor das classes do Nest, o que deixa o código independente do compilador (e muda a regra correspondente na skill `new-use-case`). Planejado na [PROJ-80](https://flpenteado.atlassian.net/browse/PROJ-80).
+- **`vercel dev` não sobe a API.** Ele roda o TypeScript pelo `tsx` (esbuild), que não emite o metadata de decorators do qual a injeção de dependência do NestJS depende, e as classes do Nest recebem `undefined` no construtor. Localmente, use `npm run dev`; o deploy da Vercel compila com o `tsc` e funciona. A correção, se um dia for preciso, é declarar a injeção explicitamente com `@Inject(Token)` em cada parâmetro de construtor das classes do Nest, o que deixa o código independente do compilador (e muda a regra correspondente na skill `new-use-case`). Planejado na [PROJ-80](https://flpenteado.atlassian.net/browse/PROJ-80).
 - **O primeiro deploy do projeto saiu como produção**, a partir da `feat/task-53`, mesmo com `main` como branch de produção: a Vercel promove o primeiro deploy quando ainda não existe nenhum. A partir dele, só `main` vai para produção.
 - **Aviso de `sslmode` do driver `pg`.** As URLs do Neon vêm com `sslmode=require`, que hoje o driver trata como `verify-full` (confere o certificado) e avisa que isso vai enfraquecer numa versão futura. Para manter o comportamento atual e calar o aviso, troque para `sslmode=verify-full` nas URLs guardadas na Vercel.
 - **A URL de produção `*.vercel.app` também exige login na Vercel.** Antes de apontar os Sites para a API (PROJ-71), é preciso um domínio próprio ou mudar a proteção.

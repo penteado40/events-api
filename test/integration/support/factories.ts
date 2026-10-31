@@ -70,3 +70,19 @@ export async function createActivationLink(options: CreateActivationLinkOptions)
   })
   return { ...link, token }
 }
+
+export async function createGroup(options: { name?: string } = {}) {
+  sequence += 1
+  return testPrisma().group.create({ data: { name: options.name ?? `Group ${sequence}` } })
+}
+
+/** A Group member, as the writes of PROJ-172 (Owners) and PROJ-177 (Viewers) will make. */
+export async function createGroupMember(options: {
+  groupId: number
+  userId: number
+  role?: 'OWNER' | 'VIEWER'
+}) {
+  return testPrisma().groupMember.create({
+    data: { groupId: options.groupId, userId: options.userId, role: options.role ?? 'VIEWER' },
+  })
+}

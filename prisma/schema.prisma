@@ -73,6 +73,7 @@ model ActivationLink {
 model Group {
   id          Int      @id @default(autoincrement())
   name        String
+  hasHadOwner Boolean  @default(false) // Set with the first Owner; never unset (ADR-0017)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdById Int? // Author (ADR-0013)
@@ -85,7 +86,7 @@ model Group {
   @@map("groups")
 }
 
-// The tie between a User and a Group. Written by PROJ-172 (Owners) and PROJ-177 (Viewers).
+// The tie between a User and a Group, with their role. Part of the Group's roster aggregate.
 model GroupMember {
   id          Int       @id @default(autoincrement())
   groupId     Int

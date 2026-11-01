@@ -50,6 +50,7 @@ function toDomain(row: PrismaGroup): Group {
   return Group.restore({
     id: row.id,
     name: row.name,
+    hasHadOwner: row.hasHadOwner,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

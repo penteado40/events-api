@@ -97,7 +97,7 @@ export class User {
    * out what is missing, and answers whether anything changed: an unchanged
    * User keeps its authorship.
    */
-  mirrorClerkProfile(changes: { name?: string; email?: Email }, stamp: Stamp): boolean {
+  mirrorProfile(changes: { name?: string; email?: Email }, stamp: Stamp): boolean {
     const name = changes.name?.trim()
     const newName = name !== undefined && name !== '' && name !== this.props.name
     const newEmail = changes.email !== undefined && !changes.email.equals(this.props.email)

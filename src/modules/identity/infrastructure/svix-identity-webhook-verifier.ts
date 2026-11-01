@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common'
 import { Webhook, WebhookVerificationError } from 'svix'
 import {
   type IdentityWebhookEvent,
@@ -12,6 +13,7 @@ const SIGNATURE_HEADERS = ['svix-id', 'svix-timestamp', 'svix-signature'] as con
  * Svix also refuses a timestamp out of its tolerance, so an old request
  * cannot be replayed.
  */
+@Injectable()
 export class SvixIdentityWebhookVerifier extends IdentityWebhookVerifier {
   /** @param signingSecret the endpoint's `whsec_...`; null fails every webhook as a server error. */
   constructor(private readonly signingSecret: string | null) {

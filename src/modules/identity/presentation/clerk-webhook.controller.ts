@@ -5,7 +5,7 @@ import type { Request } from 'express'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Public } from '../../../shared/presentation/public.decorator.js'
 import { IdentityWebhookVerifier } from '../application/ports/identity-webhook-verifier.js'
-import { SyncUserFromClerkUseCase } from '../application/use-cases/sync-user-from-clerk.use-case.js'
+import { SyncUserProfileUseCase } from '../application/use-cases/sync-user-profile.use-case.js'
 
 /**
  * Clerk's webhook (ADR-0020): keeps the mirror of the User's name and email in
@@ -20,7 +20,7 @@ export class ClerkWebhookController {
 
   constructor(
     private readonly verifier: IdentityWebhookVerifier,
-    private readonly syncUserFromClerk: SyncUserFromClerkUseCase,
+    private readonly syncUserProfile: SyncUserProfileUseCase,
   ) {}
 
   /** Answers 200 to every verified event, so Clerk does not retry one we chose to ignore. */
@@ -32,14 +32,11 @@ export class ClerkWebhookController {
       : null
     if (!event) throw new AppError('UNAUTHENTICATED')
 
-    if (event.type === 'USER_UPDATED') {
-      const { externalId, name, email } = event
-      const outcome = await this.syncUserFromClerk.execute({ externalId, name, email })
-      if (outcome === 'EMAIL_IN_USE') {
-        this.logger.warn(
-          `Clerk user ${event.externalId}: o novo email já é de outro User, só o nome foi espelhado`,
-        )
-      }
+    const outcome = await this.syncUserProfile.execute(event)
+    if (outcome === 'EMAIL_IN_USE' && event.type === 'USER_UPDATED') {
+      this.logger.warn(
+        `Clerk user ${event.externalId}: o novo email já é de outro User, só o nome foi espelhado`,
+      )
     }
     return { data: { received: true } }
   }

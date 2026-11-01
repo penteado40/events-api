@@ -9,7 +9,7 @@ import { InvitationIssuer } from './application/ports/invitation-issuer.js'
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
 import { GetMeUseCase } from './application/use-cases/get-me.use-case.js'
-import { SyncUserFromClerkUseCase } from './application/use-cases/sync-user-from-clerk.use-case.js'
+import { SyncUserProfileUseCase } from './application/use-cases/sync-user-profile.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
 import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
@@ -51,9 +51,8 @@ import { UsersController } from './presentation/users.controller.js'
       inject: [AppConfig],
     },
     {
-      provide: SyncUserFromClerkUseCase,
-      useFactory: (users: UserRepository, clock: Clock) =>
-        new SyncUserFromClerkUseCase(users, clock),
+      provide: SyncUserProfileUseCase,
+      useFactory: (users: UserRepository, clock: Clock) => new SyncUserProfileUseCase(users, clock),
       inject: [UserRepository, Clock],
     },
     {

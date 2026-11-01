@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
-import { Prisma } from '../../../generated/prisma/client.js'
+import type { Prisma } from '../../../generated/prisma/client.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { createdWith } from '../../../shared/domain/stamp.js'
+import { isUniqueViolation } from '../../../shared/infrastructure/prisma-errors.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { GroupRoster } from '../domain/group-roster.js'
 import { GroupRosterRepository } from '../domain/group-roster.repository.js'
@@ -43,9 +44,7 @@ export class PrismaGroupRosterRepository extends GroupRosterRepository {
       await this.prisma.$transaction(writes)
     } catch (error) {
       // The roster checks first; this covers the same User added twice at once.
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new AppError('ALREADY_A_GROUP_MEMBER')
-      }
+      if (isUniqueViolation(error)) throw new AppError('ALREADY_A_GROUP_MEMBER')
       throw error
     }
   }

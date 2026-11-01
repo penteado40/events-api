@@ -4,13 +4,13 @@ import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { PHONE, SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
-import { SyncUserFromClerkUseCase } from './sync-user-from-clerk.use-case.js'
+import { SyncUserProfileUseCase } from './sync-user-profile.use-case.js'
 
 const NOW = new Date('2026-10-31T12:00:00.000Z')
 
-describe('SyncUserFromClerkUseCase', () => {
+describe('SyncUserProfileUseCase', () => {
   let users: InMemoryUserRepository
-  let sync: SyncUserFromClerkUseCase
+  let sync: SyncUserProfileUseCase
   let ana: User
 
   async function createUser(name: string, email: string): Promise<User> {
@@ -22,12 +22,13 @@ describe('SyncUserFromClerkUseCase', () => {
 
   beforeEach(async () => {
     users = new InMemoryUserRepository()
-    sync = new SyncUserFromClerkUseCase(users, new FixedClock(NOW))
+    sync = new SyncUserProfileUseCase(users, new FixedClock(NOW))
     ana = await signedIn(users, await createUser('Ana', 'ana@example.com'))
   })
 
   it('updates the name and the email of the linked User, with no Author', async () => {
     const outcome = await sync.execute({
+      type: 'USER_UPDATED',
       externalId: ana.clerkId!,
       name: 'Ana Souza',
       email: 'Ana.Souza@Example.com',
@@ -41,8 +42,14 @@ describe('SyncUserFromClerkUseCase', () => {
     expect(stored?.updatedById).toBeNull()
   })
 
+  it('ignores an event it does not act on', async () => {
+    expect(await sync.execute({ type: 'IGNORED' })).toBe('IGNORED')
+    expect((await users.findById(ana.id))?.updatedById).toBe(ana.id)
+  })
+
   it('ignores an unknown Clerk user, creating nothing', async () => {
     const outcome = await sync.execute({
+      type: 'USER_UPDATED',
       externalId: 'user_unknown',
       name: 'Bia',
       email: 'bia@example.com',
@@ -55,6 +62,7 @@ describe('SyncUserFromClerkUseCase', () => {
 
   it('touches nothing when the name and the email did not change', async () => {
     const outcome = await sync.execute({
+      type: 'USER_UPDATED',
       externalId: ana.clerkId!,
       name: 'Ana',
       email: 'ana@example.com',
@@ -68,7 +76,12 @@ describe('SyncUserFromClerkUseCase', () => {
 
   it('keeps the current name when Clerk has none, and the email when it is missing or invalid', async () => {
     for (const email of [null, 'not-an-email']) {
-      const outcome = await sync.execute({ externalId: ana.clerkId!, name: '  ', email })
+      const outcome = await sync.execute({
+        type: 'USER_UPDATED',
+        externalId: ana.clerkId!,
+        name: '  ',
+        email,
+      })
 
       expect(outcome).toBe('UNCHANGED')
     }
@@ -81,6 +94,7 @@ describe('SyncUserFromClerkUseCase', () => {
     await createUser('Bia', 'bia@example.com')
 
     const outcome = await sync.execute({
+      type: 'USER_UPDATED',
       externalId: ana.clerkId!,
       name: 'Ana Souza',
       email: 'bia@example.com',
@@ -97,6 +111,7 @@ describe('SyncUserFromClerkUseCase', () => {
     users.takeEmailConcurrently(Email.create('bia@example.com'))
 
     const outcome = await sync.execute({
+      type: 'USER_UPDATED',
       externalId: ana.clerkId!,
       name: 'Ana Souza',
       email: 'bia@example.com',

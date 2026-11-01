@@ -4,7 +4,7 @@ import { GroupMemberRepository } from '../../domain/group-member.repository.js'
 
 export class InMemoryGroupMemberRepository extends GroupMemberRepository {
   private readonly members: { member: GroupMember; stamp: Stamp | null }[] = []
-  private failingAdd = false
+  private failingInsert = false
 
   async findByUser(userId: number): Promise<GroupMember[]> {
     return this.all().filter((m) => m.userId === userId)
@@ -20,17 +20,17 @@ export class InMemoryGroupMemberRepository extends GroupMemberRepository {
     this.members.push({ member, stamp: null })
   }
 
-  /** Stores a Group member as the roster writes them; `failNextAdd` makes it throw once. */
+  /** Stores a Group member as the roster writes them; `failNextInsert` makes it throw once. */
   insert(member: GroupMember, stamp: Stamp): void {
-    if (this.failingAdd) {
-      this.failingAdd = false
+    if (this.failingInsert) {
+      this.failingInsert = false
       throw new Error('in-memory group members: insert failed')
     }
     this.members.push({ member, stamp })
   }
 
-  failNextAdd(): void {
-    this.failingAdd = true
+  failNextInsert(): void {
+    this.failingInsert = true
   }
 
   stampOf(groupId: number, userId: number): Stamp | null | undefined {

@@ -2,6 +2,7 @@ import type { Stamp } from '../../../../shared/domain/stamp.js'
 import {
   type EnsuredGroupUser,
   type GroupUser,
+  type GroupUserContact,
   GroupUserAccounts,
 } from '../ports/group-user-accounts.js'
 
@@ -24,10 +25,7 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
     super()
   }
 
-  async ensureUser(
-    input: { email: string; name: string; phone: string },
-    stamp: Stamp,
-  ): Promise<EnsuredGroupUser> {
+  async ensureUser(input: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser> {
     this.stamps.push(stamp)
     const email = input.email.trim().toLowerCase()
     const found = this.users.get(email)
@@ -63,7 +61,7 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   }
 
   /** The stamps of every ensureUser call, in order. */
-  ensuredBy(): Stamp[] {
+  ensureStamps(): Stamp[] {
     return [...this.stamps]
   }
 

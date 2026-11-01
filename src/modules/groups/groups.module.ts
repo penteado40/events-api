@@ -10,7 +10,7 @@ import { RenameGroupUseCase } from './application/use-cases/rename-group.use-cas
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
 import { GroupRepository } from './domain/group.repository.js'
-import { IdentityGroupUserAccounts } from './infrastructure/identity-group-user-accounts.js'
+import { InProcessGroupUserAccounts } from './infrastructure/in-process-group-user-accounts.js'
 import { PrismaGroupMemberRepository } from './infrastructure/prisma-group-member.repository.js'
 import { PrismaGroupRosterRepository } from './infrastructure/prisma-group-roster.repository.js'
 import { PrismaGroupRepository } from './infrastructure/prisma-group.repository.js'
@@ -26,7 +26,7 @@ import { GroupsController } from './presentation/groups.controller.js'
     { provide: GroupRosterRepository, useClass: PrismaGroupRosterRepository },
     {
       provide: GroupUserAccounts,
-      useFactory: (accounts: UserAccounts) => new IdentityGroupUserAccounts(accounts),
+      useFactory: (accounts: UserAccounts) => new InProcessGroupUserAccounts(accounts),
       inject: [UserAccounts],
     },
     {

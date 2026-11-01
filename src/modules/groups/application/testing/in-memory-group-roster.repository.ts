@@ -26,6 +26,7 @@ export class InMemoryGroupRosterRepository extends GroupRosterRepository {
 
   async save(roster: GroupRoster): Promise<void> {
     const { added, firstOwner } = roster.changes()
+    // The unique (groupId, userId) of the table, which the roster cannot see across requests.
     const taken = new Set(this.members.ofGroup(roster.groupId).map((m) => m.userId))
     if (added.some(({ member }) => taken.has(member.userId))) {
       throw new AppError('ALREADY_A_GROUP_MEMBER')

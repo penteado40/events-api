@@ -49,7 +49,7 @@ describe('AddOwnerUseCase', () => {
       url: 'https://accounts.clerk.test/accept?invitation=1',
       expiresAt: new Date('2026-11-07T12:00:00.000Z'),
     })
-    expect(accounts.ensuredBy()).toEqual([{ by: SUPER_ADMIN.id, at: NOW }])
+    expect(accounts.ensureStamps()).toEqual([{ by: SUPER_ADMIN.id, at: NOW }])
     expect(members.all()).toEqual([{ groupId: 1, userId: result.user.id, role: 'OWNER' }])
   })
 
@@ -97,25 +97,25 @@ describe('AddOwnerUseCase', () => {
     await expect(addOwner.execute({ actor: ANA, groupId: 1, ...JOAO })).rejects.toEqual(
       new AppError('FORBIDDEN'),
     )
-    expect(accounts.ensuredBy()).toEqual([])
+    expect(accounts.ensureStamps()).toEqual([])
   })
 
   it('answers NOT_FOUND to a User who is not a Group member of the Group', async () => {
     await expect(addOwner.execute({ actor: ANA, groupId: 1, ...JOAO })).rejects.toEqual(
       new AppError('NOT_FOUND'),
     )
-    expect(accounts.ensuredBy()).toEqual([])
+    expect(accounts.ensureStamps()).toEqual([])
   })
 
   it('answers NOT_FOUND for a Group that does not exist', async () => {
     await expect(addOwner.execute({ actor: SUPER_ADMIN, groupId: 42, ...JOAO })).rejects.toEqual(
       new AppError('NOT_FOUND'),
     )
-    expect(accounts.ensuredBy()).toEqual([])
+    expect(accounts.ensureStamps()).toEqual([])
   })
 
   it("revokes the new Pending user's Activation link when storing the Owner fails", async () => {
-    members.failNextAdd()
+    members.failNextInsert()
 
     await expect(addOwner.execute({ actor: SUPER_ADMIN, groupId: 1, ...JOAO })).rejects.toThrow()
     const [created] = accounts.created()
@@ -124,14 +124,14 @@ describe('AddOwnerUseCase', () => {
 
   it("leaves an existing User's link alone when storing the Owner fails", async () => {
     accounts.existing({ email: 'joao@x.com', name: 'João', isPending: true })
-    members.failNextAdd()
+    members.failNextInsert()
 
     await expect(addOwner.execute({ actor: SUPER_ADMIN, groupId: 1, ...JOAO })).rejects.toThrow()
     expect(accounts.dropped()).toEqual([])
   })
 
   it('fails naming the User whose link stayed open when revoking it fails too', async () => {
-    members.failNextAdd()
+    members.failNextInsert()
     accounts.failNextDrop()
 
     await expect(addOwner.execute({ actor: SUPER_ADMIN, groupId: 1, ...JOAO })).rejects.toThrow(

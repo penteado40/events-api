@@ -9,15 +9,13 @@ import type {
   GroupActivationLink,
   GroupUser,
   GroupUserAccounts,
+  GroupUserContact,
 } from '../ports/group-user-accounts.js'
 
-export interface AddOwnerInput {
+/** Name and phone are used only when the email has no User yet. */
+export interface AddOwnerInput extends GroupUserContact {
   actor: ActingUser
   groupId: number
-  email: string
-  /** Name and phone are used only when the email has no User yet. */
-  name: string
-  phone: string
 }
 
 export interface AddOwnerOutput {

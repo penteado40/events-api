@@ -57,18 +57,24 @@ export class PrismaUserRepository extends UserRepository {
   }
 
   async save(user: User): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name: user.name,
-        email: user.email.value,
-        phone: user.phone.value,
-        clerkId: user.clerkId,
-        role: user.role,
-        updatedAt: user.updatedAt,
-        updatedById: user.updatedById,
-      },
-    })
+    try {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: user.name,
+          email: user.email.value,
+          phone: user.phone.value,
+          clerkId: user.clerkId,
+          role: user.role,
+          updatedAt: user.updatedAt,
+          updatedById: user.updatedById,
+        },
+      })
+    } catch (error) {
+      // The email changed (from Clerk) to one another User took meanwhile.
+      if (isUniqueViolationOn(error, EMAIL_INDEX)) throw new AppError('EMAIL_ALREADY_IN_USE')
+      throw error
+    }
   }
 
   async saveClerkLink(user: User): Promise<boolean> {
@@ -86,6 +92,18 @@ export class PrismaUserRepository extends UserRepository {
       throw error
     }
   }
+}
+
+const EMAIL_INDEX = 'users_email_key'
+
+/** A P2002 on that unique index, as the pg driver adapter reports it. */
+function isUniqueViolationOn(error: unknown, index: string): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+    return false
+  }
+  const cause = (error.meta?.['driverAdapterError'] as { cause?: { constraint?: unknown } })?.cause
+  const constraint = cause?.constraint as { index?: unknown } | undefined
+  return constraint?.index === index
 }
 
 function toDomain(row: PrismaUser): User {

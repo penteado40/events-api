@@ -13,13 +13,14 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `DOCS_ENABLED` | `false` | `true` | `true` |
 | `NODE_ENV` | `production` | `production` | `development` |
 | `CLERK_SECRET_KEY` | instância de produção do Clerk | instância de desenvolvimento | `.env` (opcional) |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | endpoint de webhook da instância de produção | endpoint da instância de desenvolvimento | `.env` (opcional) |
 | `ACTIVATION_REDIRECT_URL` | deep link do events-expo | deep link do events-expo | `.env` (opcional) |
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo `events-api:production` | mesmo banco, prefixo `events-api:preview` | memória (ou Upstash com prefixo `events-api:local`, se configurado) |
 | `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
 | `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `CLERK_SECRET_KEY`, `ACTIVATION_REDIRECT_URL`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `ACTIVATION_REDIRECT_URL`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
 
 ## Serviços
 
@@ -37,6 +38,8 @@ A API verifica o token com `verifyToken` do `@clerk/backend` e a `CLERK_SECRET_K
 
 - `CLERK_JWT_KEY`: a chave pública PEM da instância (*API keys → JWT public key*). Com ela, a verificação não sai para a rede, e um token forjado com `kid` desconhecido não custa uma busca do JWKS a cada requisição. Recomendada em produção.
 - `CLERK_AUTHORIZED_PARTIES`: as origens exatas aceitas no `azp` do token, como no `CORS_ORIGINS`. Preenchida, o Clerk recusa também o token **sem** `azp`. Antes de definir, confira o que o events-expo manda.
+
+O webhook do Clerk mantém o espelho de nome e email do User em dia (ADR-0020). Em cada instância, crie em *Webhooks* um endpoint para `https://<host>/api/v1/webhooks/clerk` assinando só o evento `user.updated`, e copie o *Signing secret* (`whsec_...`) para a `CLERK_WEBHOOK_SIGNING_SECRET`. A rota é pública e verifica a assinatura do Svix sobre o corpo cru: sem assinatura válida, 401. Ela só atualiza nome e email (o primário, se verificado) do User já vinculado pelo `clerkId`, sem Author; nunca cria User nem vínculo, e responde 200 sem efeito a `clerkId` desconhecido e a outros eventos. Se o novo email já for de outro User, só o nome muda e fica um aviso no log. Como os previews ficam atrás da *Vercel Authentication*, o Clerk não alcança um preview sem um bypass da proteção.
 
 O Activation link é um convite do Clerk criado pela API (`InvitationIssuer`) com `notify: false`, então o Clerk não manda email: a url volta na resposta a quem criou o User. O convite vale `ACTIVATION_LINK_TTL_DAYS` dias e, aceito, leva ao `ACTIVATION_REDIRECT_URL`, o deep link do events-expo. Se o Clerk falhar ao convidar, o User não é criado e a resposta é 500.
 

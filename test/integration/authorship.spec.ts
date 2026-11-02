@@ -32,7 +32,7 @@ describe('Authorship of the records (ADR-0013)', () => {
       .http()
       .post('/api/v1/users')
       .auth(adminToken, { type: 'bearer' })
-      .send({ name: 'Pedro', email: 'pedro@example.com' })
+      .send({ name: 'Pedro', email: 'pedro@example.com', phone: '+5511987654321' })
     const userId = res.body.data.user.id as number
 
     const user = await testPrisma().user.findUnique({ where: { id: userId } })
@@ -69,6 +69,7 @@ describe('Authorship of the records (ADR-0013)', () => {
     const { user } = await createSuperAdmin(loadTestEnv().databaseUrl, {
       email: 'root@example.com',
       name: 'Root',
+      phone: '+5511900000000',
     })
 
     const row = await testPrisma().user.findUnique({ where: { id: user.id } })
@@ -80,7 +81,7 @@ describe('Authorship of the records (ADR-0013)', () => {
       .http()
       .post('/api/v1/users')
       .auth(adminToken, { type: 'bearer' })
-      .send({ name: 'Caio', email: 'caio@example.com' })
+      .send({ name: 'Caio', email: 'caio@example.com', phone: '+5511987654321' })
       .expect(201)
 
     await expect(testPrisma().user.delete({ where: { id: adminId } })).rejects.toThrow()

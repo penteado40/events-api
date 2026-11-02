@@ -1,3 +1,4 @@
+import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Email } from '../../../../shared/domain/email.vo.js'
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
 import { type NewUserProps, User } from '../../domain/user.entity.js'
@@ -8,6 +9,10 @@ export class InMemoryUserRepository extends UserRepository {
   /** The stored links, apart from the entities: a test can change them behind a request's back. */
   private readonly clerkIds = new Map<number, string>()
   private nextId = 1
+  /** A User another request creates right before the next create, which then collides. */
+  private concurrent: NewUserProps | null = null
+  /** Emails another request stored behind this one's back. */
+  private readonly takenEmails: Email[] = []
 
   async findByEmail(email: Email): Promise<User | null> {
     return [...this.users.values()].find((u) => u.email.equals(email)) ?? null
@@ -27,6 +32,14 @@ export class InMemoryUserRepository extends UserRepository {
   }
 
   async create(props: NewUserProps, stamp: Stamp): Promise<User> {
+    if (this.concurrent) {
+      const winner = this.concurrent
+      this.concurrent = null
+      await this.create(winner, stamp)
+    }
+    if ([...this.users.values()].some((u) => u.email.equals(props.email))) {
+      throw new AppError('EMAIL_ALREADY_IN_USE')
+    }
     const user = User.restore({
       ...props,
       id: this.nextId++,
@@ -39,6 +52,10 @@ export class InMemoryUserRepository extends UserRepository {
   }
 
   async save(user: User): Promise<void> {
+    const taken =
+      this.takenEmails.some((email) => email.equals(user.email)) ||
+      [...this.users.values()].some((u) => u.id !== user.id && u.email.equals(user.email))
+    if (taken) throw new AppError('EMAIL_ALREADY_IN_USE')
     this.users.set(user.id, user)
     if (user.clerkId !== null) this.clerkIds.set(user.id, user.clerkId)
   }
@@ -53,6 +70,16 @@ export class InMemoryUserRepository extends UserRepository {
   /** Another request's link landing in storage, without touching the entities already read. */
   linkConcurrently(userId: number, clerkId: string): void {
     this.clerkIds.set(userId, clerkId)
+  }
+
+  /** Another request's User with this email lands in storage, unseen by `findByEmail`: the next save with it collides. */
+  takeEmailConcurrently(email: Email): void {
+    this.takenEmails.push(email)
+  }
+
+  /** Another request creates this User between the next create's check and its write. */
+  createConcurrently(props: NewUserProps): void {
+    this.concurrent = props
   }
 
   all(): User[] {

@@ -121,7 +121,7 @@ npm run dev                  # http://localhost:3000/api/v1
 
 To sign in as the seeded Super admin, invite `admin@local.test` from the dashboard of the Clerk development instance (see [`docs/infra.md`](docs/infra.md#super-admin)); the first request with its session token links the two.
 
-With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a Clerk session token in the Authorize button.
+With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs`. With `CLERK_PUBLISHABLE_KEY` set (the development instance), click **Entrar com Clerk** at the top and sign in: every request then carries your Clerk session token, renewed by Clerk JS, and **Sair** ends the session. Without a session the reference still reads and the public routes still answer. A token pasted in the Authorize button always wins over Clerk's, to try another User or an invalid token; without `CLERK_PUBLISHABLE_KEY`, pasting it is the only way in.
 
 ### Environment variables
 
@@ -136,7 +136,9 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a C
 | `CLERK_JWT_KEY` | Optional; Clerk's PEM public key, for networkless verification |
 | `CLERK_AUTHORIZED_PARTIES` | Optional; exact origins accepted in the token's `azp` (a token without `azp` is then refused) |
 | `DOCS_ENABLED` | `true` registers the docs and the OpenAPI document |
-| `ACTIVATION_LINK_TTL` | Optional; Activation link lifetime in seconds (default `604800`, 7 days) |
+| `CLERK_PUBLISHABLE_KEY` | Optional; `pk_test_...` of the development instance, turns on the Clerk login of the docs |
+| `ACTIVATION_LINK_TTL_DAYS` | Optional; Activation link (Clerk invitation) lifetime in whole days (default `7`) |
+| `ACTIVATION_REDIRECT_URL` | Where an accepted Activation link lands: the events-expo deep link; required in production |
 
 ## Development
 
@@ -148,7 +150,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a C
 | `npm run test:unit` | Unit tests and the architecture lint tests, no database |
 | `npm run test:integration` | HTTP tests against the real Postgres in `DATABASE_URL_TEST` |
 | `npm run prisma:migrate` | Creates a migration from `prisma/schema.prisma` |
-| `npm run create-super-admin -- --email=... --name=...` | Creates or promotes the Super admin (idempotent); they enter Clerk through an invitation to the same email |
+| `npm run create-super-admin -- --email=... --name=... --phone=+55...` | Creates or promotes the Super admin (idempotent); they enter Clerk through an invitation to the same email |
 
 **Tests.** Use cases are unit-tested with in-memory fakes of their ports (no database). Integration tests boot the real app with `@nestjs/testing` and hit it through supertest against PostgreSQL, running migrations once and truncating every table before each file.
 

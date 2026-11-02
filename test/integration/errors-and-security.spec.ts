@@ -65,6 +65,10 @@ describe('errors and security headers', () => {
       UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
       UPSTASH_REDIS_REST_TOKEN: 'token',
       CLERK_SECRET_KEY: 'sk_test_unused',
+      ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
+      EMAIL_FROM_ADDRESS: 'noreply@mail.example.com',
+      PLATFORM_NAME: 'Programação',
+      RESEND_API_KEY: 're_unused',
     })
     try {
       const res = await prod.http().get('/api/v1/me').auth(anaToken, { type: 'bearer' })

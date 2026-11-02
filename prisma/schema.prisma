@@ -15,10 +15,25 @@ enum Role {
   USER
 }
 
+enum GroupRole {
+  OWNER
+  VIEWER
+}
+
+enum EmailKind {
+  ACCOUNT_ACTIVATION_LINK
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   name          String
   email         String    @unique
+  phone         String // E.164 with the country code; contact only, never sign-in
   clerkId       String?   @unique // Clerk user id (ADR-0020); null while a Pending user
   role          Role      @default(USER)
   // Deactivated user: refused on every request (ADR-0020). Never deleted (ADR-0013).
@@ -38,25 +53,87 @@ model User {
   updatedUsers           User[]           @relation("UserUpdated")
   createdActivationLinks ActivationLink[] @relation("ActivationLinkCreated")
   updatedActivationLinks ActivationLink[] @relation("ActivationLinkUpdated")
+  createdGroups          Group[]          @relation("GroupCreated")
+  updatedGroups          Group[]          @relation("GroupUpdated")
+  createdGroupMembers    GroupMember[]    @relation("GroupMemberCreated")
+  updatedGroupMembers    GroupMember[]    @relation("GroupMemberUpdated")
+  createdEmailLogs       EmailLog[]       @relation("EmailLogCreated")
+  updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
+
+  groupMembers GroupMember[] @relation("GroupMemberUser")
 
   @@map("users")
 }
 
 model ActivationLink {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  tokenHash   String    @unique // SHA-256 of the token; the token is never stored
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdById Int? // Author (ADR-0013)
-  updatedById Int?
-  createdBy   User?     @relation("ActivationLinkCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy   User?     @relation("ActivationLinkUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  invitationId String   @unique // The Clerk invitation (ADR-0020); its url is never stored
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  Int? // Author (ADR-0013)
+  updatedById  Int?
+  createdBy    User?    @relation("ActivationLinkCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy    User?    @relation("ActivationLinkUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   user User @relation("ActivationLinkUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("activation_links")
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  name        String
+  hasHadOwner Boolean  @default(false) // Set with the first Owner; never unset (ADR-0017)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("GroupCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("GroupUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  members GroupMember[]
+
+  @@map("groups")
+}
+
+// The tie between a User and a Group, with their role. Part of the Group's roster aggregate.
+model GroupMember {
+  id          Int       @id @default(autoincrement())
+  groupId     Int
+  userId      Int
+  role        GroupRole
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?     @relation("GroupMemberCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?     @relation("GroupMemberUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation("GroupMemberUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+// One attempt to send an email (Email log): internal, for diagnosis, never resent from here.
+model EmailLog {
+  id          Int         @id @default(autoincrement())
+  kind        EmailKind
+  recipient   String
+  status      EmailStatus
+  error       String? // What the provider answered, when the attempt failed
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById Int? // Author (ADR-0013): who triggered the email
+  updatedById Int?
+  createdBy   User?       @relation("EmailLogCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?       @relation("EmailLogUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([recipient])
+  @@map("email_logs")
 }

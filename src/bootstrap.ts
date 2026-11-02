@@ -8,7 +8,10 @@ import { AppConfig } from './shared/infrastructure/app-config.js'
 export async function createApp(
   config: AppConfig = AppConfig.fromEnv(),
 ): Promise<NestExpressApplication> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config))
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config), {
+    // The Clerk webhook's signature covers the raw bytes of the body.
+    rawBody: true,
+  })
   configureApp(app, config)
   app.enableShutdownHooks()
   return app

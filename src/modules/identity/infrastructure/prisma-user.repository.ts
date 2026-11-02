@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common'
-import { Prisma, type User as PrismaUser } from '../../../generated/prisma/client.js'
+import type { User as PrismaUser } from '../../../generated/prisma/client.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
+import { Phone } from '../../../shared/domain/phone.vo.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
+import { isUniqueViolation } from '../../../shared/infrastructure/prisma-errors.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
 import { type NewUserProps, User } from '../domain/user.entity.js'
 import { UserRepository } from '../domain/user.repository.js'
@@ -39,6 +41,7 @@ export class PrismaUserRepository extends UserRepository {
         data: {
           name: props.name,
           email: props.email.value,
+          phone: props.phone.value,
           role: props.role,
           ...createdWith(stamp),
         },
@@ -47,9 +50,7 @@ export class PrismaUserRepository extends UserRepository {
     } catch (error) {
       // The use case checks first; this covers two concurrent creations. The
       // email is the only unique column a new User can collide on.
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new AppError('EMAIL_ALREADY_IN_USE')
-      }
+      if (isUniqueViolation(error)) throw new AppError('EMAIL_ALREADY_IN_USE')
       throw error
     }
   }
@@ -57,17 +58,24 @@ export class PrismaUserRepository extends UserRepository {
   // `deactivatedAt` is left out: it is set by the database or a script (PROJ-99
   // brings the route), and writing an entity read earlier would undo it.
   async save(user: User): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        name: user.name,
-        email: user.email.value,
-        clerkId: user.clerkId,
-        role: user.role,
-        updatedAt: user.updatedAt,
-        updatedById: user.updatedById,
-      },
-    })
+    try {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: user.name,
+          email: user.email.value,
+          phone: user.phone.value,
+          clerkId: user.clerkId,
+          role: user.role,
+          updatedAt: user.updatedAt,
+          updatedById: user.updatedById,
+        },
+      })
+    } catch (error) {
+      // The email changed (from Clerk) to one another User took meanwhile.
+      if (isUniqueViolation(error, EMAIL_INDEX)) throw new AppError('EMAIL_ALREADY_IN_USE')
+      throw error
+    }
   }
 
   async saveClerkLink(user: User): Promise<boolean> {
@@ -79,19 +87,20 @@ export class PrismaUserRepository extends UserRepository {
       return count === 1
     } catch (error) {
       // The same Clerk user was linked to another User at the same time.
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        return false
-      }
+      if (isUniqueViolation(error)) return false
       throw error
     }
   }
 }
+
+const EMAIL_INDEX = 'users_email_key'
 
 function toDomain(row: PrismaUser): User {
   return User.restore({
     id: row.id,
     name: row.name,
     email: Email.create(row.email),
+    phone: Phone.create(row.phone),
     clerkId: row.clerkId,
     role: row.role,
     deactivatedAt: row.deactivatedAt,

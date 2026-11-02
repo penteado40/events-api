@@ -131,6 +131,10 @@ _Avoid_: root, admin geral
 O vínculo entre um User e um Group, com um papel: Owner ou Viewer. Um User pode ser Group member de vários Groups (ex.: uma produtora que atende vários grupos).
 _Avoid_: integrante (quando se refere ao vínculo), colaborador
 
+**Roster** (quadro do grupo):
+Os Group members de um Group vistos juntos, a partir do Group: quem está nele e com que papel. É o avesso da Membership, que olha os vínculos a partir de um User. No Roster valem as regras do conjunto: cada pessoa aparece uma vez só, e um Group que já teve Owner nunca fica sem nenhum.
+_Avoid_: lista de membros, elenco, equipe (Team é outra coisa)
+
 **Team** (equipe):
 Um conjunto de Group members com nome, mantido pelos Owners do Group (ex.: Cantores, Banda, Técnica, Produção; Técnica, quem cuida de som e luz, é outro Team, não a Produção). O Team Produção é só um Team, e quem está nele pode ser Viewer; não se confunde com "a produção", quem edita (Owners e Event managers). A lista de Teams é plana, e uma pessoa pode estar em vários Teams ou em nenhum, independente do papel. Escolher um Team num Audience só copia quem está nele naquele momento: mudar o Team depois não muda nenhum Audience.
 _Avoid_: naipe, Section, agrupamento, Grouping, subgrupo

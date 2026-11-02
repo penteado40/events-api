@@ -13,12 +13,17 @@ Nenhum segredo mora aqui nem no repositório: os valores ficam nas variáveis de
 | `DOCS_ENABLED` | `false` | `true` | `true` |
 | `NODE_ENV` | `production` | `production` | `development` |
 | `CLERK_SECRET_KEY` | instância de produção do Clerk | instância de desenvolvimento | `.env` (opcional) |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | endpoint de webhook da instância de produção | endpoint da instância de desenvolvimento | `.env` (opcional) |
+| `CLERK_PUBLISHABLE_KEY` | não definida (doc desligada) | instância de desenvolvimento | `.env` (opcional, instância de desenvolvimento) |
+| `ACTIVATION_REDIRECT_URL` | deep link do events-expo | deep link do events-expo | `.env` (opcional) |
 | `STORAGE_NAMESPACE` (Cloudinary) | `events-api` | `events-api-preview` | — |
 | Redis (Upstash) | banco `events-api`, prefixo `events-api:production` | mesmo banco, prefixo `events-api:preview` | memória (ou Upstash com prefixo `events-api:local`, se configurado) |
-| `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | — |
+| `EMAIL_FROM_ADDRESS` | `noreply@mail.fawedding.com.br` | idem | `.env` (opcional; sem ela, `noreply@localhost`) |
+| `PLATFORM_NAME` | nome da plataforma | idem | `.env` (opcional; sem ela, `Events`) |
+| `RESEND_API_KEY` | chave `events-api` do Resend | idem | `.env` (opcional; sem ela, todo envio falha e fica no Email log) |
 | `CORS_ORIGINS` | não definida (origem do Panel pendente) | não definida (origem do Panel pendente) | não definida (localhost já é liberado em dev) |
 
-Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `CLERK_SECRET_KEY`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
+Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABASE_URL`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, `ACTIVATION_REDIRECT_URL`, `NODE_ENV`, `DOCS_ENABLED`, `EMAIL_FROM_ADDRESS`, `PLATFORM_NAME`, `RESEND_API_KEY`, `STORAGE_NAMESPACE`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`. A `CLERK_PUBLISHABLE_KEY` só existe no Preview. A `CORS_ORIGINS` só é criada quando o Panel tiver URL: a Vercel não aceita valor vazio, e não definida equivale a vazia.
 
 ## Serviços
 
@@ -35,11 +40,17 @@ Variáveis na Vercel, iguais nos dois ambientes salvo as marcadas acima: `DATABA
 A API verifica o token com `verifyToken` do `@clerk/backend` e a `CLERK_SECRET_KEY`. Chave inválida ou JWKS fora do ar viram 500, não 401. Duas variáveis opcionais endurecem a verificação:
 
 - `CLERK_JWT_KEY`: a chave pública PEM da instância (*API keys → JWT public key*). Com ela, a verificação não sai para a rede, e um token forjado com `kid` desconhecido não custa uma busca do JWKS a cada requisição. Recomendada em produção.
-- `CLERK_AUTHORIZED_PARTIES`: as origens exatas aceitas no `azp` do token, como no `CORS_ORIGINS`. Preenchida, o Clerk recusa também o token **sem** `azp`. Antes de definir, confira o que o events-expo manda.
+- `CLERK_AUTHORIZED_PARTIES`: as origens exatas aceitas no `azp` do token, como no `CORS_ORIGINS`. Preenchida, o Clerk recusa também o token **sem** `azp`. Antes de definir, confira o que o events-expo manda. O token do login da doc leva no `azp` a origem da página, então ela também precisa estar na lista: `http://localhost:3000` no Local e o host do preview no Preview.
+
+A doc (`/api/v1/docs`) entra pelo Clerk quando a `CLERK_PUBLISHABLE_KEY` (*API keys → Publishable key*, `pk_test_...` da instância de desenvolvimento) está definida. A página carrega o Clerk JS do Frontend API que a chave codifica, e a CSP de `/docs` libera só esse host, o `img.clerk.com` e as proteções contra bot e abuso do Clerk. Sem a chave, a doc aceita só o token colado no Authorize. Em Produção ela não é definida, porque a doc fica desligada.
+
+O webhook do Clerk mantém o espelho de nome e email do User em dia (ADR-0020). Em cada instância, crie em *Webhooks* um endpoint para `https://<host>/api/v1/webhooks/clerk` assinando só o evento `user.updated`, e copie o *Signing secret* (`whsec_...`) para a `CLERK_WEBHOOK_SIGNING_SECRET`. A rota é pública e verifica a assinatura do Svix sobre o corpo cru: sem assinatura válida, 401. Ela só atualiza nome e email (o primário, se verificado) do User já vinculado pelo `clerkId`, sem Author; nunca cria User nem vínculo, e responde 200 sem efeito a `clerkId` desconhecido e a outros eventos. Se o novo email já for de outro User, só o nome muda e fica um aviso no log. Como os previews ficam atrás da *Vercel Authentication*, o Clerk não alcança um preview sem um bypass da proteção.
+
+O Activation link é um convite do Clerk criado pela API (`InvitationIssuer`) com `notify: false`, então o Clerk não manda email: a url volta na resposta a quem criou o User e vai por email nosso (Resend) ao Pending user. O convite vale `ACTIVATION_LINK_TTL_DAYS` dias e, aceito, leva ao `ACTIVATION_REDIRECT_URL`, o deep link do events-expo. Se o Clerk falhar ao convidar, o User não é criado e a resposta é 500.
 
 **Upstash**: um banco Redis `events-api` no plano Free, `us-east-1`, compartilhado pelos ambientes com prefixo de chave por ambiente (vem do `VERCEL_ENV`). Guarda só os contadores do rate limit, com a chave em hash (nenhum IP ou email em claro). As credenciais são obrigatórias com `NODE_ENV=production`: sem elas o deploy não sobe. Se o Upstash cair ou demorar mais de 1 s, o rate limit deixa a requisição passar e registra o erro no log.
 
-**Resend**: domínio `mail.fawedding.com.br` (região `us-east-1`) como Platform sender. A chave de API `events-api` só envia por esse domínio. O `bgwedding.com.br` continua lá enquanto a `fawedding-api` estiver no ar; sai na PROJ-71.
+**Resend**: domínio `mail.fawedding.com.br` (região `us-east-1`) como Platform sender. A chave de API `events-api` só envia por esse domínio. O módulo `emails` manda pelo `EmailSender` do `EMAIL_FROM_ADDRESS`, com o `PLATFORM_NAME` como nome exibido nos emails da conta, e envia depois da resposta, dentro do `waitUntil` (ADR-0007). Cada tentativa vira uma linha em `email_logs` (kind, destinatário, status e erro), só para diagnóstico: uma falha do Resend fica lá e não desfaz a ação. As três variáveis são obrigatórias com `NODE_ENV=production`, o que inclui o Preview. O `bgwedding.com.br` continua lá enquanto a `fawedding-api` estiver no ar; sai na PROJ-71.
 
 **Cloudinary**: mesma conta da `fawedding-api`, com uma chave de API própria (`events-api`) para poder ser revogada sozinha. As imagens antigas continuam em `fawedding/<id>/gifts`.
 
@@ -67,12 +78,12 @@ São dois passos, em qualquer ordem, por ambiente: o User local no banco e o con
    ```bash
    DATABASE_URL="$(npx neonctl connection-string <branch> --project-id patient-bar-43479758 \
      --role-name events_api --database-name events_api)" \
-   npm run create-super-admin -- --email=<email> --name="<nome>"
+   npm run create-super-admin -- --email=<email> --name="<nome>" --phone="<+DDI e número>"
    ```
 
 2. **Entrada no Clerk.** O Clerk só aceita quem foi convidado. No dashboard da instância do ambiente (produção ou desenvolvimento), em *Users → Invitations*, convide o mesmo email. A pessoa aceita o convite e entra por senha, Google ou Apple; a primeira requisição autenticada vincula o usuário do Clerk ao User local (ADR-0020).
 
-O convite pelo script fica para quando existir o `InvitationIssuer` (PROJ-170). No banco local, o `npx prisma db seed` faz o passo 1 para `admin@local.test`; o passo 2 é na instância de desenvolvimento.
+O script ainda não convida pelo `InvitationIssuer`: o convite do Super admin continua manual. No banco local, o `npx prisma db seed` faz o passo 1 para `admin@local.test`; o passo 2 é na instância de desenvolvimento.
 
 ## Limitações conhecidas
 

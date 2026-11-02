@@ -1,5 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Email } from '../../../shared/domain/email.vo.js'
+import type { Phone } from '../../../shared/domain/phone.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 
 export const ROLES = ['SUPER_ADMIN', 'USER'] as const
@@ -9,6 +10,8 @@ export interface UserProps {
   id: number
   name: string
   email: Email
+  /** Contact only (e.g. WhatsApp), never sign-in nor identification. */
+  phone: Phone
   /** The Clerk user this User signs in as (ADR-0020); null while a Pending user. */
   clerkId: string | null
   role: Role
@@ -23,6 +26,7 @@ export interface UserProps {
 export interface NewUserProps {
   name: string
   email: Email
+  phone: Phone
   role: Role
 }
 
@@ -46,6 +50,9 @@ export class User {
   }
   get email(): Email {
     return this.props.email
+  }
+  get phone(): Phone {
+    return this.props.phone
   }
   get clerkId(): string | null {
     return this.props.clerkId
@@ -86,6 +93,29 @@ export class User {
   /** Has not signed in yet: no Clerk user is linked. */
   get isPending(): boolean {
     return !this.isLinkedToClerk
+  }
+
+  /** The User edits their own name and phone; the email comes from Clerk and stays. */
+  editProfile(changes: { name?: string; phone?: Phone }, stamp: Stamp): void {
+    if (changes.name !== undefined) this.props.name = changes.name.trim()
+    if (changes.phone !== undefined) this.props.phone = changes.phone
+    this.touch(stamp)
+  }
+
+  /**
+   * Mirrors the name and email the person changed in Clerk (ADR-0020). Leaves
+   * out what is missing, and answers whether anything changed: an unchanged
+   * User keeps its authorship.
+   */
+  mirrorProfile(changes: { name?: string; email?: Email }, stamp: Stamp): boolean {
+    const name = changes.name?.trim()
+    const newName = name !== undefined && name !== '' && name !== this.props.name
+    const newEmail = changes.email !== undefined && !changes.email.equals(this.props.email)
+    if (!newName && !newEmail) return false
+    if (newName) this.props.name = name
+    if (newEmail) this.props.email = changes.email!
+    this.touch(stamp)
+    return true
   }
 
   promoteToSuperAdmin(stamp: Stamp): void {

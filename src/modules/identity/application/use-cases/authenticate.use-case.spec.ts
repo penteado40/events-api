@@ -4,7 +4,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeAuthVerifier } from '../testing/fake-auth-verifier.js'
-import { deactivated, SCRIPT_STAMP } from '../testing/identity-fixtures.js'
+import { deactivated, PHONE, SCRIPT_STAMP } from '../testing/identity-fixtures.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { AuthenticateUseCase } from './authenticate.use-case.js'
 
@@ -32,7 +32,7 @@ describe('AuthenticateUseCase', () => {
     users = new RacedUserRepository()
     authenticate = new AuthenticateUseCase(users, new FakeAuthVerifier(), new FixedClock(NOW))
     ana = await users.create(
-      { name: 'Ana', email: Email.create('ana@example.com'), role: 'USER' },
+      { name: 'Ana', email: Email.create('ana@example.com'), phone: PHONE, role: 'USER' },
       SCRIPT_STAMP,
     )
   })

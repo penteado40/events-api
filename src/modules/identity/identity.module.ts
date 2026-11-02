@@ -2,29 +2,41 @@ import { Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
+import { EmailsModule } from '../emails/index.js'
+import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
-import { ActivationTokenGenerator } from './application/ports/activation-token-generator.js'
+import { GroupMembers } from './application/ports/group-members.js'
+import { IdentityWebhookVerifier } from './application/ports/identity-webhook-verifier.js'
+import { ActivationLinks } from './application/activation-links.js'
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
+import { GetMeUseCase } from './application/use-cases/get-me.use-case.js'
+import { SyncUserProfileUseCase } from './application/use-cases/sync-user-profile.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
-import { ActivationLinkRepository } from './domain/activation-link.repository.js'
+import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
 import { UserRepository } from './domain/user.repository.js'
+import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
-import { CryptoActivationTokenGenerator } from './infrastructure/crypto-activation-token-generator.js'
+import { InMemoryGroupMembers } from './infrastructure/in-memory-group-members.js'
+import { InProcessActivationLinkMailer } from './infrastructure/in-process-activation-link-mailer.js'
+import { SvixIdentityWebhookVerifier } from './infrastructure/svix-identity-webhook-verifier.js'
+import { ClerkWebhookController } from './presentation/clerk-webhook.controller.js'
 import { CredentialsGuard } from './presentation/credentials.guard.js'
 import { MeController } from './presentation/me.controller.js'
 import { UsersController } from './presentation/users.controller.js'
 
 /**
- * Composition root of the identity context: Users, their Activation links, and
- * the global guard that authenticates every request by the Clerk token.
+ * Composition root of the identity context: Users, their Activation links, the
+ * global guard that authenticates every request by the Clerk token, and the
+ * Clerk webhook that keeps the User mirror in step.
  */
 @Module({
-  imports: [IdentityPersistenceModule],
-  controllers: [MeController, UsersController],
+  imports: [IdentityPersistenceModule, IdentityInvitationsModule, EmailsModule],
+  controllers: [MeController, UsersController, ClerkWebhookController],
   providers: [
-    { provide: ActivationTokenGenerator, useClass: CryptoActivationTokenGenerator },
+    { provide: GroupMembers, useClass: InMemoryGroupMembers },
+    { provide: ActivationLinkMailer, useClass: InProcessActivationLinkMailer },
     {
       provide: AuthVerifier,
       useFactory: (config: AppConfig) =>
@@ -36,44 +48,42 @@ import { UsersController } from './presentation/users.controller.js'
       inject: [AppConfig],
     },
     {
+      provide: IdentityWebhookVerifier,
+      useFactory: (config: AppConfig) =>
+        new SvixIdentityWebhookVerifier(config.clerkWebhookSigningSecret),
+      inject: [AppConfig],
+    },
+    {
+      provide: SyncUserProfileUseCase,
+      useFactory: (users: UserRepository, clock: Clock) => new SyncUserProfileUseCase(users, clock),
+      inject: [UserRepository, Clock],
+    },
+    {
       provide: CreateUserUseCase,
       useFactory: (
         users: UserRepository,
-        links: ActivationLinkRepository,
-        tokens: ActivationTokenGenerator,
+        activationLinks: ActivationLinks,
+        mailer: ActivationLinkMailer,
         clock: Clock,
-        config: AppConfig,
-      ) =>
-        new CreateUserUseCase(users, links, tokens, clock, {
-          ttlSeconds: config.activationLinkTtlSeconds,
-        }),
-      inject: [
-        UserRepository,
-        ActivationLinkRepository,
-        ActivationTokenGenerator,
-        Clock,
-        AppConfig,
-      ],
+      ) => new CreateUserUseCase(users, activationLinks, mailer, clock),
+      inject: [UserRepository, ActivationLinks, ActivationLinkMailer, Clock],
     },
     {
       provide: IssueActivationLinkUseCase,
-      useFactory: (
-        users: UserRepository,
-        links: ActivationLinkRepository,
-        tokens: ActivationTokenGenerator,
-        clock: Clock,
-        config: AppConfig,
-      ) =>
-        new IssueActivationLinkUseCase(users, links, tokens, clock, {
-          ttlSeconds: config.activationLinkTtlSeconds,
-        }),
-      inject: [
-        UserRepository,
-        ActivationLinkRepository,
-        ActivationTokenGenerator,
-        Clock,
-        AppConfig,
-      ],
+      useFactory: (activationLinks: ActivationLinks, mailer: ActivationLinkMailer, clock: Clock) =>
+        new IssueActivationLinkUseCase(activationLinks, mailer, clock),
+      inject: [ActivationLinks, ActivationLinkMailer, Clock],
+    },
+    {
+      provide: GetMeUseCase,
+      useFactory: (groupMembers: GroupMembers) => new GetMeUseCase(groupMembers),
+      inject: [GroupMembers],
+    },
+    {
+      provide: UpdateMeUseCase,
+      useFactory: (users: UserRepository, groupMembers: GroupMembers, clock: Clock) =>
+        new UpdateMeUseCase(users, groupMembers, clock),
+      inject: [UserRepository, GroupMembers, Clock],
     },
     {
       provide: AuthenticateUseCase,

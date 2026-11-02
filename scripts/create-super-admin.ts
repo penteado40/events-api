@@ -1,9 +1,10 @@
 /**
  * Creates the Super admin, or promotes an existing User. Idempotent.
  *
- *   npm run create-super-admin -- --email=a@b.com --name="Ana"
+ *   npm run create-super-admin -- --email=a@b.com --name="Ana" --phone="+5511987654321"
  *
- * Each option can also come from ADMIN_EMAIL and ADMIN_NAME. Only the local
+ * Each option can also come from ADMIN_EMAIL, ADMIN_NAME and ADMIN_PHONE; the
+ * phone carries the country code and only counts for a User created now. Only the local
  * User: the person enters Clerk through an invitation to the same email, sent
  * from the Clerk dashboard (docs/infra.md), and their first sign-in links it.
  */
@@ -28,7 +29,7 @@ export async function createSuperAdmin(databaseUrl: string, input: CreateSuperAd
 }
 
 const REFUSAL: Partial<Record<string, string>> = {
-  VALIDATION_ERROR: 'email inválido.',
+  VALIDATION_ERROR: 'email ou telefone (com DDI, ex.: +5511987654321) inválido.',
 }
 
 async function main(): Promise<void> {
@@ -36,18 +37,20 @@ async function main(): Promise<void> {
     options: {
       email: { type: 'string' },
       name: { type: 'string' },
+      phone: { type: 'string' },
     },
   })
   const email = values.email ?? process.env.ADMIN_EMAIL
   const name = values.name ?? process.env.ADMIN_NAME
+  const phone = values.phone ?? process.env.ADMIN_PHONE
   const databaseUrl = process.env.DATABASE_URL
-  if (!email || !name || !databaseUrl) {
-    console.error('Informe email e name (args ou ADMIN_*) e DATABASE_URL.')
+  if (!email || !name || !phone || !databaseUrl) {
+    console.error('Informe email, name e phone (args ou ADMIN_*) e DATABASE_URL.')
     process.exit(1)
   }
 
   try {
-    const result = await createSuperAdmin(databaseUrl, { email, name })
+    const result = await createSuperAdmin(databaseUrl, { email, name, phone })
     const pending = result.user.isPending ? '; entra pelo convite do Clerk' : ''
     console.log(`Super admin ${result.user.email.value}: ${result.outcome}${pending}.`)
   } catch (error) {

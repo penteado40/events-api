@@ -9,5 +9,6 @@ if (!databaseUrl) throw new Error('DATABASE_URL não definida')
 const result = await createSuperAdmin(databaseUrl, {
   email: 'admin@local.test',
   name: 'Super admin local',
+  phone: '+5511900000000',
 })
 console.log(`Seed: Super admin ${result.user.email.value} (${result.outcome}).`)

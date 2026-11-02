@@ -3,6 +3,7 @@ import type {
   OperationObject,
   ReferenceObject,
   RequestBodyObject,
+  ResponseObject,
   SchemaObject,
 } from '@nestjs/swagger'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -13,7 +14,8 @@ describe('docs with DOCS_ENABLED=true', () => {
   let t: TestApp
 
   beforeAll(async () => {
-    t = await createTestApp({ env: { DOCS_ENABLED: 'true' } })
+    // Blank even when the developer's .env sets it: this is the docs without the Clerk login.
+    t = await createTestApp({ env: { DOCS_ENABLED: 'true', CLERK_PUBLISHABLE_KEY: '' } })
   })
 
   afterAll(() => t.close())
@@ -76,6 +78,21 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(publicOnes).toEqual([])
     })
 
+    it('documents the Membership and the Super admin flag of the me, with an example', () => {
+      for (const method of ['get', 'patch'] as const) {
+        const operation = (doc.paths['/api/v1/me'] as Record<string, OperationObject>)[method]!
+        const response = operation.responses['200'] as ResponseObject
+        const body = resolve(doc, response.content!['application/json']!.schema!)
+        const data = resolve(doc, body.properties!['data']!)
+
+        expect(data.properties!['isSuperAdmin']).toMatchObject({ type: 'boolean', example: false })
+        expect(data.properties!['memberships']).toMatchObject({
+          type: 'array',
+          example: [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }],
+        })
+      }
+    })
+
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
         const body = operation.requestBody as RequestBodyObject | undefined
@@ -98,10 +115,82 @@ describe('docs with DOCS_ENABLED=true', () => {
     expect(csp).toMatch(/script-src 'nonce-[^']+' https:\/\/cdn\.jsdelivr\.net/)
     expect(csp).not.toContain("script-src 'unsafe-inline'")
   })
+
+  it('serves Scalar without the Clerk login when CLERK_PUBLISHABLE_KEY is unset', async () => {
+    const res = await t.http().get('/api/v1/docs')
+
+    expect(res.text).toContain('Scalar.createApiReference')
+    expect(res.text).not.toMatch(/clerk/i)
+    expect(res.headers['content-security-policy']).not.toMatch(/clerk/i)
+  })
 })
 
-/** Routes left out of the docs on purpose. */
-const UNDOCUMENTED_ROUTES = ['GET /api/v1/docs', 'GET /api/v1/openapi']
+describe('docs with DOCS_ENABLED=true and CLERK_PUBLISHABLE_KEY', () => {
+  const FRONTEND_API = 'happy-cat-12.clerk.accounts.dev'
+  const PUBLISHABLE_KEY = `pk_test_${Buffer.from(`${FRONTEND_API}$`).toString('base64')}`
+  let t: TestApp
+
+  beforeAll(async () => {
+    t = await createTestApp({
+      env: { DOCS_ENABLED: 'true', CLERK_PUBLISHABLE_KEY: PUBLISHABLE_KEY },
+    })
+  })
+
+  afterAll(() => t.close())
+
+  it('loads Clerk JS and its UI from the Frontend API of the key, with the nonce', async () => {
+    const res = await t.http().get('/api/v1/docs')
+    const nonce = /script-src 'nonce-([^']+)'/.exec(
+      res.headers['content-security-policy'] as string,
+    )![1]!
+
+    expect(res.status).toBe(200)
+    for (const bundle of [
+      '@clerk/clerk-js@6/dist/clerk.browser.js',
+      '@clerk/ui@1/dist/ui.browser.js',
+    ]) {
+      const tag = new RegExp(`<script[^>]*src="https://${FRONTEND_API}/npm/${bundle}"[^>]*>`).exec(
+        res.text,
+      )
+      expect(tag?.[0], bundle).toContain(`nonce="${nonce}"`)
+    }
+    expect(res.text).toContain(`data-clerk-publishable-key="${PUBLISHABLE_KEY}"`)
+    expect(res.text).toContain('Entrar com Clerk')
+    expect(res.text).toContain('onBeforeRequest')
+  })
+
+  it('relaxes the CSP for Clerk only where it needs, keeping the nonce', async () => {
+    const res = await t.http().get('/api/v1/docs')
+    const directives = Object.fromEntries(
+      (res.headers['content-security-policy'] as string)
+        .split('; ')
+        .map((d) => [d.split(' ')[0], d.split(' ').slice(1)]),
+    )
+
+    expect(directives['default-src']).toEqual(["'none'"])
+    expect(directives['script-src']).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^'nonce-/), `https://${FRONTEND_API}`]),
+    )
+    expect(directives['script-src']).not.toContain("'unsafe-inline'")
+    expect(directives['connect-src']).toEqual(
+      expect.arrayContaining(["'self'", `https://${FRONTEND_API}`]),
+    )
+    expect(directives['img-src']).toContain('https://img.clerk.com')
+    expect(directives['worker-src']).toEqual(["'self'", 'blob:'])
+    expect(directives['frame-src']).toContain('https://challenges.cloudflare.com')
+    expect(directives['form-action']).toEqual(["'self'"])
+    expect(directives['frame-ancestors']).toEqual(["'none'"])
+  })
+})
+
+/** Routes left out of the docs on purpose, each with why. */
+const UNDOCUMENTED_ROUTES = [
+  // The docs themselves.
+  'GET /api/v1/docs',
+  'GET /api/v1/openapi',
+  // Called only by Clerk, signed by Svix: nobody tries it by hand from the docs.
+  'POST /api/v1/webhooks/clerk',
+]
 
 function operationsOf(doc: OpenAPIObject) {
   return Object.entries(doc.paths).flatMap(([path, item]) =>
@@ -112,16 +201,19 @@ function operationsOf(doc: OpenAPIObject) {
   )
 }
 
+function resolve(doc: OpenAPIObject, schemaOrRef: SchemaObject | ReferenceObject): SchemaObject {
+  return '$ref' in schemaOrRef
+    ? (doc.components!.schemas![schemaOrRef.$ref.split('/').pop()!] as SchemaObject)
+    : schemaOrRef
+}
+
 /** Fields without `example`, walking `$ref`s and nested objects. */
 function fieldsWithoutExample(
   doc: OpenAPIObject,
   schemaOrRef: SchemaObject | ReferenceObject,
   prefix: string,
 ): string[] {
-  const schema =
-    '$ref' in schemaOrRef
-      ? (doc.components!.schemas![schemaOrRef.$ref.split('/').pop()!] as SchemaObject)
-      : schemaOrRef
+  const schema = resolve(doc, schemaOrRef)
   return Object.entries(schema.properties ?? {}).flatMap(([name, field]) => {
     const path = `${prefix} ${name}`
     const nested = '$ref' in field || field.properties ? fieldsWithoutExample(doc, field, path) : []

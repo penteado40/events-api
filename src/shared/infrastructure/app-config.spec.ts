@@ -192,3 +192,35 @@ describe('AppConfig: Clerk verification', () => {
     ).toThrow(/CLERK_AUTHORIZED_PARTIES/)
   })
 })
+
+describe('AppConfig: CLERK_PUBLISHABLE_KEY', () => {
+  const key = (frontendApi: string, prefix = 'pk_test_') =>
+    `${prefix}${Buffer.from(`${frontendApi}$`).toString('base64')}`
+
+  it('is null when unset or blank: the docs then take only a pasted token', () => {
+    expect(AppConfig.fromEnv(REQUIRED).clerkDocsLogin).toBeNull()
+    expect(AppConfig.fromEnv({ ...REQUIRED, CLERK_PUBLISHABLE_KEY: ' ' }).clerkDocsLogin).toBeNull()
+  })
+
+  it('reads the Frontend API host encoded in the key', () => {
+    const publishableKey = key('happy-cat-12.clerk.accounts.dev')
+
+    expect(
+      AppConfig.fromEnv({ ...REQUIRED, CLERK_PUBLISHABLE_KEY: publishableKey }).clerkDocsLogin,
+    ).toEqual({ publishableKey, frontendApi: 'happy-cat-12.clerk.accounts.dev' })
+  })
+
+  it('refuses anything that is not a Clerk publishable key', () => {
+    for (const value of [
+      'sk_test_abc',
+      'pk_test_',
+      'pk_test_not-base64!',
+      key('happy-cat-12.clerk.accounts.dev').slice(0, -4),
+      `pk_test_${Buffer.from('evil.com/x$').toString('base64')}`,
+    ]) {
+      expect(() => AppConfig.fromEnv({ ...REQUIRED, CLERK_PUBLISHABLE_KEY: value }), value).toThrow(
+        /CLERK_PUBLISHABLE_KEY/,
+      )
+    }
+  })
+})

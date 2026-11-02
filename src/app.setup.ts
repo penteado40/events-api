@@ -15,6 +15,6 @@ export function configureApp(app: INestApplication, config: AppConfig): INestApp
     allowedOrigins: config.corsOrigins,
   })
   app.setGlobalPrefix(API_PREFIX)
-  if (config.docsEnabled) setupDocs(app)
+  if (config.docsEnabled) setupDocs(app, config.clerkDocsLogin)
   return app
 }

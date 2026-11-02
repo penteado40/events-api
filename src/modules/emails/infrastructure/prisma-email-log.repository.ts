@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
-import { type EmailLogEntry, EmailLogRepository } from '../domain/email-log.js'
+import type { EmailLogEntry } from '../domain/email-log.js'
+import { EmailLogRepository } from '../domain/email-log.repository.js'
 
 @Injectable()
 export class PrismaEmailLogRepository extends EmailLogRepository {

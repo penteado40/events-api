@@ -19,7 +19,6 @@ export class ResendEmailSender extends EmailSender {
       subject: email.subject,
       text: email.text,
       html: email.html,
-      ...(email.replyTo && { replyTo: email.replyTo }),
     })
     if (error) throw new Error(`Resend recusou o email: ${error.name}: ${error.message}`)
   }

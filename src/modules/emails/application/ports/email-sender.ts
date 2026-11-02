@@ -2,8 +2,6 @@
 export interface OutgoingEmail {
   from: { name: string; address: string }
   to: string
-  /** Who receives a reply; absent, nobody (glossary: Platform sender). */
-  replyTo?: string
   subject: string
   text: string
   html: string

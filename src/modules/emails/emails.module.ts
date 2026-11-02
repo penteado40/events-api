@@ -4,7 +4,7 @@ import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { AccountEmails } from './application/account-emails.js'
 import { EmailSender } from './application/ports/email-sender.js'
-import { EmailLogRepository } from './domain/email-log.js'
+import { EmailLogRepository } from './domain/email-log.repository.js'
 import { PrismaEmailLogRepository } from './infrastructure/prisma-email-log.repository.js'
 import { ResendEmailSender } from './infrastructure/resend-email-sender.js'
 

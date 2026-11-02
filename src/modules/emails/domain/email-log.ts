@@ -1,5 +1,3 @@
-import type { Stamp } from '../../../shared/domain/stamp.js'
-
 /** Why an email goes out (glossary: Email kind). Only the account's Activation link so far. */
 export type EmailKind = 'ACCOUNT_ACTIVATION_LINK'
 
@@ -12,8 +10,4 @@ export interface EmailLogEntry {
   status: EmailStatus
   /** What went wrong, when the attempt failed. */
   error: string | null
-}
-
-export abstract class EmailLogRepository {
-  abstract record(entry: EmailLogEntry, stamp: Stamp): Promise<void>
 }

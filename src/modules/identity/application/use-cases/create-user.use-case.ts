@@ -48,7 +48,7 @@ export class CreateUserUseCase {
       { name: input.name, email, phone },
       stamp,
     )
-    // Only once the User and the link are stored (ADR-0010: after the commit).
+    // Only once the User and the link are stored, so no email goes out for a User that failed.
     this.mailer.send(
       { email: created.user.email.value, name: created.user.name },
       created.activationLink,

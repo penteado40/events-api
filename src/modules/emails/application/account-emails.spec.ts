@@ -103,4 +103,18 @@ describe('AccountEmails', () => {
       },
     ])
   })
+
+  it('names the attempt it could not record, for the logs, without throwing to the caller', async () => {
+    log.failNextRecord()
+
+    emails.sendActivationLink({ email: 'pedro@example.com', name: 'Pedro' }, LINK, STAMP)
+    await background.settle()
+
+    expect(sender.sent).toHaveLength(1)
+    expect(background.errors).toEqual([
+      new Error(
+        'Email log não gravou a tentativa ACCOUNT_ACTIVATION_LINK para pedro@example.com (SENT)',
+      ),
+    ])
+  })
 })

@@ -75,11 +75,18 @@ const EnvSchema = z
       .string()
       .trim()
       .optional()
-      .transform((value) => (value === '' ? undefined : value))
-      .refine(
-        (value) => value === undefined || frontendApiOf(value) !== null,
-        'precisa ser uma publishable key do Clerk (pk_test_... ou pk_live_...)',
-      ),
+      .transform((value, ctx) => {
+        if (value === undefined || value === '') return undefined
+        const frontendApi = frontendApiOf(value)
+        if (frontendApi === null) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'precisa ser uma publishable key do Clerk (pk_test_... ou pk_live_...)',
+          })
+          return z.NEVER
+        }
+        return { publishableKey: value, frontendApi }
+      }),
     /** The `whsec_...` of Clerk's webhook endpoint, which signs `POST /webhooks/clerk`. Required in production. */
     CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
@@ -164,12 +171,7 @@ export class AppConfig {
     this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.clerkJwtKey = env.CLERK_JWT_KEY ?? null
     this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
-    this.clerkDocsLogin = env.CLERK_PUBLISHABLE_KEY
-      ? {
-          publishableKey: env.CLERK_PUBLISHABLE_KEY,
-          frontendApi: frontendApiOf(env.CLERK_PUBLISHABLE_KEY)!,
-        }
-      : null
+    this.clerkDocsLogin = env.CLERK_PUBLISHABLE_KEY ?? null
     this.clerkWebhookSigningSecret = env.CLERK_WEBHOOK_SIGNING_SECRET ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN

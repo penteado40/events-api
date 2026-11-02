@@ -177,6 +177,8 @@ describe('docs with DOCS_ENABLED=true and CLERK_PUBLISHABLE_KEY', () => {
     )
     expect(directives['img-src']).toContain('https://img.clerk.com')
     expect(directives['worker-src']).toEqual(["'self'", 'blob:'])
+    expect(directives['frame-src']).toContain('https://challenges.cloudflare.com')
+    expect(directives['form-action']).toEqual(["'self'"])
     expect(directives['frame-ancestors']).toEqual(["'none'"])
   })
 })

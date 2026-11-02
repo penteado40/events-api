@@ -4,6 +4,7 @@ import type { ActivationLinkRepository } from '../../domain/activation-link.repo
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 import { type IssuedActivationLink, reissueActivationLink } from '../issue-activation-link.js'
+import type { ActivationLinkMailer } from '../ports/activation-link-mailer.js'
 import type { InvitationIssuer } from '../ports/invitation-issuer.js'
 
 export interface IssueActivationLinkInput {
@@ -13,18 +14,29 @@ export interface IssueActivationLinkInput {
 
 export type IssueActivationLinkOutput = IssuedActivationLink
 
-/** Reissues the Activation link of a Pending user (lost or expired link). */
+/**
+ * Reissues the Activation link of a Pending user (lost or expired link): the
+ * new link goes back in the response and by email to the Pending user.
+ */
 export class IssueActivationLinkUseCase {
   constructor(
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
     private readonly invitations: InvitationIssuer,
+    private readonly mailer: ActivationLinkMailer,
     private readonly clock: Clock,
   ) {}
 
   async execute(input: IssueActivationLinkInput): Promise<IssueActivationLinkOutput> {
     if (!input.actor.isSuperAdmin) throw new AppError('FORBIDDEN')
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return reissueActivationLink(this.users, this.links, this.invitations, input.userId, stamp)
+    return reissueActivationLink(
+      this.users,
+      this.links,
+      this.invitations,
+      this.mailer,
+      input.userId,
+      stamp,
+    )
   }
 }

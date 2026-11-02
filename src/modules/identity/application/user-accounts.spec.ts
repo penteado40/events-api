@@ -3,6 +3,7 @@ import { FixedClock } from '../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import { FakeActivationLinkMailer } from './testing/fake-activation-link-mailer.js'
 import { FakeInvitationIssuer } from './testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, signedIn, PHONE } from './testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from './testing/in-memory-activation-link.repository.js'
@@ -16,13 +17,15 @@ describe('UserAccounts', () => {
   let users: InMemoryUserRepository
   let links: InMemoryActivationLinkRepository
   let invitations: FakeInvitationIssuer
+  let mailer: FakeActivationLinkMailer
   let accounts: UserAccounts
 
   beforeEach(() => {
     users = new InMemoryUserRepository()
     links = new InMemoryActivationLinkRepository()
     invitations = new FakeInvitationIssuer(new FixedClock(NOW))
-    accounts = new UserAccounts(users, links, invitations)
+    mailer = new FakeActivationLinkMailer()
+    accounts = new UserAccounts(users, links, invitations, mailer)
   })
 
   async function existing(email: string, { active = true } = {}) {
@@ -178,12 +181,26 @@ describe('UserAccounts', () => {
       expect(invitations.revoked()).toEqual(['inv_1'])
     })
 
+    it("emails the new link to the Pending user, by the stamp's Author", async () => {
+      const { user } = await accounts.ensureUser(
+        { email: 'joao@x.com', name: 'João', phone: '+5521987654321' },
+        SCRIPT_STAMP,
+      )
+
+      const link = await accounts.reissueActivationLink(user.id, OWNER_STAMP)
+
+      expect(mailer.sent).toEqual([
+        { to: { email: 'joao@x.com', name: 'João' }, link, stamp: OWNER_STAMP },
+      ])
+    })
+
     it('refuses an active User', async () => {
       const ana = await existing('ana@x.com')
       await expect(accounts.reissueActivationLink(ana.id, OWNER_STAMP)).rejects.toEqual(
         new AppError('USER_ALREADY_ACTIVE'),
       )
       expect(invitations.open()).toEqual([])
+      expect(mailer.sent).toEqual([])
     })
   })
 

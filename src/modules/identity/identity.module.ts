@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
-import { EmailsModule } from '../emails/index.js'
 import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { GroupMembers } from './application/ports/group-members.js'
@@ -20,7 +19,6 @@ import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
 import { InMemoryGroupMembers } from './infrastructure/in-memory-group-members.js'
-import { InProcessActivationLinkMailer } from './infrastructure/in-process-activation-link-mailer.js'
 import { SvixIdentityWebhookVerifier } from './infrastructure/svix-identity-webhook-verifier.js'
 import { ClerkWebhookController } from './presentation/clerk-webhook.controller.js'
 import { CredentialsGuard } from './presentation/credentials.guard.js'
@@ -33,11 +31,10 @@ import { UsersController } from './presentation/users.controller.js'
  * Clerk webhook that keeps the User mirror in step.
  */
 @Module({
-  imports: [IdentityPersistenceModule, IdentityInvitationsModule, EmailsModule],
+  imports: [IdentityPersistenceModule, IdentityInvitationsModule],
   controllers: [MeController, UsersController, ClerkWebhookController],
   providers: [
     { provide: GroupMembers, useClass: InMemoryGroupMembers },
-    { provide: ActivationLinkMailer, useClass: InProcessActivationLinkMailer },
     {
       provide: AuthVerifier,
       useFactory: (config: AppConfig) =>
@@ -82,9 +79,16 @@ import { UsersController } from './presentation/users.controller.js'
         users: UserRepository,
         links: ActivationLinkRepository,
         invitations: InvitationIssuer,
+        mailer: ActivationLinkMailer,
         clock: Clock,
-      ) => new IssueActivationLinkUseCase(users, links, invitations, clock),
-      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer, Clock],
+      ) => new IssueActivationLinkUseCase(users, links, invitations, mailer, clock),
+      inject: [
+        UserRepository,
+        ActivationLinkRepository,
+        InvitationIssuer,
+        ActivationLinkMailer,
+        Clock,
+      ],
     },
     {
       provide: GetMeUseCase,

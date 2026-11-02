@@ -3,6 +3,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
+import { FakeActivationLinkMailer } from '../testing/fake-activation-link-mailer.js'
 import { FakeInvitationIssuer } from '../testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, signedIn, PHONE } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
@@ -15,6 +16,7 @@ describe('IssueActivationLinkUseCase', () => {
   let users: InMemoryUserRepository
   let links: InMemoryActivationLinkRepository
   let invitations: FakeInvitationIssuer
+  let mailer: FakeActivationLinkMailer
   let issueLink: IssueActivationLinkUseCase
   let superAdmin: User
   let pedro: User
@@ -24,7 +26,8 @@ describe('IssueActivationLinkUseCase', () => {
     links = new InMemoryActivationLinkRepository()
     const clock = new FixedClock(NOW)
     invitations = new FakeInvitationIssuer(clock, 1)
-    issueLink = new IssueActivationLinkUseCase(users, links, invitations, clock)
+    mailer = new FakeActivationLinkMailer()
+    issueLink = new IssueActivationLinkUseCase(users, links, invitations, mailer, clock)
     superAdmin = await signedIn(
       users,
       await users.create(
@@ -64,6 +67,26 @@ describe('IssueActivationLinkUseCase', () => {
     expect(invitations.open()).toEqual(['inv_2'])
   })
 
+  it('emails the new link to the Pending user, by the Super admin', async () => {
+    const result = await issueLink.execute({ actor: superAdmin, userId: pedro.id })
+
+    expect(mailer.sent).toEqual([
+      {
+        to: { email: 'pedro@example.com', name: 'Pedro' },
+        link: result,
+        stamp: { by: superAdmin.id, at: NOW },
+      },
+    ])
+  })
+
+  it('emails nothing when the new invitation fails, keeping the previous link', async () => {
+    invitations.failNextIssue()
+
+    await expect(issueLink.execute({ actor: superAdmin, userId: pedro.id })).rejects.toThrow()
+    expect(mailer.sent).toEqual([])
+    expect(invitations.open()).toEqual(['inv_1'])
+  })
+
   it('records the Super admin as the Author of the new link', async () => {
     await issueLink.execute({ actor: superAdmin, userId: pedro.id })
 
@@ -87,5 +110,6 @@ describe('IssueActivationLinkUseCase', () => {
     await expect(issueLink.execute({ actor: superAdmin, userId: superAdmin.id })).rejects.toEqual(
       new AppError('USER_ALREADY_ACTIVE'),
     )
+    expect(mailer.sent).toEqual([])
   })
 })

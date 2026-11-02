@@ -5,6 +5,7 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { User } from '../domain/user.entity.js'
 import type { UserRepository } from '../domain/user.repository.js'
+import type { ActivationLinkMailer } from './ports/activation-link-mailer.js'
 import type { InvitationIssuer, IssuedInvitation } from './ports/invitation-issuer.js'
 
 /** What goes back to whoever delivers the Activation link (ADR-0020). */
@@ -76,13 +77,15 @@ export async function createPendingUser(
 }
 
 /**
- * Reissues the link of a Pending user and revokes the previous one, so a lost
- * or leaked link stops working: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+ * Reissues the link of a Pending user, revokes the previous one so a lost or
+ * leaked link stops working, and emails the new one to the Pending user by the
+ * stamp's Author: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
  */
 export async function reissueActivationLink(
   users: UserRepository,
   links: ActivationLinkRepository,
   invitations: InvitationIssuer,
+  mailer: ActivationLinkMailer,
   userId: number,
   stamp: Stamp,
 ): Promise<IssuedActivationLink> {
@@ -94,6 +97,8 @@ export async function reissueActivationLink(
     storeLink(links, user.id, invitation, stamp),
   )
   if (previous) await invitations.revoke(previous.invitationId)
+  // Only once the new link is stored and the previous one revoked.
+  mailer.send({ email: user.email.value, name: user.name }, link, stamp)
   return link
 }
 

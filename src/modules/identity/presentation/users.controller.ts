@@ -47,7 +47,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Reemitir o Activation link',
     description:
-      'Só o Super admin, para um Pending user. O Activation link anterior deixa de valer.',
+      'Só o Super admin, para um Pending user. O Activation link anterior deixa de valer; o novo vai por email ao Pending user e volta na resposta, para repassar por outro meio.',
   })
   @ApiCreatedResponse({ type: ActivationLinkResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')

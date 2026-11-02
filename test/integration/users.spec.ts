@@ -247,6 +247,51 @@ describe('Users (Super admin)', () => {
       expect(oldUrl).toContain(t.invitations.revoked().at(-1))
     })
 
+    it('emails the new Activation link to the Pending user, recorded in the Email log by the Super admin', async () => {
+      const created = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Iara', email: 'iara@example.com', phone: '+5511987654321' })
+      await t.settle()
+
+      const res = await t
+        .http()
+        .post(`/api/v1/users/${created.body.data.user.id}/activation-link`)
+        .auth(adminToken, { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      const sent = t.emails.sent.filter((e) => e.to === 'iara@example.com')
+      expect(sent).toHaveLength(2)
+      expect(sent[1]?.subject).toBe('Ative sua conta na Programação')
+      expect(sent[1]?.text).toContain(res.body.data.url)
+
+      const admin = await testPrisma().user.findUniqueOrThrow({
+        where: { email: 'admin@example.com' },
+      })
+      const logs = await testPrisma().emailLog.findMany({
+        where: { recipient: 'iara@example.com' },
+        orderBy: { id: 'asc' },
+      })
+      expect(logs).toMatchObject([
+        { kind: 'ACCOUNT_ACTIVATION_LINK', status: 'SENT', createdById: admin.id },
+        { kind: 'ACCOUNT_ACTIVATION_LINK', status: 'SENT', createdById: admin.id },
+      ])
+    })
+
+    it('emails nothing for a User who already signed in', async () => {
+      const ana = await testPrisma().user.findUniqueOrThrow({ where: { email: 'ana@example.com' } })
+
+      await t
+        .http()
+        .post(`/api/v1/users/${ana.id}/activation-link`)
+        .auth(adminToken, { type: 'bearer' })
+      await t.settle()
+
+      expect(t.emails.sent.filter((e) => e.to === 'ana@example.com')).toEqual([])
+    })
+
     it('answers 409 USER_ALREADY_ACTIVE for a User who already signed in', async () => {
       const ana = await testPrisma().user.findUniqueOrThrow({ where: { email: 'ana@example.com' } })
 

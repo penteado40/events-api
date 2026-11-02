@@ -54,6 +54,8 @@ const EnvSchema = z
      * too: set it only after checking what the app (events-expo) sends.
      */
     CLERK_AUTHORIZED_PARTIES: originList,
+    /** The `whsec_...` of Clerk's webhook endpoint, which signs `POST /webhooks/clerk`. Required in production. */
+    CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -67,6 +69,13 @@ const EnvSchema = z
         code: 'custom',
         path: ['CLERK_SECRET_KEY'],
         message: 'obrigatória em produção (verificação do token do Clerk)',
+      })
+    }
+    if (env.NODE_ENV === 'production' && env.CLERK_WEBHOOK_SIGNING_SECRET === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLERK_WEBHOOK_SIGNING_SECRET'],
+        message: 'obrigatória em produção (assinatura do webhook do Clerk)',
       })
     }
     if (env.NODE_ENV === 'production' && env.ACTIVATION_REDIRECT_URL === undefined) {
@@ -107,6 +116,8 @@ export class AppConfig {
   readonly clerkJwtKey: string | null
   /** Empty when unset: the token's `azp` is then not checked. */
   readonly clerkAuthorizedParties: string[]
+  /** Null outside production when unset: every Clerk webhook is then a server error. */
+  readonly clerkWebhookSigningSecret: string | null
   /** Null outside production when unset: the counters then stay in memory. */
   readonly upstash: { url: string; token: string } | null
   /** Prefix of every rate-limit key, one per environment sharing the Upstash database. */
@@ -125,6 +136,7 @@ export class AppConfig {
     this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.clerkJwtKey = env.CLERK_JWT_KEY ?? null
     this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
+    this.clerkWebhookSigningSecret = env.CLERK_WEBHOOK_SIGNING_SECRET ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
         ? { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }

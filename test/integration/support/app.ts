@@ -14,6 +14,9 @@ import { AppConfig } from '../../../src/shared/infrastructure/app-config.js'
 import { SystemClock } from '../../../src/shared/infrastructure/system-clock.js'
 import { loadTestEnv } from './env.js'
 
+/** Signs the Clerk webhooks of the tests (see `clerkWebhook`), verified by the real Svix adapter. */
+export const TEST_WEBHOOK_SIGNING_SECRET = `whsec_${Buffer.from('integration-test-webhook-secret!').toString('base64')}`
+
 export interface TestAppOptions {
   env?: Record<string, string>
   /** Extra modules/controllers, e.g. a test-only route. */
@@ -37,6 +40,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
     ...process.env,
     NODE_ENV: 'test',
     DOCS_ENABLED: 'false',
+    CLERK_WEBHOOK_SIGNING_SECRET: TEST_WEBHOOK_SIGNING_SECRET,
     ...options.env,
     DATABASE_URL: databaseUrl,
   })
@@ -57,7 +61,7 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
   if (options.override) builder = options.override(builder)
   const moduleRef = await builder.compile()
 
-  const app = moduleRef.createNestApplication({ logger: false })
+  const app = moduleRef.createNestApplication({ logger: false, rawBody: true })
   configureApp(app, config)
   await app.init()
 

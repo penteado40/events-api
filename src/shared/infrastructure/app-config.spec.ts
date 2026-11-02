@@ -70,6 +70,7 @@ describe('AppConfig: Upstash', () => {
         ...REQUIRED,
         ...UPSTASH,
         CLERK_SECRET_KEY: 'sk_live_x',
+        CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_x',
         ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
         NODE_ENV: 'production',
       }).upstash,
@@ -108,6 +109,29 @@ describe('AppConfig: CLERK_SECRET_KEY', () => {
         NODE_ENV: 'production',
       }),
     ).toThrow(/CLERK_SECRET_KEY/)
+  })
+})
+
+describe('AppConfig: CLERK_WEBHOOK_SIGNING_SECRET', () => {
+  it('is optional outside production', () => {
+    expect(AppConfig.fromEnv(REQUIRED).clerkWebhookSigningSecret).toBeNull()
+    expect(
+      AppConfig.fromEnv({ ...REQUIRED, CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_x' })
+        .clerkWebhookSigningSecret,
+    ).toBe('whsec_x')
+  })
+
+  it('is required in production, where the webhook keeps the User mirror in step', () => {
+    expect(() =>
+      AppConfig.fromEnv({
+        ...REQUIRED,
+        UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+        UPSTASH_REDIS_REST_TOKEN: 'token',
+        CLERK_SECRET_KEY: 'sk_live_x',
+        ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/CLERK_WEBHOOK_SIGNING_SECRET/)
   })
 })
 

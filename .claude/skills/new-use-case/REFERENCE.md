@@ -33,7 +33,7 @@ Código novo exige as duas edições: o literal na união `ErrorCode` e a entrad
 - Tipos do Prisma só aqui, importados de `../../../generated/prisma/client.js`, e convertidos no `toDomain(row)` do próprio repositório.
 - Model novo em `prisma/schema.prisma` com `@@map("<tabela_no_plural>")`; gere a migration com `npm run prisma:migrate -- --name <nome>` e commite `prisma/migrations/`. Índice que o Prisma não gera (ex.: único parcial, ADR-0003) vai como SQL na migration.
 - Todo model nasce com autoria (§5.8 da arquitetura, ADR-0013): `createdAt`, `updatedAt` e as FKs anuláveis `createdById`/`updatedById` para `users`, com `onDelete: Restrict` e relações nomeadas (`@relation("<Model>Created")`, `@relation("<Model>Updated")`, com as listas inversas no `User`). No repositório, `create(props, stamp)` grava `...createdWith(stamp)` e `save` grava `updatedAt`/`updatedById` da entidade; o `toDomain` lê as quatro colunas.
-- Adaptador prefixado pela tecnologia (`prisma-`, `resend-`, `cloudinary-`, `upstash-`), com `@Injectable()` e `extends <Port>`.
+- Adaptador prefixado pela tecnologia (`prisma-`, `clerk-`, `svix-`, `resend-`, `cloudinary-`, `upstash-`), com `@Injectable()` e `extends <Port>`.
 
 ## presentation/ — `identity/presentation/users.controller.ts`, `me.controller.ts`, `dto/`, `user.presenter.ts`
 

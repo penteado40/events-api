@@ -116,8 +116,14 @@ describe('docs with DOCS_ENABLED=true', () => {
   })
 })
 
-/** Routes left out of the docs on purpose. */
-const UNDOCUMENTED_ROUTES = ['GET /api/v1/docs', 'GET /api/v1/openapi']
+/** Routes left out of the docs on purpose, each with why. */
+const UNDOCUMENTED_ROUTES = [
+  // The docs themselves.
+  'GET /api/v1/docs',
+  'GET /api/v1/openapi',
+  // Called only by Clerk, signed by Svix: nobody tries it by hand from the docs.
+  'POST /api/v1/webhooks/clerk',
+]
 
 function operationsOf(doc: OpenAPIObject) {
   return Object.entries(doc.paths).flatMap(([path, item]) =>

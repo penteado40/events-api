@@ -92,6 +92,22 @@ export class User {
     this.touch(stamp)
   }
 
+  /**
+   * Mirrors the name and email the person changed in Clerk (ADR-0020). Leaves
+   * out what is missing, and answers whether anything changed: an unchanged
+   * User keeps its authorship.
+   */
+  mirrorProfile(changes: { name?: string; email?: Email }, stamp: Stamp): boolean {
+    const name = changes.name?.trim()
+    const newName = name !== undefined && name !== '' && name !== this.props.name
+    const newEmail = changes.email !== undefined && !changes.email.equals(this.props.email)
+    if (!newName && !newEmail) return false
+    if (newName) this.props.name = name
+    if (newEmail) this.props.email = changes.email!
+    this.touch(stamp)
+    return true
+  }
+
   promoteToSuperAdmin(stamp: Stamp): void {
     this.props.role = 'SUPER_ADMIN'
     this.touch(stamp)

@@ -89,6 +89,12 @@ const EnvSchema = z
       }),
     /** The `whsec_...` of Clerk's webhook endpoint, which signs `POST /webhooks/clerk`. Required in production. */
     CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
+    /** The Platform sender's address (ADR-0006), on a domain verified in Resend. Required in production. */
+    EMAIL_FROM_ADDRESS: z.email().optional(),
+    /** The platform's name: the sender's display name and the text of the account's emails. */
+    PLATFORM_NAME: z.string().trim().min(1).optional(),
+    /** Sends the emails. Required in production; unset elsewhere, every attempt fails into the Email log. */
+    RESEND_API_KEY: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -117,6 +123,15 @@ const EnvSchema = z
         path: ['ACTIVATION_REDIRECT_URL'],
         message: 'obrigatória em produção (deep link do app no Activation link)',
       })
+    }
+    for (const name of ['EMAIL_FROM_ADDRESS', 'PLATFORM_NAME', 'RESEND_API_KEY'] as const) {
+      if (env.NODE_ENV === 'production' && env[name] === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [name],
+          message: 'obrigatória em produção (envio de emails)',
+        })
+      }
     }
     const missing = UPSTASH_VARS.filter((name) => env[name] === undefined)
     const required = env.NODE_ENV === 'production' || missing.length < UPSTASH_VARS.length
@@ -153,6 +168,10 @@ export class AppConfig {
   readonly clerkDocsLogin: { publishableKey: string; frontendApi: string } | null
   /** Null outside production when unset: every Clerk webhook is then a server error. */
   readonly clerkWebhookSigningSecret: string | null
+  /** The Platform sender (ADR-0006); outside production, placeholders when unset. */
+  readonly platformSender: { platformName: string; fromAddress: string }
+  /** Null outside production when unset: every email then fails into the Email log. */
+  readonly resendApiKey: string | null
   /** Null outside production when unset: the counters then stay in memory. */
   readonly upstash: { url: string; token: string } | null
   /** Prefix of every rate-limit key, one per environment sharing the Upstash database. */
@@ -173,6 +192,11 @@ export class AppConfig {
     this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
     this.clerkDocsLogin = env.CLERK_PUBLISHABLE_KEY ?? null
     this.clerkWebhookSigningSecret = env.CLERK_WEBHOOK_SIGNING_SECRET ?? null
+    this.platformSender = {
+      platformName: env.PLATFORM_NAME ?? 'Events',
+      fromAddress: env.EMAIL_FROM_ADDRESS ?? 'noreply@localhost',
+    }
+    this.resendApiKey = env.RESEND_API_KEY ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
         ? { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }

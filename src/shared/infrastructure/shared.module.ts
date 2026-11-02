@@ -1,4 +1,5 @@
 import { type DynamicModule, Global, Logger, Module } from '@nestjs/common'
+import { BackgroundTasks } from '../application/background-tasks.js'
 import { Clock } from '../application/clock.js'
 import { RateLimitStore } from '../application/rate-limit-store.js'
 import { RateLimiter } from '../application/rate-limiter.js'
@@ -9,6 +10,7 @@ import { CryptoSecretTokens } from './crypto-secret-tokens.js'
 import { PrismaService } from './prisma.service.js'
 import { SystemClock } from './system-clock.js'
 import { UpstashRateLimitStore } from './upstash-rate-limit-store.js'
+import { VercelBackgroundTasks } from './vercel-background-tasks.js'
 
 @Global()
 @Module({})
@@ -24,6 +26,7 @@ export class SharedModule {
           inject: [AppConfig],
         },
         { provide: Clock, useClass: SystemClock },
+        { provide: BackgroundTasks, useClass: VercelBackgroundTasks },
         { provide: SecretTokens, useClass: CryptoSecretTokens },
         {
           provide: RateLimitStore,
@@ -47,7 +50,7 @@ export class SharedModule {
           inject: [RateLimitStore, Clock],
         },
       ],
-      exports: [AppConfig, PrismaService, Clock, SecretTokens, RateLimiter],
+      exports: [AppConfig, PrismaService, Clock, BackgroundTasks, SecretTokens, RateLimiter],
     }
   }
 }

@@ -20,6 +20,15 @@ enum GroupRole {
   VIEWER
 }
 
+enum EmailKind {
+  ACCOUNT_ACTIVATION_LINK
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+}
+
 model User {
   id            Int       @id @default(autoincrement())
   name          String
@@ -48,6 +57,8 @@ model User {
   updatedGroups          Group[]          @relation("GroupUpdated")
   createdGroupMembers    GroupMember[]    @relation("GroupMemberCreated")
   updatedGroupMembers    GroupMember[]    @relation("GroupMemberUpdated")
+  createdEmailLogs       EmailLog[]       @relation("EmailLogCreated")
+  updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
 
   groupMembers GroupMember[] @relation("GroupMemberUser")
 
@@ -107,4 +118,22 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_members")
+}
+
+// One attempt to send an email (Email log): internal, for diagnosis, never resent from here.
+model EmailLog {
+  id          Int         @id @default(autoincrement())
+  kind        EmailKind
+  recipient   String
+  status      EmailStatus
+  error       String? // What the provider answered, when the attempt failed
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdById Int? // Author (ADR-0013): who triggered the email
+  updatedById Int?
+  createdBy   User?       @relation("EmailLogCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?       @relation("EmailLogUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  @@index([recipient])
+  @@map("email_logs")
 }

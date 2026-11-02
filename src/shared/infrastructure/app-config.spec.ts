@@ -5,6 +5,12 @@ const REQUIRED = {
   DATABASE_URL: 'postgresql://localhost/events',
 }
 
+const EMAIL = {
+  EMAIL_FROM_ADDRESS: 'noreply@mail.example.com',
+  PLATFORM_NAME: 'Programação',
+  RESEND_API_KEY: 're_x',
+}
+
 describe('AppConfig: CORS_ORIGINS', () => {
   it('is empty when unset or blank', () => {
     expect(AppConfig.fromEnv(REQUIRED).corsOrigins).toEqual([])
@@ -72,6 +78,7 @@ describe('AppConfig: Upstash', () => {
         CLERK_SECRET_KEY: 'sk_live_x',
         CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_x',
         ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
+        ...EMAIL,
         NODE_ENV: 'production',
       }).upstash,
     ).not.toBeNull()
@@ -164,6 +171,52 @@ describe('AppConfig: Activation link', () => {
         NODE_ENV: 'production',
       }),
     ).toThrow(/ACTIVATION_REDIRECT_URL/)
+  })
+})
+
+describe('AppConfig: emails', () => {
+  it('uses placeholders and no Resend key outside production when unset', () => {
+    const config = AppConfig.fromEnv(REQUIRED)
+
+    expect(config.platformSender).toEqual({
+      platformName: 'Events',
+      fromAddress: 'noreply@localhost',
+    })
+    expect(config.resendApiKey).toBeNull()
+  })
+
+  it('reads the Platform sender and the Resend key', () => {
+    const config = AppConfig.fromEnv({ ...REQUIRED, ...EMAIL })
+
+    expect(config.platformSender).toEqual({
+      platformName: 'Programação',
+      fromAddress: 'noreply@mail.example.com',
+    })
+    expect(config.resendApiKey).toBe('re_x')
+  })
+
+  it('requires the three in production, where every email goes out', () => {
+    const production = {
+      ...REQUIRED,
+      UPSTASH_REDIS_REST_URL: 'https://example.upstash.io',
+      UPSTASH_REDIS_REST_TOKEN: 'token',
+      CLERK_SECRET_KEY: 'sk_live_x',
+      CLERK_WEBHOOK_SIGNING_SECRET: 'whsec_x',
+      ACTIVATION_REDIRECT_URL: 'eventsexpo://activate',
+      NODE_ENV: 'production',
+    }
+    for (const name of Object.keys(EMAIL) as (keyof typeof EMAIL)[]) {
+      const rest: Partial<typeof EMAIL> = { ...EMAIL }
+      delete rest[name]
+      expect(() => AppConfig.fromEnv({ ...production, ...rest }), name).toThrow(name)
+    }
+    expect(() => AppConfig.fromEnv({ ...production, ...EMAIL })).not.toThrow()
+  })
+
+  it('refuses a sender address that is not an email', () => {
+    expect(() => AppConfig.fromEnv({ ...REQUIRED, EMAIL_FROM_ADDRESS: 'noreply' })).toThrow(
+      /EMAIL_FROM_ADDRESS/,
+    )
   })
 })
 

@@ -12,3 +12,7 @@ A implementação é mínima: a entidade registra o evento, o use case salva e *
 ## Emenda: pivô para Groups (2026-10-02)
 
 A decisão continua valendo; o exemplo (`RsvpConfirmed` → e-mail de confirmação) saiu com o RSVP (ADR-0016). No modelo novo, os candidatos a domain event são as mudanças num Event e nos Event items, que alimentam as notificações (PROJ-75). Um alerta para o desenho: o Change log (ver a emenda do ADR-0013) não pode ser alimentado por um handler de melhor esforço, porque uma Change perdida apagaria o riscado que alguém deveria ver. Ou ele é gravado na mesma transação da mudança, ou a entrega precisa ser garantida (outbox, como previsto acima).
+
+## Emenda: emails de convite por comando (PROJ-171, 2026-11-01)
+
+O email Activation link não é um handler de domain event: quem cria o Pending user (hoje o `CreateUserUseCase`) chama o `emails` pelo serviço de comandos que ele exporta (`AccountEmails`), por um port próprio (`ActivationLinkMailer`), logo depois das gravações. Assim pede a PRD da primeira fatia da V2 ("acionado pelo comando de quem adiciona"), porque o link também volta na resposta a quem o gerou e o `identity` já está com ele em mãos, e porque a base de domain events só nasce na PROJ-179. O resto da regra continua: o envio roda depois da resposta, dentro de `waitUntil` (`BackgroundTasks`), e uma falha vai para o Email log sem derrubar a ação. Os emails que reagem a fatos (Notifications, PROJ-75) continuam previstos como handlers.

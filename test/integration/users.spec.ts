@@ -11,7 +11,9 @@ describe('Users (Super admin)', () => {
   let userToken: string
 
   beforeAll(async () => {
-    t = await createTestApp()
+    t = await createTestApp({
+      env: { PLATFORM_NAME: 'Programação', EMAIL_FROM_ADDRESS: 'noreply@mail.example.com' },
+    })
     adminToken = sessionTokenFor(
       await createUser({ email: 'admin@example.com', role: 'SUPER_ADMIN' }),
     )
@@ -56,6 +58,61 @@ describe('Users (Super admin)', () => {
       const invitationId = t.invitations.open().at(-1)
       expect(res.body.data.activationLink.url).toContain(invitationId)
       expect(stored?.activationLinks.map((l) => l.invitationId)).toEqual([invitationId])
+    })
+
+    it('emails the Activation link to the Pending user from the Platform sender, recorded in the Email log', async () => {
+      const res = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Bia', email: 'bia@example.com', phone: '+5511987654321' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      const sent = t.emails.sent.filter((e) => e.to === 'bia@example.com')
+      expect(sent).toHaveLength(1)
+      expect(sent[0]?.from).toEqual({ name: 'Programação', address: 'noreply@mail.example.com' })
+      expect(sent[0]).not.toHaveProperty('replyTo')
+      expect(sent[0]?.subject).toBe('Ative sua conta na Programação')
+      expect(sent[0]?.text).toContain(res.body.data.activationLink.url)
+
+      const admin = await testPrisma().user.findUniqueOrThrow({
+        where: { email: 'admin@example.com' },
+      })
+      const logs = await testPrisma().emailLog.findMany({ where: { recipient: 'bia@example.com' } })
+      expect(logs).toMatchObject([
+        {
+          kind: 'ACCOUNT_ACTIVATION_LINK',
+          status: 'SENT',
+          error: null,
+          createdById: admin.id,
+        },
+      ])
+    })
+
+    it('still answers 201 when the email fails, recording the error in the Email log', async () => {
+      t.emails.failNextSend()
+
+      const res = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Caio', email: 'caio@example.com', phone: '+5511987654321' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      expect(res.body.data.activationLink.url).toEqual(expect.any(String))
+      expect(t.emails.sent.filter((e) => e.to === 'caio@example.com')).toEqual([])
+      const logs = await testPrisma().emailLog.findMany({
+        where: { recipient: 'caio@example.com' },
+      })
+      expect(logs).toMatchObject([
+        {
+          kind: 'ACCOUNT_ACTIVATION_LINK',
+          status: 'FAILED',
+          error: 'fake email sender: send failed',
+        },
+      ])
     })
 
     it('answers 500 and creates no User when Clerk fails to issue the invitation', async () => {
@@ -187,7 +244,54 @@ describe('Users (Super admin)', () => {
       const newId = t.invitations.open().at(-1)
       expect(links.map((l) => l.invitationId)).toEqual([newId])
       expect(res.body.data.url).toContain(newId)
-      expect(oldUrl).toContain(t.invitations.revoked().at(-1))
+      const oldId = t.invitations.revoked().at(-1)
+      expect(oldUrl).toMatch(new RegExp(`=${oldId}$`))
+      expect(t.invitations.open()).not.toContain(oldId)
+    })
+
+    it('emails the new Activation link to the Pending user, recorded in the Email log by the Super admin', async () => {
+      const created = await t
+        .http()
+        .post('/api/v1/users')
+        .auth(adminToken, { type: 'bearer' })
+        .send({ name: 'Iara', email: 'iara@example.com', phone: '+5511987654321' })
+      await t.settle()
+
+      const res = await t
+        .http()
+        .post(`/api/v1/users/${created.body.data.user.id}/activation-link`)
+        .auth(adminToken, { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      const sent = t.emails.sent.filter((e) => e.to === 'iara@example.com')
+      expect(sent).toHaveLength(2)
+      expect(sent[1]?.subject).toBe('Ative sua conta na Programação')
+      expect(sent[1]?.text).toContain(res.body.data.url)
+
+      const admin = await testPrisma().user.findUniqueOrThrow({
+        where: { email: 'admin@example.com' },
+      })
+      const logs = await testPrisma().emailLog.findMany({
+        where: { recipient: 'iara@example.com' },
+        orderBy: { id: 'asc' },
+      })
+      expect(logs).toMatchObject([
+        { kind: 'ACCOUNT_ACTIVATION_LINK', status: 'SENT', createdById: admin.id },
+        { kind: 'ACCOUNT_ACTIVATION_LINK', status: 'SENT', createdById: admin.id },
+      ])
+    })
+
+    it('emails nothing for a User who already signed in', async () => {
+      const ana = await testPrisma().user.findUniqueOrThrow({ where: { email: 'ana@example.com' } })
+
+      await t
+        .http()
+        .post(`/api/v1/users/${ana.id}/activation-link`)
+        .auth(adminToken, { type: 'bearer' })
+      await t.settle()
+
+      expect(t.emails.sent.filter((e) => e.to === 'ana@example.com')).toEqual([])
     })
 
     it('answers 409 USER_ALREADY_ACTIVE for a User who already signed in', async () => {

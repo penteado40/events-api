@@ -3,6 +3,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
+import { FakeActivationLinkMailer } from '../testing/fake-activation-link-mailer.js'
 import { FakeInvitationIssuer } from '../testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, PHONE } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
@@ -15,6 +16,7 @@ describe('CreateUserUseCase', () => {
   let users: InMemoryUserRepository
   let links: InMemoryActivationLinkRepository
   let invitations: FakeInvitationIssuer
+  let mailer: FakeActivationLinkMailer
   let createUser: CreateUserUseCase
   let superAdmin: User
 
@@ -23,7 +25,8 @@ describe('CreateUserUseCase', () => {
     links = new InMemoryActivationLinkRepository()
     const clock = new FixedClock(NOW)
     invitations = new FakeInvitationIssuer(clock)
-    createUser = new CreateUserUseCase(users, links, invitations, clock)
+    mailer = new FakeActivationLinkMailer()
+    createUser = new CreateUserUseCase(users, links, invitations, mailer, clock)
     superAdmin = await users.create(
       {
         name: 'Admin',
@@ -55,6 +58,23 @@ describe('CreateUserUseCase', () => {
     expect(links.all()).toHaveLength(1)
     expect(links.all()[0]?.userId).toBe(result.user.id)
     expect(links.all()[0]?.invitationId).toBe('inv_1')
+  })
+
+  it('emails the Activation link to the Pending user, by the Super admin', async () => {
+    const result = await createUser.execute({
+      actor: superAdmin,
+      name: 'Pedro',
+      email: 'pedro@example.com',
+      phone: '+5511987654321',
+    })
+
+    expect(mailer.sent).toEqual([
+      {
+        to: { email: 'pedro@example.com', name: 'Pedro' },
+        link: result.activationLink,
+        stamp: { by: superAdmin.id, at: NOW },
+      },
+    ])
   })
 
   it('records the Super admin as the Author of the User and of the Activation link', async () => {
@@ -121,6 +141,7 @@ describe('CreateUserUseCase', () => {
     ).rejects.toThrow()
     expect(users.all()).toHaveLength(1)
     expect(links.all()).toHaveLength(0)
+    expect(mailer.sent).toEqual([])
   })
 
   it('answers EMAIL_ALREADY_IN_USE when another request created the email meanwhile, revoking the invitation', async () => {
@@ -140,6 +161,7 @@ describe('CreateUserUseCase', () => {
       }),
     ).rejects.toEqual(new AppError('EMAIL_ALREADY_IN_USE'))
     expect(invitations.open()).toEqual([])
+    expect(mailer.sent).toEqual([])
   })
 
   it('refuses a malformed email with VALIDATION_ERROR', async () => {

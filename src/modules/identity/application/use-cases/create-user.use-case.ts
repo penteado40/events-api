@@ -6,6 +6,7 @@ import type { ActivationLinkRepository } from '../../domain/activation-link.repo
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 import { createPendingUser, type IssuedActivationLink } from '../issue-activation-link.js'
+import type { ActivationLinkMailer } from '../ports/activation-link-mailer.js'
 import type { InvitationIssuer } from '../ports/invitation-issuer.js'
 
 export interface CreateUserInput {
@@ -20,12 +21,16 @@ export interface CreateUserOutput {
   activationLink: IssuedActivationLink
 }
 
-/** The Super admin creates a Pending user, who activates through the returned link. */
+/**
+ * The Super admin creates a Pending user, who activates through the link that
+ * goes back in the response and by email to the Pending user.
+ */
 export class CreateUserUseCase {
   constructor(
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
     private readonly invitations: InvitationIssuer,
+    private readonly mailer: ActivationLinkMailer,
     private readonly clock: Clock,
   ) {}
 
@@ -36,12 +41,19 @@ export class CreateUserUseCase {
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return createPendingUser(
+    const created = await createPendingUser(
       this.users,
       this.links,
       this.invitations,
       { name: input.name, email, phone },
       stamp,
     )
+    // Only once the User and the link are stored (ADR-0010: after the commit).
+    this.mailer.send(
+      { email: created.user.email.value, name: created.user.name },
+      created.activationLink,
+      stamp,
+    )
+    return created
   }
 }

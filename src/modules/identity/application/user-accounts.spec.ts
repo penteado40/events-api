@@ -7,6 +7,7 @@ import { FakeInvitationIssuer } from './testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, signedIn, PHONE } from './testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from './testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from './testing/in-memory-user.repository.js'
+import { ActivationLinks } from './activation-links.js'
 import { UserAccounts } from './user-accounts.js'
 
 const NOW = new Date('2026-09-29T12:00:00.000Z')
@@ -22,7 +23,7 @@ describe('UserAccounts', () => {
     users = new InMemoryUserRepository()
     links = new InMemoryActivationLinkRepository()
     invitations = new FakeInvitationIssuer(new FixedClock(NOW))
-    accounts = new UserAccounts(users, links, invitations)
+    accounts = new UserAccounts(users, new ActivationLinks(users, links, invitations))
   })
 
   async function existing(email: string, { active = true } = {}) {

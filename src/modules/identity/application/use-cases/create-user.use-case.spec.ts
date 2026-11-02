@@ -3,6 +3,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
+import { ActivationLinks } from '../activation-links.js'
 import { FakeActivationLinkMailer } from '../testing/fake-activation-link-mailer.js'
 import { FakeInvitationIssuer } from '../testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, PHONE } from '../testing/identity-fixtures.js'
@@ -26,7 +27,12 @@ describe('CreateUserUseCase', () => {
     const clock = new FixedClock(NOW)
     invitations = new FakeInvitationIssuer(clock)
     mailer = new FakeActivationLinkMailer()
-    createUser = new CreateUserUseCase(users, links, invitations, mailer, clock)
+    createUser = new CreateUserUseCase(
+      users,
+      new ActivationLinks(users, links, invitations),
+      mailer,
+      clock,
+    )
     superAdmin = await users.create(
       {
         name: 'Admin',

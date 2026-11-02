@@ -7,14 +7,13 @@ import { ActivationLinkMailer } from './application/ports/activation-link-mailer
 import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { GroupMembers } from './application/ports/group-members.js'
 import { IdentityWebhookVerifier } from './application/ports/identity-webhook-verifier.js'
-import { InvitationIssuer } from './application/ports/invitation-issuer.js'
+import { ActivationLinks } from './application/activation-links.js'
 import { AuthenticateUseCase } from './application/use-cases/authenticate.use-case.js'
 import { CreateUserUseCase } from './application/use-cases/create-user.use-case.js'
 import { GetMeUseCase } from './application/use-cases/get-me.use-case.js'
 import { SyncUserProfileUseCase } from './application/use-cases/sync-user-profile.use-case.js'
 import { IssueActivationLinkUseCase } from './application/use-cases/issue-activation-link.use-case.js'
 import { UpdateMeUseCase } from './application/use-cases/update-me.use-case.js'
-import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
 import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
@@ -63,28 +62,17 @@ import { UsersController } from './presentation/users.controller.js'
       provide: CreateUserUseCase,
       useFactory: (
         users: UserRepository,
-        links: ActivationLinkRepository,
-        invitations: InvitationIssuer,
+        activationLinks: ActivationLinks,
         mailer: ActivationLinkMailer,
         clock: Clock,
-      ) => new CreateUserUseCase(users, links, invitations, mailer, clock),
-      inject: [
-        UserRepository,
-        ActivationLinkRepository,
-        InvitationIssuer,
-        ActivationLinkMailer,
-        Clock,
-      ],
+      ) => new CreateUserUseCase(users, activationLinks, mailer, clock),
+      inject: [UserRepository, ActivationLinks, ActivationLinkMailer, Clock],
     },
     {
       provide: IssueActivationLinkUseCase,
-      useFactory: (
-        users: UserRepository,
-        links: ActivationLinkRepository,
-        invitations: InvitationIssuer,
-        clock: Clock,
-      ) => new IssueActivationLinkUseCase(users, links, invitations, clock),
-      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer, Clock],
+      useFactory: (activationLinks: ActivationLinks, mailer: ActivationLinkMailer, clock: Clock) =>
+        new IssueActivationLinkUseCase(activationLinks, mailer, clock),
+      inject: [ActivationLinks, ActivationLinkMailer, Clock],
     },
     {
       provide: GetMeUseCase,

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common'
-import { InvitationIssuer } from './application/ports/invitation-issuer.js'
+import { ActivationLinks } from './application/activation-links.js'
 import { UserAccounts } from './application/user-accounts.js'
-import { ActivationLinkRepository } from './domain/activation-link.repository.js'
 import { UserRepository } from './domain/user.repository.js'
 import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
@@ -16,12 +15,9 @@ import { IdentityPersistenceModule } from './identity-persistence.module.js'
   providers: [
     {
       provide: UserAccounts,
-      useFactory: (
-        users: UserRepository,
-        links: ActivationLinkRepository,
-        invitations: InvitationIssuer,
-      ) => new UserAccounts(users, links, invitations),
-      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer],
+      useFactory: (users: UserRepository, activationLinks: ActivationLinks) =>
+        new UserAccounts(users, activationLinks),
+      inject: [UserRepository, ActivationLinks],
     },
   ],
   exports: [UserAccounts],

@@ -1,5 +1,5 @@
 import type { Stamp } from '../../../../shared/domain/stamp.js'
-import type { IssuedActivationLink } from '../issue-activation-link.js'
+import type { IssuedActivationLink } from '../activation-links.js'
 import {
   ActivationLinkMailer,
   type ActivationLinkRecipient,

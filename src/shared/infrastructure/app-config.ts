@@ -32,12 +32,13 @@ const EnvSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
     DATABASE_URL: z.string().min(1),
-    /** Activation link lifetime, in seconds (default 7 days). */
-    ACTIVATION_LINK_TTL: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(7 * 24 * 60 * 60),
+    /** Activation link lifetime, in whole days: the unit of Clerk's invitations (default 7). */
+    ACTIVATION_LINK_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    /**
+     * Where an Activation link lands once accepted: the events-expo deep link (ADR-0020).
+     * Required in production; unset elsewhere, Clerk's default page is used.
+     */
+    ACTIVATION_REDIRECT_URL: z.url().optional(),
     DOCS_ENABLED: z
       .enum(['true', 'false'])
       .default('false')
@@ -53,6 +54,8 @@ const EnvSchema = z
      * too: set it only after checking what the app (events-expo) sends.
      */
     CLERK_AUTHORIZED_PARTIES: originList,
+    /** The `whsec_...` of Clerk's webhook endpoint, which signs `POST /webhooks/clerk`. Required in production. */
+    CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -66,6 +69,20 @@ const EnvSchema = z
         code: 'custom',
         path: ['CLERK_SECRET_KEY'],
         message: 'obrigatória em produção (verificação do token do Clerk)',
+      })
+    }
+    if (env.NODE_ENV === 'production' && env.CLERK_WEBHOOK_SIGNING_SECRET === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLERK_WEBHOOK_SIGNING_SECRET'],
+        message: 'obrigatória em produção (assinatura do webhook do Clerk)',
+      })
+    }
+    if (env.NODE_ENV === 'production' && env.ACTIVATION_REDIRECT_URL === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ACTIVATION_REDIRECT_URL'],
+        message: 'obrigatória em produção (deep link do app no Activation link)',
       })
     }
     const missing = UPSTASH_VARS.filter((name) => env[name] === undefined)
@@ -89,7 +106,9 @@ export class AppConfig {
   readonly port: number
   readonly databaseUrl: string
   readonly docsEnabled: boolean
-  readonly activationLinkTtlSeconds: number
+  readonly activationLinkTtlDays: number
+  /** Null outside production when unset: Clerk's default page then receives the invitation. */
+  readonly activationRedirectUrl: string | null
   readonly corsOrigins: string[]
   /** Null outside production when unset: nothing then verifies a Clerk token. */
   readonly clerkSecretKey: string | null
@@ -97,6 +116,8 @@ export class AppConfig {
   readonly clerkJwtKey: string | null
   /** Empty when unset: the token's `azp` is then not checked. */
   readonly clerkAuthorizedParties: string[]
+  /** Null outside production when unset: every Clerk webhook is then a server error. */
+  readonly clerkWebhookSigningSecret: string | null
   /** Null outside production when unset: the counters then stay in memory. */
   readonly upstash: { url: string; token: string } | null
   /** Prefix of every rate-limit key, one per environment sharing the Upstash database. */
@@ -109,11 +130,13 @@ export class AppConfig {
     this.port = env.PORT
     this.databaseUrl = env.DATABASE_URL
     this.docsEnabled = env.DOCS_ENABLED
-    this.activationLinkTtlSeconds = env.ACTIVATION_LINK_TTL
+    this.activationLinkTtlDays = env.ACTIVATION_LINK_TTL_DAYS
+    this.activationRedirectUrl = env.ACTIVATION_REDIRECT_URL ?? null
     this.corsOrigins = env.CORS_ORIGINS
     this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.clerkJwtKey = env.CLERK_JWT_KEY ?? null
     this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
+    this.clerkWebhookSigningSecret = env.CLERK_WEBHOOK_SIGNING_SECRET ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
         ? { url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN }

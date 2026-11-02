@@ -4,6 +4,8 @@ import type { GroupName } from './group-name.vo.js'
 export interface GroupProps {
   id: number
   name: string
+  /** Set when the Super admin gives the Group its first Owner; never unset (ADR-0017). */
+  hasHadOwner: boolean
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -31,6 +33,9 @@ export class Group {
   }
   get name(): string {
     return this.props.name
+  }
+  get hasHadOwner(): boolean {
+    return this.props.hasHadOwner
   }
   get createdAt(): Date {
     return this.props.createdAt

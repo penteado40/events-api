@@ -19,6 +19,11 @@ export class PrismaActivationLinkRepository extends ActivationLinkRepository {
     return toDomain(row)
   }
 
+  async findForUser(userId: number): Promise<ActivationLink | null> {
+    const row = await this.prisma.activationLink.findFirst({ where: { userId } })
+    return row ? toDomain(row) : null
+  }
+
   async deleteForUser(userId: number): Promise<void> {
     await this.prisma.activationLink.deleteMany({ where: { userId } })
   }
@@ -28,9 +33,8 @@ function toDomain(row: PrismaActivationLink): ActivationLink {
   return ActivationLink.restore({
     id: row.id,
     userId: row.userId,
-    tokenHash: row.tokenHash,
+    invitationId: row.invitationId,
     expiresAt: row.expiresAt,
-    usedAt: row.usedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

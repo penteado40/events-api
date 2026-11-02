@@ -3,31 +3,27 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
-import { FakeActivationTokenGenerator } from '../testing/fake-activation-token-generator.js'
+import { FakeInvitationIssuer } from '../testing/fake-invitation-issuer.js'
 import { SCRIPT_STAMP, PHONE } from '../testing/identity-fixtures.js'
 import { InMemoryActivationLinkRepository } from '../testing/in-memory-activation-link.repository.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { CreateUserUseCase } from './create-user.use-case.js'
 
 const NOW = new Date('2026-09-28T12:00:00.000Z')
-const SEVEN_DAYS = 7 * 24 * 60 * 60
 
 describe('CreateUserUseCase', () => {
   let users: InMemoryUserRepository
   let links: InMemoryActivationLinkRepository
+  let invitations: FakeInvitationIssuer
   let createUser: CreateUserUseCase
   let superAdmin: User
 
   beforeEach(async () => {
     users = new InMemoryUserRepository()
     links = new InMemoryActivationLinkRepository()
-    createUser = new CreateUserUseCase(
-      users,
-      links,
-      new FakeActivationTokenGenerator(),
-      new FixedClock(NOW),
-      { ttlSeconds: SEVEN_DAYS },
-    )
+    const clock = new FixedClock(NOW)
+    invitations = new FakeInvitationIssuer(clock)
+    createUser = new CreateUserUseCase(users, links, invitations, clock)
     superAdmin = await users.create(
       {
         name: 'Admin',
@@ -52,11 +48,13 @@ describe('CreateUserUseCase', () => {
     expect(result.user.phone.value).toBe('+5511987654321')
     expect(result.user.role).toBe('USER')
     expect(result.user.isPending).toBe(true)
-    expect(result.activationToken).toBe('token-1')
-    expect(result.expiresAt).toEqual(new Date('2026-10-05T12:00:00.000Z'))
+    expect(result.activationLink).toEqual({
+      url: 'https://accounts.clerk.test/accept?invitation=inv_1',
+      expiresAt: new Date('2026-10-05T12:00:00.000Z'),
+    })
     expect(links.all()).toHaveLength(1)
     expect(links.all()[0]?.userId).toBe(result.user.id)
-    expect(links.all()[0]?.tokenHash).toBe('hash:token-1')
+    expect(links.all()[0]?.invitationId).toBe('inv_1')
   })
 
   it('records the Super admin as the Author of the User and of the Activation link', async () => {
@@ -107,6 +105,41 @@ describe('CreateUserUseCase', () => {
       }),
     ).rejects.toEqual(new AppError('EMAIL_ALREADY_IN_USE'))
     expect(links.all()).toHaveLength(0)
+    expect(invitations.open()).toEqual([])
+  })
+
+  it('creates no User when the invitation fails', async () => {
+    invitations.failNextIssue()
+
+    await expect(
+      createUser.execute({
+        actor: superAdmin,
+        name: 'Pedro',
+        email: 'pedro@example.com',
+        phone: '+5511987654321',
+      }),
+    ).rejects.toThrow()
+    expect(users.all()).toHaveLength(1)
+    expect(links.all()).toHaveLength(0)
+  })
+
+  it('answers EMAIL_ALREADY_IN_USE when another request created the email meanwhile, revoking the invitation', async () => {
+    users.createConcurrently({
+      name: 'Winner',
+      email: Email.create('pedro@example.com'),
+      phone: PHONE,
+      role: 'USER',
+    })
+
+    await expect(
+      createUser.execute({
+        actor: superAdmin,
+        name: 'Pedro',
+        email: 'pedro@example.com',
+        phone: '+5511987654321',
+      }),
+    ).rejects.toEqual(new AppError('EMAIL_ALREADY_IN_USE'))
+    expect(invitations.open()).toEqual([])
   })
 
   it('refuses a malformed email with VALIDATION_ERROR', async () => {

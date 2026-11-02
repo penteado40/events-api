@@ -1,10 +1,9 @@
 export interface ActivationLinkProps {
   id: number
   userId: number
-  /** SHA-256 of the token; the token itself is never stored. */
-  tokenHash: string
+  /** The identity provider's invitation behind the link (ADR-0020); its url is never stored. */
+  invitationId: string
   expiresAt: Date
-  usedAt: Date | null
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -13,11 +12,11 @@ export interface ActivationLinkProps {
 
 export interface NewActivationLinkProps {
   userId: number
-  tokenHash: string
+  invitationId: string
   expiresAt: Date
 }
 
-/** Single-use link through which a Pending user sets their own password. */
+/** The Activation link through which a Pending user signs in for the first time. */
 export class ActivationLink {
   private constructor(private readonly props: ActivationLinkProps) {}
 
@@ -31,14 +30,11 @@ export class ActivationLink {
   get userId(): number {
     return this.props.userId
   }
-  get tokenHash(): string {
-    return this.props.tokenHash
+  get invitationId(): string {
+    return this.props.invitationId
   }
   get expiresAt(): Date {
     return this.props.expiresAt
-  }
-  get usedAt(): Date | null {
-    return this.props.usedAt
   }
   get createdAt(): Date {
     return this.props.createdAt
@@ -51,13 +47,5 @@ export class ActivationLink {
   }
   get updatedById(): number | null {
     return this.props.updatedById
-  }
-
-  get isUsed(): boolean {
-    return this.props.usedAt !== null
-  }
-
-  isExpired(now: Date): boolean {
-    return now.getTime() >= this.props.expiresAt.getTime()
   }
 }

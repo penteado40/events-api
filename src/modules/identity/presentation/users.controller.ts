@@ -25,7 +25,7 @@ export class UsersController {
   @ApiOperation({
     summary: 'Criar um User',
     description:
-      'Só o Super admin. O User nasce Pending user e fica ativo ao entrar pela primeira vez com este email.',
+      'Só o Super admin. O User nasce Pending user e a resposta traz o Activation link, pelo qual ele fica ativo ao entrar pela primeira vez com este email.',
   })
   @ApiCreatedResponse({ type: CreateUserResponseDto })
   @ApiErrors('FORBIDDEN', 'EMAIL_ALREADY_IN_USE')
@@ -33,15 +33,11 @@ export class UsersController {
     @CurrentUser() actor: User,
     @Body() body: CreateUserDto,
   ): Promise<CreateUserResponseDto> {
-    const { user, activationToken, expiresAt } = await this.createUserUseCase.execute({
-      actor,
-      ...body,
-    })
+    const { user, activationLink } = await this.createUserUseCase.execute({ actor, ...body })
     return {
       data: {
         user: UserPresenter.toJson(user),
-        activationToken,
-        expiresAt: expiresAt.toISOString(),
+        activationLink: UserPresenter.toActivationLinkJson(activationLink),
       },
     }
   }
@@ -50,7 +46,8 @@ export class UsersController {
   @HttpCode(201)
   @ApiOperation({
     summary: 'Reemitir o Activation link',
-    description: 'Só o Super admin, para um Pending user. O link anterior deixa de valer.',
+    description:
+      'Só o Super admin, para um Pending user. O Activation link anterior deixa de valer.',
   })
   @ApiCreatedResponse({ type: ActivationLinkResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')
@@ -58,10 +55,7 @@ export class UsersController {
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) userId: number,
   ): Promise<ActivationLinkResponseDto> {
-    const { activationToken, expiresAt } = await this.issueActivationLinkUseCase.execute({
-      actor,
-      userId,
-    })
-    return { data: { activationToken, expiresAt: expiresAt.toISOString() } }
+    const link = await this.issueActivationLinkUseCase.execute({ actor, userId })
+    return { data: UserPresenter.toActivationLinkJson(link) }
   }
 }

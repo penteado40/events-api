@@ -53,17 +53,16 @@ model User {
 }
 
 model ActivationLink {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  tokenHash   String    @unique // SHA-256 of the token; the token is never stored
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdById Int? // Author (ADR-0013)
-  updatedById Int?
-  createdBy   User?     @relation("ActivationLinkCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy   User?     @relation("ActivationLinkUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  invitationId String   @unique // The Clerk invitation (ADR-0020); its url is never stored
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdById  Int? // Author (ADR-0013)
+  updatedById  Int?
+  createdBy    User?    @relation("ActivationLinkCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy    User?    @relation("ActivationLinkUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   user User @relation("ActivationLinkUser", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -74,6 +73,7 @@ model ActivationLink {
 model Group {
   id          Int      @id @default(autoincrement())
   name        String
+  hasHadOwner Boolean  @default(false) // Set with the first Owner; never unset (ADR-0017)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdById Int? // Author (ADR-0013)
@@ -86,7 +86,7 @@ model Group {
   @@map("groups")
 }
 
-// The tie between a User and a Group. Written by PROJ-172 (Owners) and PROJ-177 (Viewers).
+// The tie between a User and a Group, with their role. Part of the Group's roster aggregate.
 model GroupMember {
   id          Int       @id @default(autoincrement())
   groupId     Int

@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import type { Role } from '../../../src/modules/identity/index.js'
 import { testPrisma } from './database.js'
@@ -44,39 +43,12 @@ export function sessionTokenFor(user: {
   })
 }
 
-export interface CreateActivationLinkOptions {
-  userId: number
-  token?: string
-  expiresAt?: Date
-  usedAt?: Date | null
-}
-
-/** How the app stores an Activation token. */
-export function sha256(value: string): string {
-  return createHash('sha256').update(value).digest('hex')
-}
-
-/** An Activation link with a known token (stored as its SHA-256, like the app does). */
-export async function createActivationLink(options: CreateActivationLinkOptions) {
-  sequence += 1
-  const token = options.token ?? `test-activation-token-${sequence}`
-  const link = await testPrisma().activationLink.create({
-    data: {
-      userId: options.userId,
-      tokenHash: sha256(token),
-      expiresAt: options.expiresAt ?? new Date(Date.now() + 3600_000),
-      usedAt: options.usedAt ?? null,
-    },
-  })
-  return { ...link, token }
-}
-
 export async function createGroup(options: { name?: string } = {}) {
   sequence += 1
   return testPrisma().group.create({ data: { name: options.name ?? `Group ${sequence}` } })
 }
 
-/** A Group member, as the writes of PROJ-172 (Owners) and PROJ-177 (Viewers) will make. */
+/** A Group member written straight to the table, to arrange state without the routes. */
 export async function createGroupMember(options: {
   groupId: number
   userId: number

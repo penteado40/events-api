@@ -25,6 +25,19 @@ const originList = z
     ),
   )
 
+/**
+ * The Frontend API host a Clerk publishable key encodes: `pk_test_` or `pk_live_`
+ * plus base64 of `<host>$`. Null when the value is not such a key.
+ */
+function frontendApiOf(publishableKey: string): string | null {
+  const match = /^pk_(?:test|live)_([A-Za-z0-9+/]+={0,2})$/.exec(publishableKey)
+  if (!match) return null
+  const decoded = Buffer.from(match[1]!, 'base64').toString('utf8')
+  if (!decoded.endsWith('$')) return null
+  const host = decoded.slice(0, -1)
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null
+}
+
 const UPSTASH_VARS = ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'] as const
 
 const EnvSchema = z
@@ -54,6 +67,19 @@ const EnvSchema = z
      * too: set it only after checking what the app (events-expo) sends.
      */
     CLERK_AUTHORIZED_PARTIES: originList,
+    /**
+     * Turns on the Clerk login of the docs (`/docs`). Blank or unset, the docs take
+     * only a token pasted by hand. Never set in production, where the docs are off.
+     */
+    CLERK_PUBLISHABLE_KEY: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => (value === '' ? undefined : value))
+      .refine(
+        (value) => value === undefined || frontendApiOf(value) !== null,
+        'precisa ser uma publishable key do Clerk (pk_test_... ou pk_live_...)',
+      ),
     /** The `whsec_...` of Clerk's webhook endpoint, which signs `POST /webhooks/clerk`. Required in production. */
     CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
     /** Rate-limit counters (ADR-0007). Required in production; without them, counters stay in memory. */
@@ -116,6 +142,8 @@ export class AppConfig {
   readonly clerkJwtKey: string | null
   /** Empty when unset: the token's `azp` is then not checked. */
   readonly clerkAuthorizedParties: string[]
+  /** Null when unset: the docs then take only a token pasted by hand. */
+  readonly clerkDocsLogin: { publishableKey: string; frontendApi: string } | null
   /** Null outside production when unset: every Clerk webhook is then a server error. */
   readonly clerkWebhookSigningSecret: string | null
   /** Null outside production when unset: the counters then stay in memory. */
@@ -136,6 +164,12 @@ export class AppConfig {
     this.clerkSecretKey = env.CLERK_SECRET_KEY ?? null
     this.clerkJwtKey = env.CLERK_JWT_KEY ?? null
     this.clerkAuthorizedParties = env.CLERK_AUTHORIZED_PARTIES
+    this.clerkDocsLogin = env.CLERK_PUBLISHABLE_KEY
+      ? {
+          publishableKey: env.CLERK_PUBLISHABLE_KEY,
+          frontendApi: frontendApiOf(env.CLERK_PUBLISHABLE_KEY)!,
+        }
+      : null
     this.clerkWebhookSigningSecret = env.CLERK_WEBHOOK_SIGNING_SECRET ?? null
     this.upstash =
       env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN

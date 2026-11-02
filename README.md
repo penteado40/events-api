@@ -121,7 +121,7 @@ npm run dev                  # http://localhost:3000/api/v1
 
 To sign in as the seeded Super admin, invite `admin@local.test` from the dashboard of the Clerk development instance (see [`docs/infra.md`](docs/infra.md#super-admin)); the first request with its session token links the two.
 
-With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a Clerk session token in the Authorize button.
+With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs`. With `CLERK_PUBLISHABLE_KEY` set (the development instance), click **Entrar com Clerk** at the top and sign in: every request then carries your Clerk session token, renewed by Clerk JS, and **Sair** ends the session. Without a session the reference still reads and the public routes still answer. A token pasted in the Authorize button always wins over Clerk's, to try another User or an invalid token; without `CLERK_PUBLISHABLE_KEY`, pasting it is the only way in.
 
 ### Environment variables
 
@@ -136,6 +136,7 @@ With `DOCS_ENABLED=true`, open `http://localhost:3000/api/v1/docs` and paste a C
 | `CLERK_JWT_KEY` | Optional; Clerk's PEM public key, for networkless verification |
 | `CLERK_AUTHORIZED_PARTIES` | Optional; exact origins accepted in the token's `azp` (a token without `azp` is then refused) |
 | `DOCS_ENABLED` | `true` registers the docs and the OpenAPI document |
+| `CLERK_PUBLISHABLE_KEY` | Optional; `pk_test_...` of the development instance, turns on the Clerk login of the docs |
 | `ACTIVATION_LINK_TTL_DAYS` | Optional; Activation link (Clerk invitation) lifetime in whole days (default `7`) |
 | `ACTIVATION_REDIRECT_URL` | Where an accepted Activation link lands: the events-expo deep link; required in production |
 

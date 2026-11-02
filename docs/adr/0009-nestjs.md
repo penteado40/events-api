@@ -30,3 +30,5 @@ NestJS, `nestjs-zod`, Scalar e a fiscalização por lint continuam valendo. A li
 ## Emenda: identidade no Clerk (PROJ-164, 2026-10-31)
 
 O Passport nunca chegou a ser usado com o Clerk e saiu de vez. O guard global `CredentialsGuard` verifica o token de sessão pela porta `AuthVerifier` (ADR-0020) e mantém o `@Public()` para as exceções: esquecer o decorator continua fechando a rota. Os 401 vêm do guard como `AppError` (`UNAUTHENTICATED`, `USER_NOT_INVITED`, `USER_DEACTIVATED`) e passam pelo mesmo catálogo. Os exemplos do Scalar não têm mais login nem troca de senha: funcionam contra o seed local com o token do Clerk do `admin@local.test`.
+
+Na PROJ-169, a página do Scalar passou a ser escrita à mão: carrega o `@scalar/api-reference` fixado do CDN junto com o Clerk JS, porque o `onBeforeRequest` que põe o token do Clerk em cada chamada é experimental e o `apiReference()` do `@scalar/nestjs-api-reference` não serve mais. Do pacote só se usa o tema (`customThemeCSS`).

@@ -14,7 +14,8 @@ describe('docs with DOCS_ENABLED=true', () => {
   let t: TestApp
 
   beforeAll(async () => {
-    t = await createTestApp({ env: { DOCS_ENABLED: 'true' } })
+    // Blank even when the developer's .env sets it: this is the docs without the Clerk login.
+    t = await createTestApp({ env: { DOCS_ENABLED: 'true', CLERK_PUBLISHABLE_KEY: '' } })
   })
 
   afterAll(() => t.close())
@@ -113,6 +114,72 @@ describe('docs with DOCS_ENABLED=true', () => {
     expect(csp).toContain("default-src 'none'")
     expect(csp).toMatch(/script-src 'nonce-[^']+' https:\/\/cdn\.jsdelivr\.net/)
     expect(csp).not.toContain("script-src 'unsafe-inline'")
+  })
+
+  it('serves Scalar without the Clerk login when CLERK_PUBLISHABLE_KEY is unset', async () => {
+    const res = await t.http().get('/api/v1/docs')
+
+    expect(res.text).toContain('Scalar.createApiReference')
+    expect(res.text).not.toMatch(/clerk/i)
+    expect(res.headers['content-security-policy']).not.toMatch(/clerk/i)
+  })
+})
+
+describe('docs with DOCS_ENABLED=true and CLERK_PUBLISHABLE_KEY', () => {
+  const FRONTEND_API = 'happy-cat-12.clerk.accounts.dev'
+  const PUBLISHABLE_KEY = `pk_test_${Buffer.from(`${FRONTEND_API}$`).toString('base64')}`
+  let t: TestApp
+
+  beforeAll(async () => {
+    t = await createTestApp({
+      env: { DOCS_ENABLED: 'true', CLERK_PUBLISHABLE_KEY: PUBLISHABLE_KEY },
+    })
+  })
+
+  afterAll(() => t.close())
+
+  it('loads Clerk JS and its UI from the Frontend API of the key, with the nonce', async () => {
+    const res = await t.http().get('/api/v1/docs')
+    const nonce = /script-src 'nonce-([^']+)'/.exec(
+      res.headers['content-security-policy'] as string,
+    )![1]!
+
+    expect(res.status).toBe(200)
+    for (const bundle of [
+      '@clerk/clerk-js@6/dist/clerk.browser.js',
+      '@clerk/ui@1/dist/ui.browser.js',
+    ]) {
+      const tag = new RegExp(`<script[^>]*src="https://${FRONTEND_API}/npm/${bundle}"[^>]*>`).exec(
+        res.text,
+      )
+      expect(tag?.[0], bundle).toContain(`nonce="${nonce}"`)
+    }
+    expect(res.text).toContain(`data-clerk-publishable-key="${PUBLISHABLE_KEY}"`)
+    expect(res.text).toContain('Entrar com Clerk')
+    expect(res.text).toContain('onBeforeRequest')
+  })
+
+  it('relaxes the CSP for Clerk only where it needs, keeping the nonce', async () => {
+    const res = await t.http().get('/api/v1/docs')
+    const directives = Object.fromEntries(
+      (res.headers['content-security-policy'] as string)
+        .split('; ')
+        .map((d) => [d.split(' ')[0], d.split(' ').slice(1)]),
+    )
+
+    expect(directives['default-src']).toEqual(["'none'"])
+    expect(directives['script-src']).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^'nonce-/), `https://${FRONTEND_API}`]),
+    )
+    expect(directives['script-src']).not.toContain("'unsafe-inline'")
+    expect(directives['connect-src']).toEqual(
+      expect.arrayContaining(["'self'", `https://${FRONTEND_API}`]),
+    )
+    expect(directives['img-src']).toContain('https://img.clerk.com')
+    expect(directives['worker-src']).toEqual(["'self'", 'blob:'])
+    expect(directives['frame-src']).toContain('https://challenges.cloudflare.com')
+    expect(directives['form-action']).toEqual(["'self'"])
+    expect(directives['frame-ancestors']).toEqual(["'none'"])
   })
 })
 

@@ -5,7 +5,6 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { User } from '../domain/user.entity.js'
 import type { UserRepository } from '../domain/user.repository.js'
-import type { ActivationLinkMailer } from './ports/activation-link-mailer.js'
 import type { InvitationIssuer, IssuedInvitation } from './ports/invitation-issuer.js'
 
 /** What goes back to whoever delivers the Activation link (ADR-0020). */
@@ -77,29 +76,26 @@ export async function createPendingUser(
 }
 
 /**
- * Reissues the link of a Pending user, revokes the previous one so a lost or
- * leaked link stops working, and emails the new one to the Pending user by the
- * stamp's Author: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+ * Reissues the link of a Pending user and revokes the previous one, so a lost
+ * or leaked link stops working: NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+ * Sends no email: which one goes out (the account's or a Group's) is the caller's call.
  */
 export async function reissueActivationLink(
   users: UserRepository,
   links: ActivationLinkRepository,
   invitations: InvitationIssuer,
-  mailer: ActivationLinkMailer,
   userId: number,
   stamp: Stamp,
-): Promise<IssuedActivationLink> {
+): Promise<{ user: User; activationLink: IssuedActivationLink }> {
   const user = await users.findById(userId)
   if (!user) throw new AppError('NOT_FOUND')
   if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
   const previous = await links.findForUser(user.id)
-  const link = await withInvitation(invitations, user.email, (invitation) =>
+  const activationLink = await withInvitation(invitations, user.email, (invitation) =>
     storeLink(links, user.id, invitation, stamp),
   )
   if (previous) await invitations.revoke(previous.invitationId)
-  // Only once the new link is stored and the previous one revoked.
-  mailer.send({ email: user.email.value, name: user.name }, link, stamp)
-  return link
+  return { user, activationLink }
 }
 
 /** Revokes and drops a Pending user's link; an active User's link stays as history. */

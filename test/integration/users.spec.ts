@@ -244,7 +244,9 @@ describe('Users (Super admin)', () => {
       const newId = t.invitations.open().at(-1)
       expect(links.map((l) => l.invitationId)).toEqual([newId])
       expect(res.body.data.url).toContain(newId)
-      expect(oldUrl).toContain(t.invitations.revoked().at(-1))
+      const oldId = t.invitations.revoked().at(-1)
+      expect(oldUrl).toMatch(new RegExp(`=${oldId}$`))
+      expect(t.invitations.open()).not.toContain(oldId)
     })
 
     it('emails the new Activation link to the Pending user, recorded in the Email log by the Super admin', async () => {

@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common'
-import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { InvitationIssuer } from './application/ports/invitation-issuer.js'
 import { UserAccounts } from './application/user-accounts.js'
 import { ActivationLinkRepository } from './domain/activation-link.repository.js'
@@ -21,9 +20,8 @@ import { IdentityPersistenceModule } from './identity-persistence.module.js'
         users: UserRepository,
         links: ActivationLinkRepository,
         invitations: InvitationIssuer,
-        mailer: ActivationLinkMailer,
-      ) => new UserAccounts(users, links, invitations, mailer),
-      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer, ActivationLinkMailer],
+      ) => new UserAccounts(users, links, invitations),
+      inject: [UserRepository, ActivationLinkRepository, InvitationIssuer],
     },
   ],
   exports: [UserAccounts],

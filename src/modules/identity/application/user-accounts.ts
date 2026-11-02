@@ -10,7 +10,6 @@ import {
   type IssuedActivationLink,
   reissueActivationLink,
 } from './issue-activation-link.js'
-import type { ActivationLinkMailer } from './ports/activation-link-mailer.js'
 import type { InvitationIssuer } from './ports/invitation-issuer.js'
 import { toUserSummary, type UserSummary } from './user-lookup.js'
 
@@ -31,7 +30,6 @@ export class UserAccounts {
     private readonly users: UserRepository,
     private readonly links: ActivationLinkRepository,
     private readonly invitations: InvitationIssuer,
-    private readonly mailer: ActivationLinkMailer,
   ) {}
 
   /** The User of the email, created as a Pending user with an Activation link when there is none. */
@@ -62,16 +60,16 @@ export class UserAccounts {
     }
   }
 
-  /** A fresh link for a Pending user, also emailed to them; the previous one stops working. */
+  /** A fresh link for a Pending user; the previous one stops working. Emails nobody. */
   async reissueActivationLink(userId: number, stamp: Stamp): Promise<IssuedActivationLink> {
-    return reissueActivationLink(
+    const { activationLink } = await reissueActivationLink(
       this.users,
       this.links,
       this.invitations,
-      this.mailer,
       userId,
       stamp,
     )
+    return activationLink
   }
 
   /** Revokes a Pending user's link, so nobody activates an account with no purpose. */

@@ -30,13 +30,15 @@ export class IssueActivationLinkUseCase {
   async execute(input: IssueActivationLinkInput): Promise<IssueActivationLinkOutput> {
     if (!input.actor.isSuperAdmin) throw new AppError('FORBIDDEN')
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return reissueActivationLink(
+    const { user, activationLink } = await reissueActivationLink(
       this.users,
       this.links,
       this.invitations,
-      this.mailer,
       input.userId,
       stamp,
     )
+    // Only once the new link is stored and the previous one revoked.
+    this.mailer.send({ email: user.email.value, name: user.name }, activationLink, stamp)
+    return activationLink
   }
 }

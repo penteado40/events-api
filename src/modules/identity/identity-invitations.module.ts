@@ -1,21 +1,15 @@
 import { Module } from '@nestjs/common'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
-import { EmailsModule } from '../emails/index.js'
-import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { InvitationIssuer } from './application/ports/invitation-issuer.js'
 import { ClerkInvitationIssuer } from './infrastructure/clerk-invitation-issuer.js'
-import { InProcessActivationLinkMailer } from './infrastructure/in-process-activation-link-mailer.js'
 
 /**
- * The one place that binds what issues and delivers an Activation link (the
- * InvitationIssuer to Clerk, the ActivationLinkMailer to the emails context),
- * so the composition root and IdentityAccountsModule share them and tests
- * override them once. Internal to identity, like IdentityPersistenceModule.
+ * The one place that binds the InvitationIssuer to Clerk, so the composition
+ * root and IdentityAccountsModule share it and tests override it once.
+ * Internal to identity, like IdentityPersistenceModule.
  */
 @Module({
-  imports: [EmailsModule],
   providers: [
-    { provide: ActivationLinkMailer, useClass: InProcessActivationLinkMailer },
     {
       provide: InvitationIssuer,
       useFactory: (config: AppConfig) =>
@@ -27,6 +21,6 @@ import { InProcessActivationLinkMailer } from './infrastructure/in-process-activ
       inject: [AppConfig],
     },
   ],
-  exports: [InvitationIssuer, ActivationLinkMailer],
+  exports: [InvitationIssuer],
 })
 export class IdentityInvitationsModule {}

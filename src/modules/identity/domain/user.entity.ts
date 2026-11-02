@@ -15,6 +15,8 @@ export interface UserProps {
   /** The Clerk user this User signs in as (ADR-0020); null while a Pending user. */
   clerkId: string | null
   role: Role
+  /** When the User became a Deactivated user; set by the database or a script for now (PROJ-99). */
+  deactivatedAt: Date | null
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -58,6 +60,9 @@ export class User {
   get role(): Role {
     return this.props.role
   }
+  get deactivatedAt(): Date | null {
+    return this.props.deactivatedAt
+  }
   get createdAt(): Date {
     return this.props.createdAt
   }
@@ -78,6 +83,11 @@ export class User {
 
   get isSuperAdmin(): boolean {
     return this.props.role === 'SUPER_ADMIN'
+  }
+
+  /** Retired from the platform: refused on every request, even with a valid Clerk session. */
+  get isDeactivated(): boolean {
+    return this.props.deactivatedAt !== null
   }
 
   /** Has not signed in yet: no Clerk user is linked. */

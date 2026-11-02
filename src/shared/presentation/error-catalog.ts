@@ -14,6 +14,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     message:
       'Nenhum usuário da plataforma tem este email. Entre com o email que foi cadastrado para você.',
   },
+  USER_DEACTIVATED: {
+    status: 401,
+    message: 'Este usuário foi desativado e não tem mais acesso à plataforma.',
+  },
   FORBIDDEN: { status: 403, message: 'Você não tem permissão para esta ação.' },
   NOT_FOUND: { status: 404, message: 'Recurso não encontrado.' },
   EMAIL_ALREADY_IN_USE: { status: 409, message: 'Já existe um usuário com este email.' },

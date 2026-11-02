@@ -21,19 +21,21 @@ enum GroupRole {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  name        String
-  email       String   @unique
-  phone       String // E.164 with the country code; contact only, never sign-in
-  clerkId     String?  @unique // Clerk user id (ADR-0020); null while a Pending user
-  role        Role     @default(USER)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  phone         String // E.164 with the country code; contact only, never sign-in
+  clerkId       String?   @unique // Clerk user id (ADR-0020); null while a Pending user
+  role          Role      @default(USER)
+  // Deactivated user: refused on every request (ADR-0020). Never deleted (ADR-0013).
+  deactivatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   // Author (ADR-0013): null when no User made the write. A User is never deleted.
-  createdById Int?
-  updatedById Int?
-  createdBy   User?    @relation("UserCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy   User?    @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdById   Int?
+  updatedById   Int?
+  createdBy     User?     @relation("UserCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy     User?     @relation("UserUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   activationLinks ActivationLink[] @relation("ActivationLinkUser")
 

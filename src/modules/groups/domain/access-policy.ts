@@ -13,6 +13,7 @@ export type GroupAction =
   | { type: 'listAllGroups' }
   | { type: 'viewGroup'; groupId: number }
   | { type: 'renameGroup'; groupId: number }
+  | { type: 'addOwner'; groupId: number }
 
 /**
  * Decides whether an actor may take an action (docs/arquitetura.md §2). The
@@ -26,6 +27,7 @@ export const AccessPolicy = {
       case 'createGroup':
       case 'listAllGroups':
       case 'renameGroup':
+      case 'addOwner':
         return false
       case 'viewGroup':
         return actor.membership.has(action.groupId)

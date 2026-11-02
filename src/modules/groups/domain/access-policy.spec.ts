@@ -52,4 +52,13 @@ describe('AccessPolicy', () => {
       expect(AccessPolicy.can(VIEWER_OF_10, { type: 'renameGroup', groupId: 10 })).toBe(false)
     })
   })
+
+  describe('addOwner', () => {
+    it('allows only the Super admin: Owners never set other Owners (ADR-0017)', () => {
+      expect(AccessPolicy.can(SUPER_ADMIN, { type: 'addOwner', groupId: 10 })).toBe(true)
+      expect(AccessPolicy.can(OWNER_OF_10, { type: 'addOwner', groupId: 10 })).toBe(false)
+      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'addOwner', groupId: 10 })).toBe(false)
+      expect(AccessPolicy.can(NOBODY, { type: 'addOwner', groupId: 10 })).toBe(false)
+    })
+  })
 })

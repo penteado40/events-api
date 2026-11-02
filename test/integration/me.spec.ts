@@ -56,7 +56,7 @@ describe('GET /api/v1/me', () => {
     })
   })
 
-  // No route writes Group members yet (PROJ-172, PROJ-177): nobody has a Membership.
+  // GET /me does not read the groups context until PROJ-178: nobody has a Membership.
   it('tells a User apart from the Super admin, with no Membership while there are no Groups', async () => {
     const user = await createUser({ email: 'duda@example.com', clerkId: 'user_duda' })
 

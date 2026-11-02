@@ -22,6 +22,7 @@ export class InMemoryGroupRepository extends GroupRepository {
     const group = Group.restore({
       id: this.nextId++,
       name: props.name.value,
+      hasHadOwner: false,
       ...createdWith(stamp),
     })
     this.groups.set(group.id, group)

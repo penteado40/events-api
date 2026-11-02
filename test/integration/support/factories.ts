@@ -48,7 +48,7 @@ export async function createGroup(options: { name?: string } = {}) {
   return testPrisma().group.create({ data: { name: options.name ?? `Group ${sequence}` } })
 }
 
-/** A Group member, as the writes of PROJ-172 (Owners) and PROJ-177 (Viewers) will make. */
+/** A Group member written straight to the table, to arrange state without the routes. */
 export async function createGroupMember(options: {
   groupId: number
   userId: number

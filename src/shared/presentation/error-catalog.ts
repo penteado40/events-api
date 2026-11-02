@@ -18,6 +18,11 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   NOT_FOUND: { status: 404, message: 'Recurso não encontrado.' },
   EMAIL_ALREADY_IN_USE: { status: 409, message: 'Já existe um usuário com este email.' },
   USER_ALREADY_ACTIVE: { status: 409, message: 'Este usuário já está ativo.' },
+  ALREADY_A_GROUP_MEMBER: { status: 409, message: 'Esta pessoa já é Group member deste Group.' },
+  SUPER_ADMIN_NOT_A_GROUP_MEMBER: {
+    status: 409,
+    message: 'O Super admin não pode ser Group member.',
+  },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

@@ -2,15 +2,8 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import { Email } from '../../../shared/domain/email.vo.js'
 import { Phone } from '../../../shared/domain/phone.vo.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
-import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { UserRepository } from '../domain/user.repository.js'
-import {
-  createPendingUser,
-  dropPendingActivation,
-  type IssuedActivationLink,
-  reissueActivationLink,
-} from './issue-activation-link.js'
-import type { InvitationIssuer } from './ports/invitation-issuer.js'
+import type { ActivationLinks, IssuedActivationLink } from './activation-links.js'
 import { toUserSummary, type UserSummary } from './user-lookup.js'
 
 export interface EnsuredUser {
@@ -28,8 +21,7 @@ export interface EnsuredUser {
 export class UserAccounts {
   constructor(
     private readonly users: UserRepository,
-    private readonly links: ActivationLinkRepository,
-    private readonly invitations: InvitationIssuer,
+    private readonly activationLinks: ActivationLinks,
   ) {}
 
   /** The User of the email, created as a Pending user with an Activation link when there is none. */
@@ -43,10 +35,7 @@ export class UserAccounts {
     if (found) return { user: toUserSummary(found), activationLink: null }
 
     try {
-      const { user, activationLink } = await createPendingUser(
-        this.users,
-        this.links,
-        this.invitations,
+      const { user, activationLink } = await this.activationLinks.createPendingUser(
         { name: input.name, email, phone },
         stamp,
       )
@@ -62,18 +51,12 @@ export class UserAccounts {
 
   /** A fresh link for a Pending user; the previous one stops working. Emails nobody. */
   async reissueActivationLink(userId: number, stamp: Stamp): Promise<IssuedActivationLink> {
-    const { activationLink } = await reissueActivationLink(
-      this.users,
-      this.links,
-      this.invitations,
-      userId,
-      stamp,
-    )
+    const { activationLink } = await this.activationLinks.reissue(userId, stamp)
     return activationLink
   }
 
   /** Revokes a Pending user's link, so nobody activates an account with no purpose. */
   async dropPendingActivation(userId: number): Promise<void> {
-    return dropPendingActivation(this.users, this.links, this.invitations, userId)
+    return this.activationLinks.dropPending(userId)
   }
 }

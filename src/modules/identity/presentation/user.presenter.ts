@@ -1,4 +1,4 @@
-import type { IssuedActivationLink } from '../application/issue-activation-link.js'
+import type { IssuedActivationLink } from '../application/activation-links.js'
 import type { Me } from '../application/me.js'
 import type { User } from '../domain/user.entity.js'
 import type { ActivationLinkJson } from './dto/user-management.dto.js'

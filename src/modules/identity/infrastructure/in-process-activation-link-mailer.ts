@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import { AccountEmails } from '../../emails/index.js'
-import type { IssuedActivationLink } from '../application/issue-activation-link.js'
+import type { IssuedActivationLink } from '../application/activation-links.js'
 import {
   ActivationLinkMailer,
   type ActivationLinkRecipient,

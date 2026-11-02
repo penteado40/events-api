@@ -2,12 +2,10 @@ import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { Email } from '../../../../shared/domain/email.vo.js'
 import { Phone } from '../../../../shared/domain/phone.vo.js'
-import type { ActivationLinkRepository } from '../../domain/activation-link.repository.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
-import { createPendingUser, type IssuedActivationLink } from '../issue-activation-link.js'
-import type { ActivationLinkMailer } from '../ports/activation-link-mailer.js'
-import type { InvitationIssuer } from '../ports/invitation-issuer.js'
+import type { ActivationLinks, UserWithActivationLink } from '../activation-links.js'
+import { type ActivationLinkMailer, recipientOf } from '../ports/activation-link-mailer.js'
 
 export interface CreateUserInput {
   actor: User
@@ -16,10 +14,7 @@ export interface CreateUserInput {
   phone: string
 }
 
-export interface CreateUserOutput {
-  user: User
-  activationLink: IssuedActivationLink
-}
+export type CreateUserOutput = UserWithActivationLink
 
 /**
  * The Super admin creates a Pending user, who activates through the link that
@@ -28,8 +23,7 @@ export interface CreateUserOutput {
 export class CreateUserUseCase {
   constructor(
     private readonly users: UserRepository,
-    private readonly links: ActivationLinkRepository,
-    private readonly invitations: InvitationIssuer,
+    private readonly activationLinks: ActivationLinks,
     private readonly mailer: ActivationLinkMailer,
     private readonly clock: Clock,
   ) {}
@@ -41,19 +35,12 @@ export class CreateUserUseCase {
     if (await this.users.findByEmail(email)) throw new AppError('EMAIL_ALREADY_IN_USE')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    const created = await createPendingUser(
-      this.users,
-      this.links,
-      this.invitations,
+    const created = await this.activationLinks.createPendingUser(
       { name: input.name, email, phone },
       stamp,
     )
     // Only once the User and the link are stored, so no email goes out for a User that failed.
-    this.mailer.send(
-      { email: created.user.email.value, name: created.user.name },
-      created.activationLink,
-      stamp,
-    )
+    this.mailer.send(recipientOf(created.user), created.activationLink, stamp)
     return created
   }
 }

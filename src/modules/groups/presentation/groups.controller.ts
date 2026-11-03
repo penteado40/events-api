@@ -35,6 +35,7 @@ import {
   CreateGroupDto,
   GroupListResponseDto,
   GroupResponseDto,
+  GroupRoleResponseDto,
   RenameGroupDto,
 } from './dto/group.dto.js'
 import { GroupPresenter } from './group.presenter.js'
@@ -149,7 +150,7 @@ export class GroupsController {
   @ApiOperation({
     summary: 'Tirar um Owner do Group',
     description:
-      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER): defina outro antes. Quem não é Owner do Group responde 404. Quem não é Group member do Group recebe 404; um Group member, 403.',
+      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER): defina outro antes. Se o User do caminho não é Owner do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
   })
   @ApiNoContentResponse()
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
@@ -162,37 +163,39 @@ export class GroupsController {
   }
 
   @Post(':id/owners/:userId/demote')
-  @HttpCode(204)
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Rebaixar um Owner a Viewer',
     description:
-      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER). Quem não é Owner do Group responde 404. Quem não é Group member do Group recebe 404; um Group member, 403.',
+      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER). Se o User do caminho não é Owner do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
   })
-  @ApiNoContentResponse()
+  @ApiOkResponse({ type: GroupRoleResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async demoteOwner(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) groupId: number,
     @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<void> {
-    await this.demoteOwnerUseCase.execute({ actor, groupId, userId })
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.demoteOwnerUseCase.execute({ actor, groupId, userId })
+    return { data: GroupPresenter.toRoleJson(member) }
   }
 
   @Post(':id/members/:userId/promote')
-  @HttpCode(204)
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Promover um Viewer a Owner',
     description:
-      'Só o Super admin (ADR-0017). Num Group que nasceu sem Owner, é o primeiro. Um Owner continua Owner. Quem não é Group member do Group recebe 404; um Group member, 403.',
+      'Só o Super admin (ADR-0017). Num Group que nasceu sem Owner, é o primeiro. Um Owner continua Owner, sem nada a gravar. Se o User do caminho não é Group member do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
   })
-  @ApiNoContentResponse()
+  @ApiOkResponse({ type: GroupRoleResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')
   async promoteToOwner(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) groupId: number,
     @Param('userId', ParseIntPipe) userId: number,
-  ): Promise<void> {
-    await this.promoteToOwnerUseCase.execute({ actor, groupId, userId })
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.promoteToOwnerUseCase.execute({ actor, groupId, userId })
+    return { data: GroupPresenter.toRoleJson(member) }
   }
 
   @Post(':id/leave')
@@ -212,18 +215,19 @@ export class GroupsController {
   }
 
   @Post(':id/demote-self')
-  @HttpCode(204)
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Rebaixar-se a Viewer (Owner)',
     description:
       'Um Owner passa a Viewer, menos o último (409 LAST_OWNER). Um Viewer ou o Super admin recebe 403; quem não é Group member do Group, 404.',
   })
-  @ApiNoContentResponse()
+  @ApiOkResponse({ type: GroupRoleResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async demoteSelf(
     @CurrentUser() actor: User,
     @Param('id', ParseIntPipe) groupId: number,
-  ): Promise<void> {
-    await this.demoteSelfUseCase.execute({ actor, groupId })
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.demoteSelfUseCase.execute({ actor, groupId })
+    return { data: GroupPresenter.toRoleJson(member) }
   }
 }

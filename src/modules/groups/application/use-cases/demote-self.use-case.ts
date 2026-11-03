@@ -6,7 +6,6 @@ import type { GroupMember } from '../../domain/group-member.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRosterRepository } from '../../domain/group-roster.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
-import { assertStillOwner } from '../owner-self.js'
 
 export interface DemoteSelfInput {
   actor: ActingUser
@@ -39,8 +38,7 @@ export class DemoteSelfUseCase {
     return this.unitOfWork.run(async () => {
       const roster = await this.rosters.lockByGroup(groupId)
       if (!roster) throw new AppError('NOT_FOUND')
-      assertStillOwner(roster, input.actor.id)
-      const member = roster.demoteOwner(input.actor.id, stamp)
+      const member = roster.demoteSelf(input.actor.id, stamp)
       await this.rosters.save(roster)
       return member
     })

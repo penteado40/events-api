@@ -75,7 +75,10 @@ export class GroupRoster {
     return { ...member }
   }
 
-  /** Takes an Owner out of the Group, unless they are the last one (LAST_OWNER). */
+  /**
+   * Takes an Owner out of the Group, unless they are the last one (LAST_OWNER).
+   * No Stamp: the tie is deleted, so no row is left to carry the Author.
+   */
   removeOwner(userId: number): void {
     this.ownerToLose(userId)
     this.props.members = this.props.members.filter((m) => m.userId !== userId)
@@ -88,8 +91,20 @@ export class GroupRoster {
     return this.changeRole(member, 'VIEWER', stamp)
   }
 
+  /** An Owner leaves the Group on their own: a Viewer does not (FORBIDDEN), nor the last Owner. */
+  leave(userId: number): void {
+    this.assertSelfOwner(userId)
+    this.removeOwner(userId)
+  }
+
+  /** An Owner makes themselves a Viewer: a Viewer gets FORBIDDEN, the last Owner LAST_OWNER. */
+  demoteSelf(userId: number, stamp: Stamp): GroupMember {
+    this.assertSelfOwner(userId)
+    return this.demoteOwner(userId, stamp)
+  }
+
   /** Makes a Viewer an Owner; an Owner stays as they are. */
-  promoteViewer(userId: number, stamp: Stamp): GroupMember {
+  promoteToOwner(userId: number, stamp: Stamp): GroupMember {
     const member = this.find(userId)
     if (!member) throw new AppError('NOT_FOUND')
     if (member.role === 'OWNER') return { ...member }
@@ -105,6 +120,16 @@ export class GroupRoster {
       removed: [...this.removed],
       firstOwner: this.firstOwner,
     }
+  }
+
+  /**
+   * Who steps down must still be an Owner in this Roster: the AccessPolicy judged
+   * a Membership read before the Group's lock, which may have changed since.
+   */
+  private assertSelfOwner(userId: number): void {
+    const role = this.roleOf(userId)
+    if (role === null) throw new AppError('NOT_FOUND')
+    if (role !== 'OWNER') throw new AppError('FORBIDDEN')
   }
 
   private find(userId: number): GroupMember | undefined {

@@ -69,11 +69,11 @@ describe('GroupRoster', () => {
     })
   })
 
-  describe('promoteViewer', () => {
+  describe('promoteToOwner', () => {
     it('makes a Viewer an Owner', () => {
       const roster = rosterOf([owner(2), viewer(4)])
 
-      const member = roster.promoteViewer(4, STAMP)
+      const member = roster.promoteToOwner(4, STAMP)
 
       expect(member).toEqual(owner(4))
       expect(roster.members).toEqual([owner(2), owner(4)])
@@ -86,12 +86,14 @@ describe('GroupRoster', () => {
     it('leaves an Owner as they are, with nothing to write', () => {
       const roster = rosterOf([owner(2)])
 
-      expect(roster.promoteViewer(2, STAMP)).toEqual(owner(2))
+      expect(roster.promoteToOwner(2, STAMP)).toEqual(owner(2))
       expect(roster.changes().roleChanges).toEqual([])
     })
 
     it('answers NOT_FOUND for someone not in the Group', () => {
-      expect(() => rosterOf([owner(2)]).promoteViewer(99, STAMP)).toThrow(new AppError('NOT_FOUND'))
+      expect(() => rosterOf([owner(2)]).promoteToOwner(99, STAMP)).toThrow(
+        new AppError('NOT_FOUND'),
+      )
     })
   })
 
@@ -99,7 +101,7 @@ describe('GroupRoster', () => {
     it('gets its first Owner by promoting a Viewer, and then never goes without one', () => {
       const roster = rosterOf([viewer(4)], false)
 
-      roster.promoteViewer(4, STAMP)
+      roster.promoteToOwner(4, STAMP)
 
       expect(roster.hasHadOwner).toBe(true)
       expect(roster.changes().firstOwner).toEqual(STAMP)
@@ -122,6 +124,32 @@ describe('GroupRoster', () => {
 
       expect(() => roster.removeOwner(3)).toThrow(new AppError('LAST_OWNER'))
       expect(roster.members).toEqual([owner(3)])
+    })
+  })
+
+  describe('leave and demoteSelf', () => {
+    it('let an Owner step down while another Owner stays', () => {
+      const roster = rosterOf([owner(2), owner(3), owner(5)])
+
+      roster.leave(2)
+      expect(roster.demoteSelf(3, STAMP)).toEqual(viewer(3))
+
+      expect(roster.members).toEqual([viewer(3), owner(5)])
+    })
+
+    it('refuse a Viewer with FORBIDDEN and someone not in the Group with NOT_FOUND', () => {
+      const roster = rosterOf([owner(2), owner(3), viewer(4)])
+
+      expect(() => roster.leave(4)).toThrow(new AppError('FORBIDDEN'))
+      expect(() => roster.demoteSelf(4, STAMP)).toThrow(new AppError('FORBIDDEN'))
+      expect(() => roster.leave(99)).toThrow(new AppError('NOT_FOUND'))
+    })
+
+    it('refuse the last Owner with LAST_OWNER', () => {
+      const roster = rosterOf([owner(2), viewer(4)])
+
+      expect(() => roster.leave(2)).toThrow(new AppError('LAST_OWNER'))
+      expect(() => roster.demoteSelf(2, STAMP)).toThrow(new AppError('LAST_OWNER'))
     })
   })
 })

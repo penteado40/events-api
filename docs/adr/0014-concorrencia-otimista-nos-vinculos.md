@@ -25,3 +25,5 @@ Com a regra do último Owner (ADR-0017) já em vigor, trocamos a concorrência o
 - O `AddOwner` garante o User (e o Activation link, que pode chamar o Clerk) **antes** de pegar a trava, para não segurar a linha do Group durante uma chamada externa. A compensação descrita acima continua valendo quando a gravação falha.
 - `lockByGroup` fora de um `run` falha na hora: fora de uma transação, o `FOR UPDATE` soltaria a trava antes de a escrita acontecer.
 - A trava é por Group, não global: escritas em Groups diferentes não esperam umas pelas outras. Uma unidade dentro de outra se junta a ela.
+- Tirar um Owner (ou ele sair) apaga o vínculo, então não há linha para carregar o Author: `removeOwner` não recebe Stamp, a exceção de hard delete que a §5.8 da arquitetura admite.
+- Cada transação espera até 15 s, contando o tempo na fila da trava (o padrão do Prisma, 5 s, faria uma fila curta virar `500`), e até 5 s por uma conexão do pool.

@@ -550,7 +550,8 @@ describe('Groups', () => {
           .post(`/api/v1/groups/${group.id}/owners/${ana!.id}/demote`)
           .auth(adminToken, { type: 'bearer' })
 
-        expect(res.status).toBe(204)
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ data: { groupId: group.id, userId: ana!.id, role: 'VIEWER' } })
         expect(await rolesOf(group.id)).toEqual([
           [ana!.id, 'VIEWER'],
           [bia!.id, 'OWNER'],
@@ -595,7 +596,8 @@ describe('Groups', () => {
           .post(`/api/v1/groups/${group.id}/members/${bia!.id}/promote`)
           .auth(adminToken, { type: 'bearer' })
 
-        expect(res.status).toBe(204)
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ data: { groupId: group.id, userId: bia!.id, role: 'OWNER' } })
         expect(await rolesOf(group.id)).toEqual([
           [ana!.id, 'OWNER'],
           [bia!.id, 'OWNER'],
@@ -612,7 +614,7 @@ describe('Groups', () => {
           .post(`/api/v1/groups/${group.id}/members/${caio.id}/promote`)
           .auth(adminToken, { type: 'bearer' })
 
-        expect(res.status).toBe(204)
+        expect(res.status).toBe(200)
         const row = await testPrisma().group.findUniqueOrThrow({ where: { id: group.id } })
         expect(row).toMatchObject({ hasHadOwner: true, updatedById: adminId })
       })
@@ -714,7 +716,8 @@ describe('Groups', () => {
           .post(`/api/v1/groups/${group.id}/demote-self`)
           .auth(sessionTokenFor(ana!), { type: 'bearer' })
 
-        expect(res.status).toBe(204)
+        expect(res.status).toBe(200)
+        expect(res.body).toEqual({ data: { groupId: group.id, userId: ana!.id, role: 'VIEWER' } })
         expect(await rolesOf(group.id)).toEqual([
           [ana!.id, 'VIEWER'],
           [bia!.id, 'OWNER'],

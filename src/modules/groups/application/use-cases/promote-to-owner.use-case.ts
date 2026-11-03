@@ -41,7 +41,7 @@ export class PromoteToOwnerUseCase {
     return this.unitOfWork.run(async () => {
       const roster = await this.rosters.lockByGroup(groupId)
       if (!roster) throw new AppError('NOT_FOUND')
-      const member = roster.promoteViewer(input.userId, stamp)
+      const member = roster.promoteToOwner(input.userId, stamp)
       await this.rosters.save(roster)
       return member
     })

@@ -4,6 +4,12 @@ import { UnitOfWork } from '../application/unit-of-work.js'
 import type { PrismaService } from './prisma.service.js'
 
 /**
+ * The time a unit may last, counting the wait for a lock another unit holds
+ * (Prisma's default is 5 s): writes queued on the same Group wait, not fail.
+ */
+const TRANSACTION_OPTIONS = { maxWait: 5_000, timeout: 15_000 }
+
+/**
  * A unit of work is one interactive Prisma transaction. The repositories write
  * through `client`, which is the transaction of the running unit, so they keep
  * their signatures and join it without receiving it.
@@ -29,6 +35,6 @@ export class PrismaUnitOfWork extends UnitOfWork {
 
   async run<T>(work: () => Promise<T>): Promise<T> {
     if (this.current.getStore()) return work()
-    return this.prisma.$transaction((tx) => this.current.run(tx, work))
+    return this.prisma.$transaction((tx) => this.current.run(tx, work), TRANSACTION_OPTIONS)
   }
 }

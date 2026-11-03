@@ -27,20 +27,17 @@ export type GroupAction =
 export const AccessPolicy = {
   can(actor: Actor, action: GroupAction): boolean {
     switch (action.type) {
-      // Only an Owner steps down; the Super admin is never a Group member.
-      case 'leaveGroup':
-      case 'demoteSelf':
-        return actor.membership.get(action.groupId) === 'OWNER'
-    }
-    if (actor.isSuperAdmin) return true
-    switch (action.type) {
       case 'createGroup':
       case 'listAllGroups':
       case 'renameGroup':
       case 'manageOwners':
-        return false
+        return actor.isSuperAdmin
       case 'viewGroup':
-        return actor.membership.has(action.groupId)
+        return actor.isSuperAdmin || actor.membership.has(action.groupId)
+      // Only an Owner steps down; the Super admin is never a Group member.
+      case 'leaveGroup':
+      case 'demoteSelf':
+        return actor.membership.get(action.groupId) === 'OWNER'
     }
   },
 }

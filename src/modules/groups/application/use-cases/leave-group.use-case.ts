@@ -4,7 +4,6 @@ import { AccessPolicy } from '../../domain/access-policy.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRosterRepository } from '../../domain/group-roster.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
-import { assertStillOwner } from '../owner-self.js'
 
 export interface LeaveGroupInput {
   actor: ActingUser
@@ -34,8 +33,7 @@ export class LeaveGroupUseCase {
     await this.unitOfWork.run(async () => {
       const roster = await this.rosters.lockByGroup(groupId)
       if (!roster) throw new AppError('NOT_FOUND')
-      assertStillOwner(roster, input.actor.id)
-      roster.removeOwner(input.actor.id)
+      roster.leave(input.actor.id)
       await this.rosters.save(roster)
     })
   }

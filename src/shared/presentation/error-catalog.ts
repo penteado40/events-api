@@ -23,6 +23,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'O Super admin não pode ser Group member.',
   },
+  LAST_OWNER: {
+    status: 409,
+    message: 'O Group não pode ficar sem Owner: defina outro Owner antes.',
+  },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

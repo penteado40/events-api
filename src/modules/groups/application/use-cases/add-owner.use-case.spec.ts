@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
+import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { GroupName } from '../../domain/group-name.vo.js'
 import { FakeGroupUserAccounts } from '../testing/fake-group-user-accounts.js'
@@ -16,14 +17,21 @@ describe('AddOwnerUseCase', () => {
   let groups: InMemoryGroupRepository
   let members: InMemoryGroupMemberRepository
   let accounts: FakeGroupUserAccounts
+  let rosters: InMemoryGroupRosterRepository
   let addOwner: AddOwnerUseCase
 
   beforeEach(async () => {
     groups = new InMemoryGroupRepository()
     members = new InMemoryGroupMemberRepository()
     accounts = new FakeGroupUserAccounts(NOW)
-    const rosters = new InMemoryGroupRosterRepository(groups, members)
-    addOwner = new AddOwnerUseCase(rosters, members, accounts, new FixedClock(NOW))
+    rosters = new InMemoryGroupRosterRepository(groups, members)
+    addOwner = new AddOwnerUseCase(
+      rosters,
+      members,
+      accounts,
+      new InMemoryUnitOfWork(),
+      new FixedClock(NOW),
+    )
     await groups.create({ name: GroupName.create('Vocal Livre') }, SCRIPT_STAMP)
   })
 
@@ -39,6 +47,14 @@ describe('AddOwnerUseCase', () => {
     })
     expect(members.all()).toEqual([{ groupId: 1, userId: joao.id, role: 'OWNER' }])
     expect(members.stampOf(1, joao.id)).toEqual({ by: SUPER_ADMIN.id, at: NOW })
+  })
+
+  it('writes the Owner under the lock of the Group, judging the Roster read there', async () => {
+    accounts.existing({ email: 'joao@x.com', name: 'João' })
+
+    await addOwner.execute({ actor: SUPER_ADMIN, groupId: 1, ...JOAO })
+
+    expect(rosters.locks()).toEqual([1])
   })
 
   it('creates a Pending user for a new email and returns their Activation link', async () => {

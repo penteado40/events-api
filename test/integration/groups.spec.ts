@@ -456,4 +456,296 @@ describe('Groups', () => {
       expect(t.invitations.open()).not.toContain(t.invitations.revoked().at(-1))
     })
   })
+
+  describe('Owners leaving and changing role (ADR-0017)', () => {
+    async function groupWith(...roles: ('OWNER' | 'VIEWER')[]) {
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const users = []
+      for (const role of roles) {
+        const user = await createUser()
+        await createGroupMember({ groupId: group.id, userId: user.id, role })
+        users.push(user)
+      }
+      await testPrisma().group.update({ where: { id: group.id }, data: { hasHadOwner: true } })
+      return { group, users }
+    }
+
+    async function rolesOf(groupId: number) {
+      const rows = await testPrisma().groupMember.findMany({
+        where: { groupId },
+        orderBy: { id: 'asc' },
+      })
+      return rows.map((m) => [m.userId, m.role])
+    }
+
+    describe('DELETE /api/v1/groups/:id/owners/:userId', () => {
+      it('lets the Super admin take an Owner out while another stays', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .delete(`/api/v1/groups/${group.id}/owners/${ana!.id}`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        expect(await rolesOf(group.id)).toEqual([[bia!.id, 'OWNER']])
+      })
+
+      it('refuses the last Owner with 409 LAST_OWNER', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+
+        const res = await t
+          .http()
+          .delete(`/api/v1/groups/${group.id}/owners/${users[0]!.id}`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('LAST_OWNER'))
+        expect(await rolesOf(group.id)).toHaveLength(2)
+      })
+
+      it('refuses an Owner taking out another Owner with 403 FORBIDDEN', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .delete(`/api/v1/groups/${group.id}/owners/${bia!.id}`)
+          .auth(sessionTokenFor(ana!), { type: 'bearer' })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual(errorOf('FORBIDDEN'))
+        expect(await rolesOf(group.id)).toHaveLength(2)
+      })
+
+      it('answers 404 NOT_FOUND for a Viewer, who is not an Owner', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+
+        const res = await t
+          .http()
+          .delete(`/api/v1/groups/${group.id}/owners/${users[1]!.id}`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(404)
+        expect(res.body).toEqual(errorOf('NOT_FOUND'))
+      })
+
+      it('answers 401 without a token', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+
+        const res = await t.http().delete(`/api/v1/groups/${group.id}/owners/${users[0]!.id}`)
+
+        expect(res.status).toBe(401)
+      })
+    })
+
+    describe('POST /api/v1/groups/:id/owners/:userId/demote', () => {
+      it('lets the Super admin make an Owner a Viewer, as the Author', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/owners/${ana!.id}/demote`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        expect(await rolesOf(group.id)).toEqual([
+          [ana!.id, 'VIEWER'],
+          [bia!.id, 'OWNER'],
+        ])
+        const row = await testPrisma().groupMember.findFirstOrThrow({ where: { userId: ana!.id } })
+        expect(row.updatedById).toBe(adminId)
+      })
+
+      it('refuses the last Owner with 409 LAST_OWNER', async () => {
+        const { group, users } = await groupWith('OWNER')
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/owners/${users[0]!.id}/demote`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('LAST_OWNER'))
+      })
+
+      it('refuses an Owner demoting another Owner with 403 FORBIDDEN', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/owners/${bia!.id}/demote`)
+          .auth(sessionTokenFor(ana!), { type: 'bearer' })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      })
+    })
+
+    describe('POST /api/v1/groups/:id/members/:userId/promote', () => {
+      it('lets the Super admin make a Viewer an Owner', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/members/${bia!.id}/promote`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        expect(await rolesOf(group.id)).toEqual([
+          [ana!.id, 'OWNER'],
+          [bia!.id, 'OWNER'],
+        ])
+      })
+
+      it('gives a Group born without an Owner its first one', async () => {
+        const group = await createGroup({ name: 'Vocal Livre' })
+        const caio = await createUser()
+        await createGroupMember({ groupId: group.id, userId: caio.id, role: 'VIEWER' })
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/members/${caio.id}/promote`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        const row = await testPrisma().group.findUniqueOrThrow({ where: { id: group.id } })
+        expect(row).toMatchObject({ hasHadOwner: true, updatedById: adminId })
+      })
+
+      it('refuses an Owner promoting a Viewer with 403 FORBIDDEN', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/members/${bia!.id}/promote`)
+          .auth(sessionTokenFor(ana!), { type: 'bearer' })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      })
+
+      it('answers 404 NOT_FOUND for someone who is not a Group member', async () => {
+        const { group } = await groupWith('OWNER')
+        const outsider = await createUser()
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/members/${outsider.id}/promote`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(404)
+        expect(res.body).toEqual(errorOf('NOT_FOUND'))
+      })
+    })
+
+    describe('POST /api/v1/groups/:id/leave', () => {
+      it('lets an Owner leave while another Owner stays', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/leave`)
+          .auth(sessionTokenFor(ana!), { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        expect(await rolesOf(group.id)).toEqual([[bia!.id, 'OWNER']])
+      })
+
+      it('refuses the last Owner with 409 LAST_OWNER', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/leave`)
+          .auth(sessionTokenFor(users[0]!), { type: 'bearer' })
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('LAST_OWNER'))
+        expect(await rolesOf(group.id)).toHaveLength(2)
+      })
+
+      it('refuses a Viewer with 403 FORBIDDEN: only an Owner removes them', async () => {
+        const { group, users } = await groupWith('OWNER', 'VIEWER')
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/leave`)
+          .auth(sessionTokenFor(users[1]!), { type: 'bearer' })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      })
+
+      it('answers 404 NOT_FOUND to a User who is not a Group member', async () => {
+        const { group } = await groupWith('OWNER', 'OWNER')
+        const outsider = await createUser()
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/leave`)
+          .auth(sessionTokenFor(outsider), { type: 'bearer' })
+
+        expect(res.status).toBe(404)
+      })
+
+      it('answers 401 without a token', async () => {
+        const { group } = await groupWith('OWNER')
+
+        const res = await t.http().post(`/api/v1/groups/${group.id}/leave`)
+
+        expect(res.status).toBe(401)
+      })
+    })
+
+    describe('POST /api/v1/groups/:id/demote-self', () => {
+      it('lets an Owner become a Viewer while another Owner stays, as the Author', async () => {
+        const { group, users } = await groupWith('OWNER', 'OWNER')
+        const [ana, bia] = users
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/demote-self`)
+          .auth(sessionTokenFor(ana!), { type: 'bearer' })
+
+        expect(res.status).toBe(204)
+        expect(await rolesOf(group.id)).toEqual([
+          [ana!.id, 'VIEWER'],
+          [bia!.id, 'OWNER'],
+        ])
+        const row = await testPrisma().groupMember.findFirstOrThrow({ where: { userId: ana!.id } })
+        expect(row.updatedById).toBe(ana!.id)
+      })
+
+      it('refuses the last Owner with 409 LAST_OWNER', async () => {
+        const { group, users } = await groupWith('OWNER')
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/demote-self`)
+          .auth(sessionTokenFor(users[0]!), { type: 'bearer' })
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('LAST_OWNER'))
+      })
+
+      it('refuses the Super admin with 403 FORBIDDEN: they are never a Group member', async () => {
+        const { group } = await groupWith('OWNER', 'OWNER')
+
+        const res = await t
+          .http()
+          .post(`/api/v1/groups/${group.id}/demote-self`)
+          .auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(403)
+        expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      })
+    })
+  })
 })

@@ -53,12 +53,30 @@ describe('AccessPolicy', () => {
     })
   })
 
-  describe('addOwner', () => {
-    it('allows only the Super admin: Owners never set other Owners (ADR-0017)', () => {
-      expect(AccessPolicy.can(SUPER_ADMIN, { type: 'addOwner', groupId: 10 })).toBe(true)
-      expect(AccessPolicy.can(OWNER_OF_10, { type: 'addOwner', groupId: 10 })).toBe(false)
-      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'addOwner', groupId: 10 })).toBe(false)
-      expect(AccessPolicy.can(NOBODY, { type: 'addOwner', groupId: 10 })).toBe(false)
+  describe('manageOwners', () => {
+    it('allows only the Super admin: Owners never give, take or demote Owners (ADR-0017)', () => {
+      expect(AccessPolicy.can(SUPER_ADMIN, { type: 'manageOwners', groupId: 10 })).toBe(true)
+      expect(AccessPolicy.can(OWNER_OF_10, { type: 'manageOwners', groupId: 10 })).toBe(false)
+      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'manageOwners', groupId: 10 })).toBe(false)
+      expect(AccessPolicy.can(NOBODY, { type: 'manageOwners', groupId: 10 })).toBe(false)
+    })
+  })
+
+  describe.each(['leaveGroup', 'demoteSelf'] as const)('%s', (type) => {
+    it('allows an Owner of the Group', () => {
+      expect(AccessPolicy.can(OWNER_OF_10, { type, groupId: 10 })).toBe(true)
+    })
+
+    it('refuses a Viewer: only an Owner removes them (ADR-0017)', () => {
+      expect(AccessPolicy.can(VIEWER_OF_10, { type, groupId: 10 })).toBe(false)
+    })
+
+    it('refuses the Super admin, who is never a Group member', () => {
+      expect(AccessPolicy.can(SUPER_ADMIN, { type, groupId: 10 })).toBe(false)
+    })
+
+    it('refuses an Owner of another Group', () => {
+      expect(AccessPolicy.can(OWNER_OF_10, { type, groupId: 11 })).toBe(false)
     })
   })
 })

@@ -1,6 +1,6 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
-import type { GroupMember } from './group-member.js'
+import type { GroupMember, GroupRole } from './group-member.js'
 
 export interface GroupRosterProps {
   groupId: number
@@ -18,6 +18,10 @@ export interface GroupMemberCandidate {
 /** What changed since the roster was read, for the repository to write in one go. */
 export interface GroupRosterChanges {
   added: { member: GroupMember; stamp: Stamp }[]
+  /** Group members whose role changed, with their new role. */
+  roleChanges: { member: GroupMember; stamp: Stamp }[]
+  /** User ids of the Group members taken out of the Group. */
+  removed: number[]
   /** The write that gave the Group its first Owner, if it happened now. */
   firstOwner: Stamp | null
 }
@@ -25,16 +29,20 @@ export interface GroupRosterChanges {
 /**
  * The Group members of one Group: an aggregate rooted in the Group, so the
  * rules that look at every member at once (one tie per User, the last Owner)
- * live in a single place.
+ * live in a single place. The rules judge only what was read, so the writes
+ * of a Group are serialized (ADR-0014): the roster is read under the Group's
+ * lock.
  */
 export class GroupRoster {
   private readonly added: GroupRosterChanges['added'] = []
+  private readonly roleChanges: GroupRosterChanges['roleChanges'] = []
+  private readonly removed: number[] = []
   private firstOwner: Stamp | null = null
 
   private constructor(private readonly props: GroupRosterProps) {}
 
   static restore(props: GroupRosterProps): GroupRoster {
-    return new GroupRoster({ ...props, members: [...props.members] })
+    return new GroupRoster({ ...props, members: props.members.map((m) => ({ ...m })) })
   }
 
   get groupId(): number {
@@ -47,27 +55,80 @@ export class GroupRoster {
     return this.props.members
   }
 
+  /** The role of the User in the Group, or null when they are not a Group member. */
+  roleOf(userId: number): GroupRole | null {
+    return this.find(userId)?.role ?? null
+  }
+
   /** Gives the User the role of Owner in the Group, as a new Group member. */
   addOwner(candidate: GroupMemberCandidate, stamp: Stamp): GroupMember {
     if (candidate.isSuperAdmin) throw new AppError('SUPER_ADMIN_NOT_A_GROUP_MEMBER')
-    if (this.props.members.some((m) => m.userId === candidate.userId)) {
-      throw new AppError('ALREADY_A_GROUP_MEMBER')
-    }
+    if (this.find(candidate.userId)) throw new AppError('ALREADY_A_GROUP_MEMBER')
     const member: GroupMember = {
       groupId: this.props.groupId,
       userId: candidate.userId,
       role: 'OWNER',
     }
     this.props.members.push(member)
-    this.added.push({ member, stamp })
-    if (!this.props.hasHadOwner) {
-      this.props.hasHadOwner = true
-      this.firstOwner = stamp
-    }
-    return member
+    this.added.push({ member: { ...member }, stamp })
+    this.markOwnerGiven(stamp)
+    return { ...member }
+  }
+
+  /** Takes an Owner out of the Group, unless they are the last one (LAST_OWNER). */
+  removeOwner(userId: number): void {
+    this.ownerToLose(userId)
+    this.props.members = this.props.members.filter((m) => m.userId !== userId)
+    this.removed.push(userId)
+  }
+
+  /** Makes an Owner a Viewer, unless they are the last Owner (LAST_OWNER). */
+  demoteOwner(userId: number, stamp: Stamp): GroupMember {
+    const member = this.ownerToLose(userId)
+    return this.changeRole(member, 'VIEWER', stamp)
+  }
+
+  /** Makes a Viewer an Owner; an Owner stays as they are. */
+  promoteViewer(userId: number, stamp: Stamp): GroupMember {
+    const member = this.find(userId)
+    if (!member) throw new AppError('NOT_FOUND')
+    if (member.role === 'OWNER') return { ...member }
+    const promoted = this.changeRole(member, 'OWNER', stamp)
+    this.markOwnerGiven(stamp)
+    return promoted
   }
 
   changes(): GroupRosterChanges {
-    return { added: [...this.added], firstOwner: this.firstOwner }
+    return {
+      added: [...this.added],
+      roleChanges: [...this.roleChanges],
+      removed: [...this.removed],
+      firstOwner: this.firstOwner,
+    }
+  }
+
+  private find(userId: number): GroupMember | undefined {
+    return this.props.members.find((m) => m.userId === userId)
+  }
+
+  /** The Owner who is about to stop being one; a Group that has had an Owner keeps at least one. */
+  private ownerToLose(userId: number): GroupMember {
+    const member = this.find(userId)
+    if (member?.role !== 'OWNER') throw new AppError('NOT_FOUND')
+    const owners = this.props.members.filter((m) => m.role === 'OWNER').length
+    if (owners === 1) throw new AppError('LAST_OWNER')
+    return member
+  }
+
+  private changeRole(member: GroupMember, role: GroupRole, stamp: Stamp): GroupMember {
+    member.role = role
+    this.roleChanges.push({ member: { ...member }, stamp })
+    return { ...member }
+  }
+
+  private markOwnerGiven(stamp: Stamp): void {
+    if (this.props.hasHadOwner) return
+    this.props.hasHadOwner = true
+    this.firstOwner = stamp
   }
 }

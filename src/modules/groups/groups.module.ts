@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
+import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { IdentityAccountsModule, UserAccounts } from '../identity/index.js'
 import { GroupUserAccounts } from './application/ports/group-user-accounts.js'
 import { AddOwnerUseCase } from './application/use-cases/add-owner.use-case.js'
 import { CreateGroupUseCase } from './application/use-cases/create-group.use-case.js'
+import { DemoteOwnerUseCase } from './application/use-cases/demote-owner.use-case.js'
+import { DemoteSelfUseCase } from './application/use-cases/demote-self.use-case.js'
 import { GetGroupUseCase } from './application/use-cases/get-group.use-case.js'
+import { LeaveGroupUseCase } from './application/use-cases/leave-group.use-case.js'
 import { ListGroupsUseCase } from './application/use-cases/list-groups.use-case.js'
+import { PromoteToOwnerUseCase } from './application/use-cases/promote-to-owner.use-case.js'
+import { RemoveOwnerUseCase } from './application/use-cases/remove-owner.use-case.js'
 import { RenameGroupUseCase } from './application/use-cases/rename-group.use-case.js'
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
@@ -59,9 +65,58 @@ import { GroupsController } from './presentation/groups.controller.js'
         rosters: GroupRosterRepository,
         members: GroupMemberRepository,
         accounts: GroupUserAccounts,
+        unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new AddOwnerUseCase(rosters, members, accounts, clock),
-      inject: [GroupRosterRepository, GroupMemberRepository, GroupUserAccounts, Clock],
+      ) => new AddOwnerUseCase(rosters, members, accounts, unitOfWork, clock),
+      inject: [GroupRosterRepository, GroupMemberRepository, GroupUserAccounts, UnitOfWork, Clock],
+    },
+    {
+      provide: RemoveOwnerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        unitOfWork: UnitOfWork,
+      ) => new RemoveOwnerUseCase(rosters, members, unitOfWork),
+      inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork],
+    },
+    {
+      provide: DemoteOwnerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new DemoteOwnerUseCase(rosters, members, unitOfWork, clock),
+      inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: PromoteToOwnerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new PromoteToOwnerUseCase(rosters, members, unitOfWork, clock),
+      inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: LeaveGroupUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        unitOfWork: UnitOfWork,
+      ) => new LeaveGroupUseCase(rosters, members, unitOfWork),
+      inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork],
+    },
+    {
+      provide: DemoteSelfUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new DemoteSelfUseCase(rosters, members, unitOfWork, clock),
+      inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork, Clock],
     },
   ],
 })

@@ -4,4 +4,6 @@ import type { GroupMember } from './group-member.js'
 export abstract class GroupMemberRepository {
   /** Every Group member of the User, one per Group. */
   abstract findByUser(userId: number): Promise<GroupMember[]>
+  /** Every Group member of the Group, in the order they joined. */
+  abstract findByGroup(groupId: number): Promise<GroupMember[]>
 }

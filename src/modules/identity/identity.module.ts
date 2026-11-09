@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { EmailsModule } from '../emails/index.js'
+import { GroupsQueriesModule } from '../groups/index.js'
 import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { GroupMembers } from './application/ports/group-members.js'
@@ -18,7 +19,7 @@ import { UserRepository } from './domain/user.repository.js'
 import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
-import { InMemoryGroupMembers } from './infrastructure/in-memory-group-members.js'
+import { InProcessGroupMembers } from './infrastructure/in-process-group-members.js'
 import { InProcessActivationLinkMailer } from './infrastructure/in-process-activation-link-mailer.js'
 import { SvixIdentityWebhookVerifier } from './infrastructure/svix-identity-webhook-verifier.js'
 import { ClerkWebhookController } from './presentation/clerk-webhook.controller.js'
@@ -32,10 +33,15 @@ import { UsersController } from './presentation/users.controller.js'
  * Clerk webhook that keeps the User mirror in step.
  */
 @Module({
-  imports: [IdentityPersistenceModule, IdentityInvitationsModule, EmailsModule],
+  imports: [
+    IdentityPersistenceModule,
+    IdentityInvitationsModule,
+    EmailsModule,
+    GroupsQueriesModule,
+  ],
   controllers: [MeController, UsersController, ClerkWebhookController],
   providers: [
-    { provide: GroupMembers, useClass: InMemoryGroupMembers },
+    { provide: GroupMembers, useClass: InProcessGroupMembers },
     { provide: ActivationLinkMailer, useClass: InProcessActivationLinkMailer },
     {
       provide: AuthVerifier,

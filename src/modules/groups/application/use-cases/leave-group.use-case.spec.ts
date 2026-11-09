@@ -88,6 +88,7 @@ describe('LeaveGroupUseCase', () => {
           members.update({ groupId: 1, userId: ANA.id, role: 'VIEWER' }, SCRIPT_STAMP)
           return found
         },
+        findByGroup: (groupId: number) => members.findByGroup(groupId),
       },
       new InMemoryUnitOfWork(),
     )

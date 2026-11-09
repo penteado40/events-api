@@ -10,6 +10,10 @@ export class InMemoryGroupMemberRepository extends GroupMemberRepository {
     return this.all().filter((m) => m.userId === userId)
   }
 
+  async findByGroup(groupId: number): Promise<GroupMember[]> {
+    return this.ofGroup(groupId)
+  }
+
   /** The Group members of the Group, in the order they were added. */
   ofGroup(groupId: number): GroupMember[] {
     return this.all().filter((m) => m.groupId === groupId)

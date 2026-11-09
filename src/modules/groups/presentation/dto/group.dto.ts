@@ -58,6 +58,17 @@ const GroupMemberJsonSchema = z.object({
 
 export type GroupMemberJson = z.infer<typeof GroupMemberJsonSchema>
 
+/** The role a Group member has now, after it changed. */
+const GroupRoleJsonSchema = z.object({
+  groupId: z.number().int().meta({ example: 1 }),
+  userId: z.number().int().meta({ example: 2 }),
+  role: z.enum(GROUP_ROLES).meta({ example: 'VIEWER' }),
+})
+
+export type GroupRoleJson = z.infer<typeof GroupRoleJsonSchema>
+
+export class GroupRoleResponseDto extends createZodDto(z.object({ data: GroupRoleJsonSchema })) {}
+
 const ActivationLinkJsonSchema = z.object({
   url: z.url().meta({
     description:

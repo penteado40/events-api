@@ -22,6 +22,8 @@ enum GroupRole {
 
 enum EmailKind {
   ACCOUNT_ACTIVATION_LINK
+  GROUP_ACTIVATION_LINK
+  GROUP_ACCESS
 }
 
 enum EmailStatus {

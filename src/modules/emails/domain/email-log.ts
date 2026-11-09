@@ -1,5 +1,5 @@
-/** Why an email goes out (glossary: Email kind). Only the account's Activation link so far. */
-export type EmailKind = 'ACCOUNT_ACTIVATION_LINK'
+/** Why an email goes out (glossary: Email kind). */
+export type EmailKind = 'ACCOUNT_ACTIVATION_LINK' | 'GROUP_ACTIVATION_LINK' | 'GROUP_ACCESS'
 
 export type EmailStatus = 'SENT' | 'FAILED'
 

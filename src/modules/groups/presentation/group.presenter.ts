@@ -1,7 +1,12 @@
 import type { GroupActivationLink, GroupUser } from '../application/ports/group-user-accounts.js'
 import type { GroupMember } from '../domain/group-member.js'
 import type { Group } from '../domain/group.entity.js'
-import type { ActivationLinkJson, GroupJson, GroupMemberJson } from './dto/group.dto.js'
+import type {
+  ActivationLinkJson,
+  GroupJson,
+  GroupMemberJson,
+  GroupRoleJson,
+} from './dto/group.dto.js'
 
 export const GroupPresenter = {
   toJson(group: Group): GroupJson {
@@ -14,6 +19,10 @@ export const GroupPresenter = {
       role: member.role,
       user: { id: user.id, name: user.name, email: user.email, isPending: user.isPending },
     }
+  },
+
+  toRoleJson(member: GroupMember): GroupRoleJson {
+    return { groupId: member.groupId, userId: member.userId, role: member.role }
   },
 
   toActivationLinkJson(link: GroupActivationLink): ActivationLinkJson {

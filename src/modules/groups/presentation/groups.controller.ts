@@ -1,12 +1,33 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post } from '@nestjs/common'
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common'
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import type { User } from '../../identity/index.js'
 import { AddOwnerUseCase } from '../application/use-cases/add-owner.use-case.js'
 import { CreateGroupUseCase } from '../application/use-cases/create-group.use-case.js'
+import { DemoteOwnerUseCase } from '../application/use-cases/demote-owner.use-case.js'
+import { DemoteSelfUseCase } from '../application/use-cases/demote-self.use-case.js'
 import { GetGroupUseCase } from '../application/use-cases/get-group.use-case.js'
+import { LeaveGroupUseCase } from '../application/use-cases/leave-group.use-case.js'
 import { ListGroupsUseCase } from '../application/use-cases/list-groups.use-case.js'
+import { PromoteToOwnerUseCase } from '../application/use-cases/promote-to-owner.use-case.js'
+import { RemoveOwnerUseCase } from '../application/use-cases/remove-owner.use-case.js'
 import { RenameGroupUseCase } from '../application/use-cases/rename-group.use-case.js'
 import {
   AddOwnerDto,
@@ -14,6 +35,7 @@ import {
   CreateGroupDto,
   GroupListResponseDto,
   GroupResponseDto,
+  GroupRoleResponseDto,
   RenameGroupDto,
 } from './dto/group.dto.js'
 import { GroupPresenter } from './group.presenter.js'
@@ -27,6 +49,11 @@ export class GroupsController {
     private readonly renameGroupUseCase: RenameGroupUseCase,
     private readonly getGroupUseCase: GetGroupUseCase,
     private readonly addOwnerUseCase: AddOwnerUseCase,
+    private readonly removeOwnerUseCase: RemoveOwnerUseCase,
+    private readonly demoteOwnerUseCase: DemoteOwnerUseCase,
+    private readonly promoteToOwnerUseCase: PromoteToOwnerUseCase,
+    private readonly leaveGroupUseCase: LeaveGroupUseCase,
+    private readonly demoteSelfUseCase: DemoteSelfUseCase,
   ) {}
 
   @Post()
@@ -96,7 +123,7 @@ export class GroupsController {
   @ApiOperation({
     summary: 'Definir um Owner do Group',
     description:
-      'Só o Super admin (ADR-0017). Dá o papel de Owner pelo email; se o email ainda não tem User, nasce um Pending user com o nome e o telefone informados, e a resposta traz o Activation link. Quem não é Group member do Group recebe 404; um Group member, 403.',
+      "Só o Super admin (ADR-0017). Dá o papel de Owner pelo email; se o email ainda não tem User, nasce um Pending user com o nome e o telefone informados, e a resposta traz o Activation link. Quem entra recebe um só email, enviado depois da resposta e com o seu 'replyTo' em quem fez a ação: o Activation link de Group para o Pending user criado agora, o Group access para um User ativo. Quem não é Group member do Group recebe 404; um Group member, 403.",
   })
   @ApiCreatedResponse({ type: AddOwnerResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'ALREADY_A_GROUP_MEMBER', 'SUPER_ADMIN_NOT_A_GROUP_MEMBER')
@@ -107,6 +134,7 @@ export class GroupsController {
   ): Promise<AddOwnerResponseDto> {
     const { member, user, activationLink } = await this.addOwnerUseCase.execute({
       actor,
+      inviter: { email: actor.email.value },
       groupId,
       ...body,
     })
@@ -116,5 +144,91 @@ export class GroupsController {
         activationLink: activationLink && GroupPresenter.toActivationLinkJson(activationLink),
       },
     }
+  }
+
+  @Delete(':id/owners/:userId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Tirar um Owner do Group',
+    description:
+      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER): defina outro antes. Se o User do caminho não é Owner do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
+  async removeOwner(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<void> {
+    await this.removeOwnerUseCase.execute({ actor, groupId, userId })
+  }
+
+  @Post(':id/owners/:userId/demote')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Rebaixar um Owner a Viewer',
+    description:
+      'Só o Super admin (ADR-0017). Nunca o último Owner (409 LAST_OWNER). Se o User do caminho não é Owner do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
+  })
+  @ApiOkResponse({ type: GroupRoleResponseDto })
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
+  async demoteOwner(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.demoteOwnerUseCase.execute({ actor, groupId, userId })
+    return { data: GroupPresenter.toRoleJson(member) }
+  }
+
+  @Post(':id/members/:userId/promote')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Promover um Viewer a Owner',
+    description:
+      'Só o Super admin (ADR-0017). Num Group que nasceu sem Owner, é o primeiro. Um Owner continua Owner, sem nada a gravar. Se o User do caminho não é Group member do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Group member, 403.',
+  })
+  @ApiOkResponse({ type: GroupRoleResponseDto })
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  async promoteToOwner(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.promoteToOwnerUseCase.execute({ actor, groupId, userId })
+    return { data: GroupPresenter.toRoleJson(member) }
+  }
+
+  @Post(':id/leave')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Sair do Group (Owner)',
+    description:
+      'Um Owner sai do Group, menos o último (409 LAST_OWNER). Viewers não saem por conta própria e o Super admin não é Group member (403). Quem não é Group member do Group recebe 404.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
+  async leave(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+  ): Promise<void> {
+    await this.leaveGroupUseCase.execute({ actor, groupId })
+  }
+
+  @Post(':id/demote-self')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Rebaixar-se a Viewer (Owner)',
+    description:
+      'Um Owner passa a Viewer, menos o último (409 LAST_OWNER). Um Viewer ou o Super admin recebe 403; quem não é Group member do Group, 404.',
+  })
+  @ApiOkResponse({ type: GroupRoleResponseDto })
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
+  async demoteSelf(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+  ): Promise<GroupRoleResponseDto> {
+    const member = await this.demoteSelfUseCase.execute({ actor, groupId })
+    return { data: GroupPresenter.toRoleJson(member) }
   }
 }

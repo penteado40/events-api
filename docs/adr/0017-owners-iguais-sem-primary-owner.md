@@ -21,5 +21,5 @@ O ADR-0003 criou o Primary owner para que um Event com vários organizadores tiv
 ## Consequences
 
 - O índice único parcial do Primary owner e a regra de transferência do posto saem junto com a tabela `EventMember`.
-- "O último Owner não sai" olha para vários vínculos ao mesmo tempo: dois Owners saindo juntos podem deixar o Group sem nenhum. É o gatilho que o ADR-0014 previa para serializar as escritas, e a solução fica para o PRD (ver a emenda do ADR-0014).
+- "O último Owner não sai" olha para vários vínculos ao mesmo tempo: dois Owners saindo juntos podem deixar o Group sem nenhum. É o gatilho que o ADR-0014 previa para serializar as escritas, resolvido com a serialização das escritas por Group (emenda de 2026-11-02 do ADR-0014).
 - Promover um Viewer a Owner deixa de ser um ato dos Owners e vira uma ação do Super admin, então o painel do Group não oferece esse caminho a eles.

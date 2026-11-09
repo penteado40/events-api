@@ -16,3 +16,14 @@ Os use cases de membros leem o vínculo, checam o MembershipRules e só depois g
 ## Emenda: pivô para Groups (2026-10-02)
 
 O Primary owner e o `EventMember` saem (ADR-0017), mas os vínculos continuam: Group member, Event manager e Event guest. E o modelo novo traz uma regra que olha **vários vínculos ao mesmo tempo**: um Owner pode sair ou se rebaixar, **menos o último**. Dois Owners saindo juntos passariam cada um pela checagem e deixariam o Group sem nenhum. É o gatilho descrito acima para trocar a concorrência otimista pela serialização das escritas (agora por Group, não por Event), ou por outra proteção equivalente no banco. A escolha fica para o PRD da V2.
+
+## Emenda: escritas de Group members serializadas por Group (2026-11-02)
+
+Com a regra do último Owner (ADR-0017) já em vigor, trocamos a concorrência otimista pela **serialização por Group** prevista acima. O `shared` ganhou uma unidade de trabalho: o port `UnitOfWork` (`run(work)`) na application, o `PrismaUnitOfWork` (uma transação interativa do Prisma, passada aos repositórios por `AsyncLocalStorage`, sem mudar a assinatura deles) e o `InMemoryUnitOfWork` dos testes, que roda uma unidade por vez. Toda escrita de Group members roda dentro de um `run`: o `GroupRosterRepository.lockByGroup` trava a linha do Group (`SELECT … FOR UPDATE`), **relê** o Roster e só então o agregado checa as regras. Uma segunda escrita no mesmo Group espera a primeira terminar e decide sobre o Roster que ela deixou. Dois Owners saindo juntos não recebem mais `409 MEMBER_CHANGED`: um sai, e o outro recebe `409 LAST_OWNER`.
+
+- A autorização (`404`/`403`) continua sendo checada antes da trava, sobre a Membership lida sem lock. As ações de um Owner sobre si mesmo (sair, se rebaixar) confirmam sob a trava que ele ainda é Owner, para não agir sobre um papel que mudou no meio.
+- O `AddOwner` garante o User (e o Activation link, que pode chamar o Clerk) **antes** de pegar a trava, para não segurar a linha do Group durante uma chamada externa. A compensação descrita acima continua valendo quando a gravação falha.
+- `lockByGroup` fora de um `run` falha na hora: fora de uma transação, o `FOR UPDATE` soltaria a trava antes de a escrita acontecer.
+- A trava é por Group, não global: escritas em Groups diferentes não esperam umas pelas outras. Uma unidade dentro de outra se junta a ela.
+- Tirar um Owner (ou ele sair) apaga o vínculo, então não há linha para carregar o Author: `removeOwner` não recebe Stamp, a exceção de hard delete que a §5.8 da arquitetura admite.
+- Cada transação espera até 15 s, contando o tempo na fila da trava (o padrão do Prisma, 5 s, faria uma fila curta virar `500`), e até 5 s por uma conexão do pool.

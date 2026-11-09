@@ -29,6 +29,23 @@ export class InMemoryGroupMemberRepository extends GroupMemberRepository {
     this.members.push({ member, stamp })
   }
 
+  /** Writes the new role of a Group member, as the roster writes it. */
+  update(member: GroupMember, stamp: Stamp): void {
+    const found = this.members.find(
+      (m) => m.member.groupId === member.groupId && m.member.userId === member.userId,
+    )
+    if (!found) throw new Error('in-memory group members: update of a missing member')
+    found.member = { ...member }
+    found.stamp = stamp
+  }
+
+  remove(groupId: number, userId: number): void {
+    const index = this.members.findIndex(
+      (m) => m.member.groupId === groupId && m.member.userId === userId,
+    )
+    if (index >= 0) this.members.splice(index, 1)
+  }
+
   failNextInsert(): void {
     this.failingInsert = true
   }

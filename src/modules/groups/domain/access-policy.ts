@@ -13,24 +13,31 @@ export type GroupAction =
   | { type: 'listAllGroups' }
   | { type: 'viewGroup'; groupId: number }
   | { type: 'renameGroup'; groupId: number }
-  | { type: 'addOwner'; groupId: number }
+  /** Give, take, demote or promote an Owner (ADR-0017). */
+  | { type: 'manageOwners'; groupId: number }
+  /** An Owner leaves the Group or demotes themselves to Viewer, on their own. */
+  | { type: 'leaveGroup'; groupId: number }
+  | { type: 'demoteSelf'; groupId: number }
 
 /**
  * Decides whether an actor may take an action (docs/arquitetura.md §2). The
- * Super admin may do anything; a User's access comes only from their Group
- * members.
+ * Super admin may do anything but act as a Group member; a User's access comes
+ * only from their Group members.
  */
 export const AccessPolicy = {
   can(actor: Actor, action: GroupAction): boolean {
-    if (actor.isSuperAdmin) return true
     switch (action.type) {
       case 'createGroup':
       case 'listAllGroups':
       case 'renameGroup':
-      case 'addOwner':
-        return false
+      case 'manageOwners':
+        return actor.isSuperAdmin
       case 'viewGroup':
-        return actor.membership.has(action.groupId)
+        return actor.isSuperAdmin || actor.membership.has(action.groupId)
+      // Only an Owner steps down; the Super admin is never a Group member.
+      case 'leaveGroup':
+      case 'demoteSelf':
+        return actor.membership.get(action.groupId) === 'OWNER'
     }
   },
 }

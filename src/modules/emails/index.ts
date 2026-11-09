@@ -5,3 +5,9 @@ export {
   type AccountEmailRecipient,
   type ActivationLinkToSend,
 } from './application/account-emails.js'
+export {
+  GroupEmails,
+  type GroupEmailGroup,
+  type GroupEmailInviter,
+  type GroupEmailRecipient,
+} from './application/group-emails.js'

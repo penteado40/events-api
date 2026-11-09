@@ -4,10 +4,12 @@ import { Clock } from '../application/clock.js'
 import { RateLimitStore } from '../application/rate-limit-store.js'
 import { RateLimiter } from '../application/rate-limiter.js'
 import { SecretTokens } from '../application/secret-tokens.js'
+import { UnitOfWork } from '../application/unit-of-work.js'
 import { InMemoryRateLimitStore } from '../application/testing/in-memory-rate-limit-store.js'
 import { AppConfig } from './app-config.js'
 import { CryptoSecretTokens } from './crypto-secret-tokens.js'
 import { PrismaService } from './prisma.service.js'
+import { PrismaUnitOfWork } from './prisma-unit-of-work.js'
 import { SystemClock } from './system-clock.js'
 import { UpstashRateLimitStore } from './upstash-rate-limit-store.js'
 import { VercelBackgroundTasks } from './vercel-background-tasks.js'
@@ -25,6 +27,12 @@ export class SharedModule {
           useFactory: (c: AppConfig) => new PrismaService(c.databaseUrl),
           inject: [AppConfig],
         },
+        {
+          provide: PrismaUnitOfWork,
+          useFactory: (prisma: PrismaService) => new PrismaUnitOfWork(prisma),
+          inject: [PrismaService],
+        },
+        { provide: UnitOfWork, useExisting: PrismaUnitOfWork },
         { provide: Clock, useClass: SystemClock },
         { provide: BackgroundTasks, useClass: VercelBackgroundTasks },
         { provide: SecretTokens, useClass: CryptoSecretTokens },
@@ -50,7 +58,16 @@ export class SharedModule {
           inject: [RateLimitStore, Clock],
         },
       ],
-      exports: [AppConfig, PrismaService, Clock, BackgroundTasks, SecretTokens, RateLimiter],
+      exports: [
+        AppConfig,
+        PrismaService,
+        PrismaUnitOfWork,
+        UnitOfWork,
+        Clock,
+        BackgroundTasks,
+        SecretTokens,
+        RateLimiter,
+      ],
     }
   }
 }

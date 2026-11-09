@@ -15,6 +15,7 @@ import { LeaveGroupUseCase } from './application/use-cases/leave-group.use-case.
 import { ListGroupsUseCase } from './application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from './application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from './application/use-cases/remove-owner.use-case.js'
+import { ReissueActivationLinkUseCase } from './application/use-cases/reissue-activation-link.use-case.js'
 import { RenameGroupUseCase } from './application/use-cases/rename-group.use-case.js'
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
@@ -107,6 +108,25 @@ import { GroupsController } from './presentation/groups.controller.js'
         GroupUserAccounts,
         GroupMailer,
         UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: ReissueActivationLinkUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        groups: GroupRepository,
+        members: GroupMemberRepository,
+        accounts: GroupUserAccounts,
+        mailer: GroupMailer,
+        clock: Clock,
+      ) => new ReissueActivationLinkUseCase(rosters, groups, members, accounts, mailer, clock),
+      inject: [
+        GroupRosterRepository,
+        GroupRepository,
+        GroupMemberRepository,
+        GroupUserAccounts,
+        GroupMailer,
         Clock,
       ],
     },

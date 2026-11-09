@@ -171,8 +171,12 @@ describe('UserAccounts', () => {
         SCRIPT_STAMP,
       )
 
-      const link = await accounts.reissueActivationLink(user.id, OWNER_STAMP)
+      const { user: reissued, activationLink: link } = await accounts.reissueActivationLink(
+        user.id,
+        OWNER_STAMP,
+      )
 
+      expect(reissued).toMatchObject({ id: user.id, email: 'joao@x.com', isPending: true })
       expect(link.url).toBe('https://accounts.clerk.test/accept?invitation=inv_2')
       expect(links.all().map((l) => [l.invitationId, l.createdById])).toEqual([['inv_2', 10]])
       expect(invitations.open()).toEqual(['inv_2'])

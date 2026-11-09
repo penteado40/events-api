@@ -28,10 +28,20 @@ export interface EnsuredGroupUser {
   activationLink: GroupActivationLink | null
 }
 
+export interface ReissuedGroupLink {
+  user: GroupUser
+  activationLink: GroupActivationLink
+}
+
 /** The Users behind the Group members: identity's UserAccounts, seen from groups. */
 export abstract class GroupUserAccounts {
   /** The User of the email, created as a Pending user with an Activation link when there is none. */
   abstract ensureUser(contact: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser>
+  /**
+   * A fresh Activation link for a Pending user, and the previous one stops
+   * working. NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+   */
+  abstract reissueActivationLink(userId: number, stamp: Stamp): Promise<ReissuedGroupLink>
   /** Revokes a Pending user's Activation link, so no usable link outlives a failed write. */
   abstract dropPendingActivation(userId: number): Promise<void>
 }

@@ -1,8 +1,10 @@
+import { AppError } from '../../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../../shared/domain/stamp.js'
 import {
   type EnsuredGroupUser,
   type GroupUser,
   type GroupUserContact,
+  type ReissuedGroupLink,
   GroupUserAccounts,
 } from '../ports/group-user-accounts.js'
 
@@ -11,12 +13,14 @@ const DAY_MS = 24 * 60 * 60 * 1000
 /**
  * Users by email, with ids from 10 and links that expire 7 days after `now`
  * (`...invitation=1`, `=2`...). `failNextDrop` makes the next revoke throw.
+ * A reissue of an unknown id is NOT_FOUND, of an active User USER_ALREADY_ACTIVE.
  */
 export class FakeGroupUserAccounts extends GroupUserAccounts {
   private readonly users = new Map<string, GroupUser>()
   private readonly createdUsers: GroupUser[] = []
   private readonly stamps: Stamp[] = []
   private readonly droppedIds: number[] = []
+  private readonly reissueStamps: Stamp[] = []
   private nextId = 10
   private nextLink = 1
   private failingDrop = false
@@ -43,6 +47,20 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
     }
   }
 
+  async reissueActivationLink(userId: number, stamp: Stamp): Promise<ReissuedGroupLink> {
+    const user = [...this.users.values()].find((u) => u.id === userId)
+    if (!user) throw new AppError('NOT_FOUND')
+    if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
+    this.reissueStamps.push(stamp)
+    return {
+      user,
+      activationLink: {
+        url: `https://accounts.clerk.test/accept?invitation=${this.nextLink++}`,
+        expiresAt: new Date(this.now.getTime() + 7 * DAY_MS),
+      },
+    }
+  }
+
   async dropPendingActivation(userId: number): Promise<void> {
     if (this.failingDrop) {
       this.failingDrop = false
@@ -63,6 +81,11 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   /** The stamps of every ensureUser call, in order. */
   ensureStamps(): Stamp[] {
     return [...this.stamps]
+  }
+
+  /** The stamps of every reissueActivationLink call, in order. */
+  reissueStampsSeen(): Stamp[] {
+    return [...this.reissueStamps]
   }
 
   created(): GroupUser[] {

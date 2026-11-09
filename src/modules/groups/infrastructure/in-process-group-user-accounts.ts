@@ -3,6 +3,7 @@ import type { UserAccounts } from '../../identity/index.js'
 import {
   type EnsuredGroupUser,
   type GroupUserContact,
+  type ReissuedGroupLink,
   GroupUserAccounts,
 } from '../application/ports/group-user-accounts.js'
 
@@ -14,6 +15,10 @@ export class InProcessGroupUserAccounts extends GroupUserAccounts {
 
   ensureUser(contact: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser> {
     return this.accounts.ensureUser(contact, stamp)
+  }
+
+  reissueActivationLink(userId: number, stamp: Stamp): Promise<ReissuedGroupLink> {
+    return this.accounts.reissueActivationLink(userId, stamp)
   }
 
   dropPendingActivation(userId: number): Promise<void> {

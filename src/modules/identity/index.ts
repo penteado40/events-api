@@ -4,5 +4,9 @@ export { IdentityQueriesModule } from './identity-queries.module.js'
 export { IdentityAccountsModule } from './identity-accounts.module.js'
 export type { Role, User } from './domain/user.entity.js'
 export { UserLookup, type UserSummary } from './application/user-lookup.js'
-export { UserAccounts, type EnsuredUser } from './application/user-accounts.js'
+export {
+  UserAccounts,
+  type EnsuredUser,
+  type ReissuedUserLink,
+} from './application/user-accounts.js'
 export type { IssuedActivationLink } from './application/activation-links.js'

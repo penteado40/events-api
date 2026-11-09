@@ -68,6 +68,14 @@ describe('AddOwnerUseCase', () => {
     expect(rosters.locks()).toEqual([1])
   })
 
+  it('tells identity which Group the new Pending user is being added to', async () => {
+    await addOwner.execute({ actor: SUPER_ADMIN, inviter: ADMIN, groupId: 1, ...JOAO })
+
+    expect(accounts.ensureEntries()).toEqual([
+      expect.objectContaining({ email: JOAO.email, group: 'Vocal Livre' }),
+    ])
+  })
+
   it('creates a Pending user for a new email and returns their Activation link', async () => {
     const result = await addOwner.execute({
       actor: SUPER_ADMIN,

@@ -112,7 +112,7 @@ Um User que ainda não aceitou o Activation link e por isso não consegue fazer 
 _Avoid_: usuário inativo, desativado, convidado
 
 **Activation link** (link de ativação):
-Link de uso único pelo qual um Pending user entra pela primeira vez (definindo uma senha ou com Google ou Apple) e passa a poder fazer login. A plataforma o envia por email à pessoa quando cria o User e a cada novo link, e quem criou ou pediu o novo link também o recebe, para repassar por outro meio (ex.: WhatsApp).
+Link de uso único pelo qual um Pending user entra pela primeira vez (definindo uma senha ou com Google ou Apple) e passa a poder fazer login. A plataforma o envia por email à pessoa quando cria o User e a cada novo link, e quem criou ou pediu o novo link também o recebe, para repassar por outro meio (ex.: WhatsApp). O link leva, só para a tela de ativação exibir, o nome de quem convidou (o Author de quem criou o User ou pediu o novo link), o do Group (quando vem de adicionar a pessoa a ele) e o do Pending user; quem se cadastra é decidido pelo link, não por esses nomes.
 _Avoid_: convite, link de setup, senha inicial
 
 **Deactivated user** (usuário desativado):

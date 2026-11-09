@@ -60,6 +60,14 @@ describe('AddViewerUseCase', () => {
     expect(accounts.ensureStamps()).toEqual([{ by: ANA.id, at: NOW }])
   })
 
+  it('tells identity which Group the new Pending user is being added to', async () => {
+    await addViewer.execute({ actor: ANA, inviter: ANA_INVITER, groupId: 1, ...JOAO })
+
+    expect(accounts.ensureEntries()).toEqual([
+      { email: JOAO.email, name: JOAO.name, phone: JOAO.phone, group: 'Vocal Livre' },
+    ])
+  })
+
   it('makes an active User a Viewer with no Activation link', async () => {
     const joao = accounts.existing({ email: 'joao@x.com', name: 'João' })
 

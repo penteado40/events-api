@@ -5,7 +5,7 @@ import { TeamName } from '../../domain/team-name.vo.js'
 import type { Team } from '../../domain/team.entity.js'
 import type { TeamRepository } from '../../domain/team.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireTeamsAccess } from '../team-access.js'
+import { requireTeamsManager } from '../team-access.js'
 
 export interface CreateTeamInput {
   actor: ActingUser
@@ -25,7 +25,10 @@ export class CreateTeamUseCase {
   ) {}
 
   async execute(input: CreateTeamInput): Promise<CreateTeamOutput> {
-    await requireTeamsAccess(input.actor, input.groupId, 'manage', this.groups, this.members)
+    await requireTeamsManager(input.actor, input.groupId, {
+      groups: this.groups,
+      members: this.members,
+    })
     return this.teams.create(
       { groupId: input.groupId, name: TeamName.create(input.name) },
       { by: input.actor.id, at: this.clock.now() },

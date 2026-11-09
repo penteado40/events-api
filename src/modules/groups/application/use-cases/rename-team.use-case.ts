@@ -6,7 +6,7 @@ import { TeamName } from '../../domain/team-name.vo.js'
 import type { Team } from '../../domain/team.entity.js'
 import type { TeamRepository } from '../../domain/team.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireTeamsAccess } from '../team-access.js'
+import { requireTeamsManager } from '../team-access.js'
 
 export interface RenameTeamInput {
   actor: ActingUser
@@ -27,7 +27,10 @@ export class RenameTeamUseCase {
   ) {}
 
   async execute(input: RenameTeamInput): Promise<RenameTeamOutput> {
-    await requireTeamsAccess(input.actor, input.groupId, 'manage', this.groups, this.members)
+    await requireTeamsManager(input.actor, input.groupId, {
+      groups: this.groups,
+      members: this.members,
+    })
     const team = await this.teams.findInGroup(input.groupId, input.teamId)
     if (!team) throw new AppError('NOT_FOUND')
 

@@ -3,7 +3,7 @@ import type { GroupRepository } from '../../domain/group.repository.js'
 import type { Team } from '../../domain/team.entity.js'
 import type { TeamRepository } from '../../domain/team.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireTeamsAccess } from '../team-access.js'
+import { requireTeamsReader } from '../team-access.js'
 
 export interface ListTeamsInput {
   actor: ActingUser
@@ -21,7 +21,10 @@ export class ListTeamsUseCase {
   ) {}
 
   async execute(input: ListTeamsInput): Promise<ListTeamsOutput> {
-    await requireTeamsAccess(input.actor, input.groupId, 'read', this.groups, this.members)
+    await requireTeamsReader(input.actor, input.groupId, {
+      groups: this.groups,
+      members: this.members,
+    })
     return this.teams.findByGroup(input.groupId)
   }
 }

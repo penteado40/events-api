@@ -3,7 +3,7 @@ import type { GroupMemberRepository } from '../../domain/group-member.repository
 import type { GroupRepository } from '../../domain/group.repository.js'
 import type { TeamRepository } from '../../domain/team.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireTeamsAccess } from '../team-access.js'
+import { requireTeamsManager } from '../team-access.js'
 
 export interface DeleteTeamInput {
   actor: ActingUser
@@ -20,7 +20,10 @@ export class DeleteTeamUseCase {
   ) {}
 
   async execute(input: DeleteTeamInput): Promise<void> {
-    await requireTeamsAccess(input.actor, input.groupId, 'manage', this.groups, this.members)
+    await requireTeamsManager(input.actor, input.groupId, {
+      groups: this.groups,
+      members: this.members,
+    })
     const team = await this.teams.findInGroup(input.groupId, input.teamId)
     if (!team) throw new AppError('NOT_FOUND')
     await this.teams.delete(team.id)

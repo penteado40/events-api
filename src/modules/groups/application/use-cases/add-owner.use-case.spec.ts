@@ -71,7 +71,7 @@ describe('AddOwnerUseCase', () => {
   it('tells identity which Group the new Pending user is being added to', async () => {
     await addOwner.execute({ actor: SUPER_ADMIN, inviter: ADMIN, groupId: 1, ...JOAO })
 
-    expect(accounts.ensureContacts()).toEqual([
+    expect(accounts.ensureEntries()).toEqual([
       expect.objectContaining({ email: JOAO.email, group: 'Vocal Livre' }),
     ])
   })

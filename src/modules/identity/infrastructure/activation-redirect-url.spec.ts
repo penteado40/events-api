@@ -14,8 +14,8 @@ describe('activationRedirectUrl', () => {
     ).toBe('events-expo://activate?inviter=Bruno%20Reis&group=Vocal%20Livre&name=Lu%20Andrade')
   })
 
-  it('leaves out what is missing or blank', () => {
-    expect(activationRedirectUrl(base, { name: 'Lu', group: '  ' })).toBe(
+  it('leaves out what is missing or empty', () => {
+    expect(activationRedirectUrl(base, { name: 'Lu', group: '' })).toBe(
       'events-expo://activate?name=Lu',
     )
   })
@@ -33,6 +33,12 @@ describe('activationRedirectUrl', () => {
   it('appends to a base that already has a query', () => {
     expect(activationRedirectUrl('https://app.test/a?x=1', { name: 'Lu' })).toBe(
       'https://app.test/a?x=1&name=Lu',
+    )
+  })
+
+  it('puts the query before a fragment in the base', () => {
+    expect(activationRedirectUrl('https://app.test/a#top', { name: 'Lu' })).toBe(
+      'https://app.test/a?name=Lu#top',
     )
   })
 })

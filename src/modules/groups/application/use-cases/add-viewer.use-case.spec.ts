@@ -63,7 +63,7 @@ describe('AddViewerUseCase', () => {
   it('tells identity which Group the new Pending user is being added to', async () => {
     await addViewer.execute({ actor: ANA, inviter: ANA_INVITER, groupId: 1, ...JOAO })
 
-    expect(accounts.ensureContacts()).toEqual([
+    expect(accounts.ensureEntries()).toEqual([
       { email: JOAO.email, name: JOAO.name, phone: JOAO.phone, group: 'Vocal Livre' },
     ])
   })

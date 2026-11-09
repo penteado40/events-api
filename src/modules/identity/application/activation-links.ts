@@ -117,10 +117,11 @@ export class ActivationLinks {
     stamp: Stamp,
   ): Promise<InvitationRedirect> {
     const author = stamp.by === null ? null : await this.users.findById(stamp.by)
+    const group = props.group?.trim()
     return {
       ...(author && { inviter: author.name }),
-      ...(props.group && { group: props.group }),
-      name: props.name,
+      ...(group && { group }),
+      name: props.name.trim(),
     }
   }
 

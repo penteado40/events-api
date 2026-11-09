@@ -73,10 +73,10 @@ export class AddViewerUseCase {
         await this.rosters.save(roster)
         return added
       })
-      emailEntry(this.mailer, group, user, activationLink, input.inviter, stamp)
+      emailEntry(this.mailer, group, { user, activationLink }, input.inviter, stamp)
       return { member, user, activationLink }
     } catch (error) {
-      if (activationLink) await dropLink(this.accounts, user.id, 'Viewer', error)
+      if (activationLink) await dropLink(this.accounts, user.id, 'VIEWER', error)
       throw error
     }
   }

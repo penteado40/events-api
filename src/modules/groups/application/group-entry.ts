@@ -1,11 +1,8 @@
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import type { GroupRole } from '../domain/group-member.js'
 import type { Group } from '../domain/group.entity.js'
 import type { GroupMailer, GroupMailInviter } from './ports/group-mailer.js'
-import type {
-  GroupActivationLink,
-  GroupUser,
-  GroupUserAccounts,
-} from './ports/group-user-accounts.js'
+import type { EnsuredGroupUser, GroupUserAccounts } from './ports/group-user-accounts.js'
 
 /**
  * The one email of an entry into a Group: the Activation link of a Group for
@@ -15,8 +12,7 @@ import type {
 export function emailEntry(
   mailer: GroupMailer,
   group: Group,
-  user: GroupUser,
-  activationLink: GroupActivationLink | null,
+  { user, activationLink }: EnsuredGroupUser,
   inviter: GroupMailInviter,
   stamp: Stamp,
 ): void {
@@ -32,7 +28,7 @@ export function emailEntry(
 export async function dropLink(
   accounts: GroupUserAccounts,
   userId: number,
-  what: 'Owner' | 'Viewer',
+  role: GroupRole,
   cause: unknown,
 ): Promise<void> {
   try {
@@ -40,7 +36,7 @@ export async function dropLink(
   } catch (dropError) {
     throw new AggregateError(
       [cause, dropError],
-      `Gravação do ${what} falhou e o Activation link do User ${userId} ficou aberto: revogue-o no Clerk`,
+      `Gravação do ${role === 'OWNER' ? 'Owner' : 'Viewer'} falhou e o Activation link do User ${userId} ficou aberto: revogue-o no Clerk`,
       { cause: dropError },
     )
   }

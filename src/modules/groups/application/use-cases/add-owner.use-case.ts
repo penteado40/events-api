@@ -72,11 +72,11 @@ export class AddOwnerUseCase {
         await this.rosters.save(roster)
         return added
       })
-      emailEntry(this.mailer, group, user, activationLink, input.inviter, stamp)
+      emailEntry(this.mailer, group, { user, activationLink }, input.inviter, stamp)
       return { member, user, activationLink }
     } catch (error) {
       // A Pending user born for nothing keeps no usable link (ADR-0014).
-      if (activationLink) await dropLink(this.accounts, user.id, 'Owner', error)
+      if (activationLink) await dropLink(this.accounts, user.id, 'OWNER', error)
       throw error
     }
   }

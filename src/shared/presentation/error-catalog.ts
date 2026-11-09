@@ -31,6 +31,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'O Group não pode ficar sem Owner: defina outro Owner antes.',
   },
+  TEAM_NAME_TAKEN: { status: 409, message: 'Já existe um Team com este nome neste Group.' },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

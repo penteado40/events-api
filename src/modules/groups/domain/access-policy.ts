@@ -17,6 +17,8 @@ export type GroupAction =
   | { type: 'manageOwners'; groupId: number }
   /** Add a Viewer to the Group: the Super admin or an Owner of that Group. */
   | { type: 'manageViewers'; groupId: number }
+  /** Create, rename and delete the Teams of the Group: the Super admin or an Owner of that Group. */
+  | { type: 'manageTeams'; groupId: number }
   /** An Owner leaves the Group or demotes themselves to Viewer, on their own. */
   | { type: 'leaveGroup'; groupId: number }
   | { type: 'demoteSelf'; groupId: number }
@@ -35,6 +37,7 @@ export const AccessPolicy = {
       case 'manageOwners':
         return actor.isSuperAdmin
       case 'manageViewers':
+      case 'manageTeams':
         return actor.isSuperAdmin || actor.membership.get(action.groupId) === 'OWNER'
       case 'viewGroup':
         return actor.isSuperAdmin || actor.membership.has(action.groupId)

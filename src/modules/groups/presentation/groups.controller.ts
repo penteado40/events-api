@@ -123,7 +123,7 @@ export class GroupsController {
   @ApiOperation({
     summary: 'Definir um Owner do Group',
     description:
-      'Só o Super admin (ADR-0017). Dá o papel de Owner pelo email; se o email ainda não tem User, nasce um Pending user com o nome e o telefone informados, e a resposta traz o Activation link. Quem não é Group member do Group recebe 404; um Group member, 403.',
+      "Só o Super admin (ADR-0017). Dá o papel de Owner pelo email; se o email ainda não tem User, nasce um Pending user com o nome e o telefone informados, e a resposta traz o Activation link. Quem entra recebe um só email, enviado depois da resposta e com o seu 'replyTo' em quem fez a ação: o Activation link de Group para o Pending user criado agora, o Group access para um User ativo. Quem não é Group member do Group recebe 404; um Group member, 403.",
   })
   @ApiCreatedResponse({ type: AddOwnerResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'ALREADY_A_GROUP_MEMBER', 'SUPER_ADMIN_NOT_A_GROUP_MEMBER')
@@ -134,6 +134,7 @@ export class GroupsController {
   ): Promise<AddOwnerResponseDto> {
     const { member, user, activationLink } = await this.addOwnerUseCase.execute({
       actor,
+      inviter: { email: actor.email.value },
       groupId,
       ...body,
     })

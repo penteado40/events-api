@@ -3,6 +3,7 @@ import { BackgroundTasks } from '../../shared/application/background-tasks.js'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { AccountEmails } from './application/account-emails.js'
+import { GroupEmails } from './application/group-emails.js'
 import { EmailSender } from './application/ports/email-sender.js'
 import { EmailLogRepository } from './domain/email-log.repository.js'
 import { PrismaEmailLogRepository } from './infrastructure/prisma-email-log.repository.js'
@@ -31,7 +32,18 @@ import { ResendEmailSender } from './infrastructure/resend-email-sender.js'
       ) => new AccountEmails(sender, log, background, clock, config.platformSender),
       inject: [EmailSender, EmailLogRepository, BackgroundTasks, Clock, AppConfig],
     },
+    {
+      provide: GroupEmails,
+      useFactory: (
+        sender: EmailSender,
+        log: EmailLogRepository,
+        background: BackgroundTasks,
+        clock: Clock,
+        config: AppConfig,
+      ) => new GroupEmails(sender, log, background, clock, config.platformSender),
+      inject: [EmailSender, EmailLogRepository, BackgroundTasks, Clock, AppConfig],
+    },
   ],
-  exports: [AccountEmails],
+  exports: [AccountEmails, GroupEmails],
 })
 export class EmailsModule {}

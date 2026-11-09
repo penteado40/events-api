@@ -16,6 +16,7 @@ export class ResendEmailSender extends EmailSender {
     const { error } = await this.resend().emails.send({
       from: `"${email.from.name.replaceAll('"', '')}" <${email.from.address}>`,
       to: email.to,
+      ...(email.replyTo ? { replyTo: email.replyTo } : {}),
       subject: email.subject,
       text: email.text,
       html: email.html,

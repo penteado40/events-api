@@ -2,6 +2,8 @@
 export interface OutgoingEmail {
   from: { name: string; address: string }
   to: string
+  /** Where an answer goes; absent when nobody should get it. */
+  replyTo?: string
   subject: string
   text: string
   html: string

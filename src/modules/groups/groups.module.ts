@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
 import { UnitOfWork } from '../../shared/application/unit-of-work.js'
+import { EmailsModule, GroupEmails } from '../emails/index.js'
 import { IdentityAccountsModule, UserAccounts } from '../identity/index.js'
+import { GroupMailer } from './application/ports/group-mailer.js'
 import { GroupUserAccounts } from './application/ports/group-user-accounts.js'
 import { AddOwnerUseCase } from './application/use-cases/add-owner.use-case.js'
 import { CreateGroupUseCase } from './application/use-cases/create-group.use-case.js'
@@ -16,6 +18,7 @@ import { RenameGroupUseCase } from './application/use-cases/rename-group.use-cas
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
 import { GroupRepository } from './domain/group.repository.js'
+import { InProcessGroupMailer } from './infrastructure/in-process-group-mailer.js'
 import { InProcessGroupUserAccounts } from './infrastructure/in-process-group-user-accounts.js'
 import { PrismaGroupMemberRepository } from './infrastructure/prisma-group-member.repository.js'
 import { PrismaGroupRosterRepository } from './infrastructure/prisma-group-roster.repository.js'
@@ -24,7 +27,7 @@ import { GroupsController } from './presentation/groups.controller.js'
 
 /** Composition root of the groups context: Groups, their Group members and the AccessPolicy. */
 @Module({
-  imports: [IdentityAccountsModule],
+  imports: [IdentityAccountsModule, EmailsModule],
   controllers: [GroupsController],
   providers: [
     { provide: GroupRepository, useClass: PrismaGroupRepository },
@@ -34,6 +37,11 @@ import { GroupsController } from './presentation/groups.controller.js'
       provide: GroupUserAccounts,
       useFactory: (accounts: UserAccounts) => new InProcessGroupUserAccounts(accounts),
       inject: [UserAccounts],
+    },
+    {
+      provide: GroupMailer,
+      useFactory: (emails: GroupEmails) => new InProcessGroupMailer(emails),
+      inject: [GroupEmails],
     },
     {
       provide: CreateGroupUseCase,
@@ -63,12 +71,22 @@ import { GroupsController } from './presentation/groups.controller.js'
       provide: AddOwnerUseCase,
       useFactory: (
         rosters: GroupRosterRepository,
+        groups: GroupRepository,
         members: GroupMemberRepository,
         accounts: GroupUserAccounts,
+        mailer: GroupMailer,
         unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new AddOwnerUseCase(rosters, members, accounts, unitOfWork, clock),
-      inject: [GroupRosterRepository, GroupMemberRepository, GroupUserAccounts, UnitOfWork, Clock],
+      ) => new AddOwnerUseCase(rosters, groups, members, accounts, mailer, unitOfWork, clock),
+      inject: [
+        GroupRosterRepository,
+        GroupRepository,
+        GroupMemberRepository,
+        GroupUserAccounts,
+        GroupMailer,
+        UnitOfWork,
+        Clock,
+      ],
     },
     {
       provide: RemoveOwnerUseCase,

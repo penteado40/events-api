@@ -1,11 +1,15 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
+import type { Stamp } from '../../../../shared/domain/stamp.js'
 import { AccessPolicy } from '../../domain/access-policy.js'
+import type { Group } from '../../domain/group.entity.js'
 import type { GroupMember } from '../../domain/group-member.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRosterRepository } from '../../domain/group-roster.repository.js'
+import type { GroupRepository } from '../../domain/group.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
+import type { GroupMailer, GroupMailInviter } from '../ports/group-mailer.js'
 import type {
   GroupActivationLink,
   GroupUser,
@@ -16,6 +20,8 @@ import type {
 /** Name and phone are used only when the email has no User yet. */
 export interface AddOwnerInput extends GroupUserContact {
   actor: ActingUser
+  /** Where the answer to the email goes: whoever made the action. */
+  inviter: GroupMailInviter
   groupId: number
 }
 
@@ -36,8 +42,10 @@ export interface AddOwnerOutput {
 export class AddOwnerUseCase {
   constructor(
     private readonly rosters: GroupRosterRepository,
+    private readonly groups: GroupRepository,
     private readonly members: GroupMemberRepository,
     private readonly accounts: GroupUserAccounts,
+    private readonly mailer: GroupMailer,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
   ) {}
@@ -45,10 +53,11 @@ export class AddOwnerUseCase {
   async execute(input: AddOwnerInput): Promise<AddOwnerOutput> {
     const actor = await actorOf(input.actor, this.members)
     const { groupId } = input
-    const exists =
-      AccessPolicy.can(actor, { type: 'viewGroup', groupId }) &&
-      (await this.rosters.findByGroup(groupId)) !== null
-    if (!exists) throw new AppError('NOT_FOUND')
+    const group = AccessPolicy.can(actor, { type: 'viewGroup', groupId })
+      ? await this.groups.findById(groupId)
+      : null
+    if (!group || (await this.rosters.findByGroup(groupId)) === null)
+      throw new AppError('NOT_FOUND')
     if (!AccessPolicy.can(actor, { type: 'manageOwners', groupId })) throw new AppError('FORBIDDEN')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
@@ -64,11 +73,32 @@ export class AddOwnerUseCase {
         await this.rosters.save(roster)
         return added
       })
+      this.email(group, user, activationLink, input.inviter, stamp)
       return { member, user, activationLink }
     } catch (error) {
       // A Pending user born for nothing keeps no usable link (ADR-0014).
       if (activationLink) await this.dropLink(user.id, error)
       throw error
+    }
+  }
+
+  /**
+   * The one email of the entry: the Activation link of a Group for the Pending
+   * user born now, the Group access for an active User. A Pending user who
+   * already had a link gets none: there is nothing new for them to open.
+   */
+  private email(
+    group: Group,
+    user: GroupUser,
+    activationLink: GroupActivationLink | null,
+    inviter: GroupMailInviter,
+    stamp: Stamp,
+  ): void {
+    const to = { email: user.email, name: user.name }
+    if (activationLink) {
+      this.mailer.sendActivationLink({ name: group.name }, to, activationLink, inviter, stamp)
+    } else if (!user.isPending) {
+      this.mailer.sendGroupAccess({ name: group.name }, to, inviter, stamp)
     }
   }
 

@@ -1,6 +1,6 @@
 import type { DomainEvent } from '../../../../shared/domain/domain-event.js'
 
-/** A User is no longer a Group member of the Group (taken out by an Owner or the Super admin). */
+/** A Viewer was taken out of the Group by an Owner or the Super admin (Owner removals do not record it yet). */
 export interface GroupMemberRemoved extends DomainEvent {
   readonly type: 'GroupMemberRemoved'
   readonly groupId: number

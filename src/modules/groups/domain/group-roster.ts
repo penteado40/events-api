@@ -82,8 +82,7 @@ export class GroupRoster extends AggregateRoot {
    */
   removeOwner(userId: number): void {
     this.ownerToLose(userId)
-    this.props.members = this.props.members.filter((m) => m.userId !== userId)
-    this.removed.push(userId)
+    this.dropMember(userId)
   }
 
   /**
@@ -92,8 +91,7 @@ export class GroupRoster extends AggregateRoot {
    */
   removeViewer(userId: number, at: Date): void {
     if (this.find(userId)?.role !== 'VIEWER') throw new AppError('NOT_FOUND')
-    this.props.members = this.props.members.filter((m) => m.userId !== userId)
-    this.removed.push(userId)
+    this.dropMember(userId)
     this.record(groupMemberRemoved(this.props.groupId, userId, at))
   }
 
@@ -151,6 +149,11 @@ export class GroupRoster extends AggregateRoot {
     this.props.members.push(member)
     this.added.push({ member: { ...member }, stamp })
     return { ...member }
+  }
+
+  private dropMember(userId: number): void {
+    this.props.members = this.props.members.filter((m) => m.userId !== userId)
+    this.removed.push(userId)
   }
 
   private find(userId: number): GroupMember | undefined {

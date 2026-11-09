@@ -219,12 +219,12 @@ describe('AddOwnerUseCase', () => {
       ])
     })
 
-    it('emails nobody about a Pending user who already had a link: they have nothing new to open', async () => {
+    it('emails the Group access to a Pending user who already had a link: there is no new link', async () => {
       accounts.existing({ email: 'joao@x.com', name: 'João', isPending: true })
 
       await addOwner.execute({ actor: SUPER_ADMIN, inviter: ADMIN, groupId: 1, ...JOAO })
 
-      expect(mailer.sent).toEqual([])
+      expect(mailer.sent.map((e) => e.kind)).toEqual(['GROUP_ACCESS'])
     })
 
     it('emails nobody when the Owner is not stored', async () => {

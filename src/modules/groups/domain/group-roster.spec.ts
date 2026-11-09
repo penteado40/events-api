@@ -16,6 +16,49 @@ function rosterOf(members: GroupMember[], hasHadOwner = true): GroupRoster {
 }
 
 describe('GroupRoster', () => {
+  describe('addViewer', () => {
+    it('adds the User as a Viewer, leaving the Owner rule alone', () => {
+      const roster = rosterOf([owner(2)])
+
+      const member = roster.addViewer({ userId: 5, isSuperAdmin: false }, STAMP)
+
+      expect(member).toEqual(viewer(5))
+      expect(roster.members).toEqual([owner(2), viewer(5)])
+      expect(roster.changes()).toMatchObject({
+        added: [{ member: viewer(5), stamp: STAMP }],
+        firstOwner: null,
+      })
+    })
+
+    it('does not give a Group without Owner its first one', () => {
+      const roster = rosterOf([], false)
+
+      roster.addViewer({ userId: 5, isSuperAdmin: false }, STAMP)
+
+      expect(roster.hasHadOwner).toBe(false)
+      expect(roster.changes().firstOwner).toBeNull()
+    })
+
+    it('refuses who is already a Group member with ALREADY_A_GROUP_MEMBER', () => {
+      const roster = rosterOf([owner(2), viewer(4)])
+
+      expect(() => roster.addViewer({ userId: 4, isSuperAdmin: false }, STAMP)).toThrow(
+        new AppError('ALREADY_A_GROUP_MEMBER'),
+      )
+      expect(() => roster.addViewer({ userId: 2, isSuperAdmin: false }, STAMP)).toThrow(
+        new AppError('ALREADY_A_GROUP_MEMBER'),
+      )
+    })
+
+    it('refuses the Super admin with SUPER_ADMIN_NOT_A_GROUP_MEMBER', () => {
+      const roster = rosterOf([owner(2)])
+
+      expect(() => roster.addViewer({ userId: 1, isSuperAdmin: true }, STAMP)).toThrow(
+        new AppError('SUPER_ADMIN_NOT_A_GROUP_MEMBER'),
+      )
+    })
+  })
+
   describe('removeOwner', () => {
     it('removes an Owner while another Owner stays', () => {
       const roster = rosterOf([owner(2), owner(3), viewer(4)])

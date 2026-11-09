@@ -6,6 +6,7 @@ import { IdentityAccountsModule, UserAccounts } from '../identity/index.js'
 import { GroupMailer } from './application/ports/group-mailer.js'
 import { GroupUserAccounts } from './application/ports/group-user-accounts.js'
 import { AddOwnerUseCase } from './application/use-cases/add-owner.use-case.js'
+import { AddViewerUseCase } from './application/use-cases/add-viewer.use-case.js'
 import { CreateGroupUseCase } from './application/use-cases/create-group.use-case.js'
 import { DemoteOwnerUseCase } from './application/use-cases/demote-owner.use-case.js'
 import { DemoteSelfUseCase } from './application/use-cases/demote-self.use-case.js'
@@ -78,6 +79,27 @@ import { GroupsController } from './presentation/groups.controller.js'
         unitOfWork: UnitOfWork,
         clock: Clock,
       ) => new AddOwnerUseCase(rosters, groups, members, accounts, mailer, unitOfWork, clock),
+      inject: [
+        GroupRosterRepository,
+        GroupRepository,
+        GroupMemberRepository,
+        GroupUserAccounts,
+        GroupMailer,
+        UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: AddViewerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        groups: GroupRepository,
+        members: GroupMemberRepository,
+        accounts: GroupUserAccounts,
+        mailer: GroupMailer,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new AddViewerUseCase(rosters, groups, members, accounts, mailer, unitOfWork, clock),
       inject: [
         GroupRosterRepository,
         GroupRepository,

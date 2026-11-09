@@ -1,14 +1,13 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
-import type { Stamp } from '../../../../shared/domain/stamp.js'
 import { AccessPolicy } from '../../domain/access-policy.js'
-import type { Group } from '../../domain/group.entity.js'
 import type { GroupMember } from '../../domain/group-member.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRosterRepository } from '../../domain/group-roster.repository.js'
 import type { GroupRepository } from '../../domain/group.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
+import { dropLink, emailEntry } from '../group-entry.js'
 import type { GroupMailer, GroupMailInviter } from '../ports/group-mailer.js'
 import type {
   GroupActivationLink,
@@ -73,44 +72,12 @@ export class AddOwnerUseCase {
         await this.rosters.save(roster)
         return added
       })
-      this.email(group, user, activationLink, input.inviter, stamp)
+      emailEntry(this.mailer, group, { user, activationLink }, input.inviter, stamp)
       return { member, user, activationLink }
     } catch (error) {
       // A Pending user born for nothing keeps no usable link (ADR-0014).
-      if (activationLink) await this.dropLink(user.id, error)
+      if (activationLink) await dropLink(this.accounts, user.id, 'OWNER', error)
       throw error
-    }
-  }
-
-  /**
-   * The one email of the entry: the Activation link of a Group for the Pending
-   * user born now, the Group access for an active User. A Pending user who
-   * already had a link gets none: there is nothing new for them to open.
-   */
-  private email(
-    group: Group,
-    user: GroupUser,
-    activationLink: GroupActivationLink | null,
-    inviter: GroupMailInviter,
-    stamp: Stamp,
-  ): void {
-    const to = { email: user.email, name: user.name }
-    if (activationLink) {
-      this.mailer.sendActivationLink({ name: group.name }, to, activationLink, inviter, stamp)
-    } else if (!user.isPending) {
-      this.mailer.sendGroupAccess({ name: group.name }, to, inviter, stamp)
-    }
-  }
-
-  private async dropLink(userId: number, cause: unknown): Promise<void> {
-    try {
-      await this.accounts.dropPendingActivation(userId)
-    } catch (dropError) {
-      throw new AggregateError(
-        [cause, dropError],
-        `Gravação do Owner falhou e o Activation link do User ${userId} ficou aberto: revogue-o no Clerk`,
-        { cause: dropError },
-      )
     }
   }
 }

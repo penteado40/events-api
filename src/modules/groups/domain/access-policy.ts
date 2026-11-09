@@ -15,6 +15,8 @@ export type GroupAction =
   | { type: 'renameGroup'; groupId: number }
   /** Give, take, demote or promote an Owner (ADR-0017). */
   | { type: 'manageOwners'; groupId: number }
+  /** Add a Viewer to the Group: the Super admin or an Owner of that Group. */
+  | { type: 'manageViewers'; groupId: number }
   /** An Owner leaves the Group or demotes themselves to Viewer, on their own. */
   | { type: 'leaveGroup'; groupId: number }
   | { type: 'demoteSelf'; groupId: number }
@@ -32,6 +34,8 @@ export const AccessPolicy = {
       case 'renameGroup':
       case 'manageOwners':
         return actor.isSuperAdmin
+      case 'manageViewers':
+        return actor.isSuperAdmin || actor.membership.get(action.groupId) === 'OWNER'
       case 'viewGroup':
         return actor.isSuperAdmin || actor.membership.has(action.groupId)
       // Only an Owner steps down; the Super admin is never a Group member.

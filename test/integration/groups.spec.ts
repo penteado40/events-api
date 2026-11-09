@@ -457,6 +457,240 @@ describe('Groups', () => {
     })
   })
 
+  describe('POST /api/v1/groups/:id/viewers', () => {
+    const viewers = (groupId: number) => `/api/v1/groups/${groupId}/viewers`
+    const NEW_PERSON = { email: 'Lia@Example.com', name: ' Lia ', phone: '+55 21 98765-4321' }
+
+    async function groupWithOwner(email: string) {
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const owner = await createUser({ email, name: 'Dono', clerkId: `u_${email}` })
+      await createGroupMember({ groupId: group.id, userId: owner.id, role: 'OWNER' })
+      return { group, owner, token: sessionTokenFor(owner) }
+    }
+
+    it('creates a Pending user and a Viewer tie for a new email, answering the Activation link', async () => {
+      const { group, owner, token } = await groupWithOwner('dono.new@example.com')
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send(NEW_PERSON)
+
+      expect(res.status).toBe(201)
+      expect(res.body).toEqual({
+        data: {
+          member: {
+            groupId: group.id,
+            role: 'VIEWER',
+            user: {
+              id: expect.any(Number),
+              name: 'Lia',
+              email: 'lia@example.com',
+              isPending: true,
+            },
+          },
+          activationLink: { url: expect.any(String), expiresAt: expect.any(String) },
+        },
+      })
+      const user = await testPrisma().user.findUniqueOrThrow({
+        where: { email: 'lia@example.com' },
+        include: { groupMembers: true },
+      })
+      expect(user).toMatchObject({ phone: '+5521987654321', createdById: owner.id, clerkId: null })
+      expect(user.groupMembers).toEqual([
+        expect.objectContaining({ groupId: group.id, role: 'VIEWER', createdById: owner.id }),
+      ])
+      const row = await testPrisma().group.findUniqueOrThrow({ where: { id: group.id } })
+      expect(row.hasHadOwner).toBe(false)
+    })
+
+    it('emails the Activation link of the Group to the Pending user, replying to the Owner', async () => {
+      const { group, token } = await groupWithOwner('dono.mail@example.com')
+
+      await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'lia.mail@example.com' })
+      await t.settle()
+
+      const sent = t.emails.sent.filter((e) => e.to === 'lia.mail@example.com')
+      expect(sent).toHaveLength(1)
+      expect(sent[0]).toMatchObject({ replyTo: 'dono.mail@example.com' })
+    })
+
+    it('adds an active User with no Activation link, emailing them the Group access', async () => {
+      const { group, token } = await groupWithOwner('dono.active@example.com')
+      const mel = await createUser({
+        name: 'Mel',
+        email: 'mel.viewer@example.com',
+        clerkId: 'u_mel',
+      })
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ email: 'MEL.viewer@example.com', name: 'Outro', phone: '+5521987654321' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      expect(res.body.data).toEqual({
+        member: {
+          groupId: group.id,
+          role: 'VIEWER',
+          user: { id: mel.id, name: 'Mel', email: 'mel.viewer@example.com', isPending: false },
+        },
+        activationLink: null,
+      })
+      const sent = t.emails.sent.filter((e) => e.to === 'mel.viewer@example.com')
+      expect(sent).toHaveLength(1)
+      expect(sent[0]).toMatchObject({ replyTo: 'dono.active@example.com' })
+    })
+
+    it('lets the Super admin add a Viewer to any Group', async () => {
+      const group = await createGroup({ name: 'Vocal Livre' })
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(adminToken, { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'lia.admin@example.com' })
+
+      expect(res.status).toBe(201)
+      expect(res.body.data.member.role).toBe('VIEWER')
+    })
+
+    it('lets the added Viewer see the Group in GET /groups and GET /groups/:id', async () => {
+      const { group, token } = await groupWithOwner('dono.see@example.com')
+      await createGroup({ name: 'Banda Norte' })
+      const noa = await createUser({ email: 'noa.viewer@example.com', clerkId: 'u_noa' })
+      await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ email: noa.email, name: 'Noa', phone: '+5521987654321' })
+      const noaToken = sessionTokenFor(noa)
+
+      const list = await t.http().get('/api/v1/groups').auth(noaToken, { type: 'bearer' })
+      const one = await t
+        .http()
+        .get(`/api/v1/groups/${group.id}`)
+        .auth(noaToken, { type: 'bearer' })
+
+      expect(list.body.data.map((g: { id: number }) => g.id)).toEqual([group.id])
+      expect(one.status).toBe(200)
+    })
+
+    it('refuses who is already a Group member with 409 ALREADY_A_GROUP_MEMBER', async () => {
+      const { group, token } = await groupWithOwner('dono.dup@example.com')
+      const rui = await createUser({ email: 'rui.viewer@example.com' })
+      await createGroupMember({ groupId: group.id, userId: rui.id, role: 'OWNER' })
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ email: rui.email, name: 'Rui', phone: '+5521987654321' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('ALREADY_A_GROUP_MEMBER'))
+      const tie = await testPrisma().groupMember.findFirstOrThrow({
+        where: { groupId: group.id, userId: rui.id },
+      })
+      expect(tie.role).toBe('OWNER')
+    })
+
+    it('refuses the Super admin with 409 SUPER_ADMIN_NOT_A_GROUP_MEMBER', async () => {
+      const { group, token } = await groupWithOwner('dono.sa@example.com')
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ email: 'admin@example.com', name: 'Admin', phone: '+5521987654321' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('SUPER_ADMIN_NOT_A_GROUP_MEMBER'))
+    })
+
+    it('refuses a Viewer with 403 FORBIDDEN, creating no User', async () => {
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const vera = await createUser({ email: 'vera.viewer@example.com' })
+      await createGroupMember({ groupId: group.id, userId: vera.id, role: 'VIEWER' })
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(sessionTokenFor(vera), { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'nobody.viewer403@example.com' })
+
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      expect(
+        await testPrisma().user.findUnique({ where: { email: 'nobody.viewer403@example.com' } }),
+      ).toBeNull()
+    })
+
+    it('answers 404 NOT_FOUND to an Owner of another Group', async () => {
+      const { token } = await groupWithOwner('dono.other@example.com')
+      const other = await createGroup({ name: 'Banda Norte' })
+
+      const res = await t
+        .http()
+        .post(viewers(other.id))
+        .auth(token, { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'nobody.other@example.com' })
+
+      expect(res.status).toBe(404)
+      expect(res.body).toEqual(errorOf('NOT_FOUND'))
+    })
+
+    it('refuses an invalid email with 400 VALIDATION_ERROR', async () => {
+      const { group, token } = await groupWithOwner('dono.val@example.com')
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'not-an-email' })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    })
+
+    it('answers 401 without a token', async () => {
+      const group = await createGroup({ name: 'Vocal Livre' })
+
+      const res = await t.http().post(viewers(group.id)).send(NEW_PERSON)
+
+      expect(res.status).toBe(401)
+    })
+
+    it('revokes the Activation link when storing the Viewer fails', async () => {
+      const { group, token } = await groupWithOwner('dono.fail@example.com')
+      const rosters = t.app.get(GroupRosterRepository)
+      const save = vi.spyOn(rosters, 'save').mockRejectedValueOnce(new Error('database down'))
+
+      const res = await t
+        .http()
+        .post(viewers(group.id))
+        .auth(token, { type: 'bearer' })
+        .send({ ...NEW_PERSON, email: 'fail.viewer@example.com' })
+
+      save.mockRestore()
+      expect(res.status).toBe(500)
+      const user = await testPrisma().user.findUniqueOrThrow({
+        where: { email: 'fail.viewer@example.com' },
+        include: { activationLinks: true, groupMembers: true },
+      })
+      expect(user.activationLinks).toEqual([])
+      expect(user.groupMembers).toEqual([])
+      expect(t.invitations.revoked().at(-1)).toMatch(/^inv_/)
+    })
+  })
+
   describe('Owners leaving and changing role (ADR-0017)', () => {
     async function groupWith(...roles: ('OWNER' | 'VIEWER')[]) {
       const group = await createGroup({ name: 'Vocal Livre' })

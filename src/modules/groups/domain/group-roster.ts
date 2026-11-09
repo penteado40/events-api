@@ -62,14 +62,14 @@ export class GroupRoster {
 
   /** Gives the User the role of Owner in the Group, as a new Group member. */
   addOwner(candidate: GroupMemberCandidate, stamp: Stamp): GroupMember {
-    const member = this.add(candidate, 'OWNER', stamp)
+    const member = this.addMember(candidate, 'OWNER', stamp)
     this.markOwnerGiven(stamp)
     return member
   }
 
   /** Gives the User the role of Viewer in the Group, as a new Group member. */
   addViewer(candidate: GroupMemberCandidate, stamp: Stamp): GroupMember {
-    return this.add(candidate, 'VIEWER', stamp)
+    return this.addMember(candidate, 'VIEWER', stamp)
   }
 
   /**
@@ -129,7 +129,7 @@ export class GroupRoster {
     if (role !== 'OWNER') throw new AppError('FORBIDDEN')
   }
 
-  private add(candidate: GroupMemberCandidate, role: GroupRole, stamp: Stamp): GroupMember {
+  private addMember(candidate: GroupMemberCandidate, role: GroupRole, stamp: Stamp): GroupMember {
     if (candidate.isSuperAdmin) throw new AppError('SUPER_ADMIN_NOT_A_GROUP_MEMBER')
     if (this.find(candidate.userId)) throw new AppError('ALREADY_A_GROUP_MEMBER')
     const member: GroupMember = { groupId: this.props.groupId, userId: candidate.userId, role }

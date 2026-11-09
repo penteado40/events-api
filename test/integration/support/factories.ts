@@ -11,6 +11,8 @@ export interface CreateUserOptions {
   role?: Role
   /** The linked Clerk user; null (the default, a Pending user) until the first request links one. */
   clerkId?: string | null
+  /** Set for a Deactivated user. */
+  deactivatedAt?: Date | null
 }
 
 export async function createUser(options: CreateUserOptions = {}) {
@@ -22,6 +24,7 @@ export async function createUser(options: CreateUserOptions = {}) {
       phone: options.phone ?? `+55119${String(sequence).padStart(8, '0')}`,
       role: options.role ?? 'USER',
       clerkId: options.clerkId ?? null,
+      deactivatedAt: options.deactivatedAt ?? null,
     },
   })
   return user

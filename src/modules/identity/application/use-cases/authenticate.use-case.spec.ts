@@ -4,7 +4,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { Email } from '../../../../shared/domain/email.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { FakeAuthVerifier } from '../testing/fake-auth-verifier.js'
-import { SCRIPT_STAMP, PHONE } from '../testing/identity-fixtures.js'
+import { deactivated, PHONE, SCRIPT_STAMP } from '../testing/identity-fixtures.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { AuthenticateUseCase } from './authenticate.use-case.js'
 
@@ -96,6 +96,33 @@ describe('AuthenticateUseCase', () => {
     const user = await authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') })
 
     expect(user.id).toBe(ana.id)
+  })
+
+  it('refuses a linked Deactivated user with USER_DEACTIVATED', async () => {
+    await authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') })
+    await deactivated(users, ana.id)
+
+    await expect(
+      authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') }),
+    ).rejects.toEqual(new AppError('USER_DEACTIVATED'))
+  })
+
+  it('refuses a Deactivated user on the first sign-in with USER_DEACTIVATED, without linking', async () => {
+    await deactivated(users, ana.id)
+
+    await expect(
+      authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') }),
+    ).rejects.toEqual(new AppError('USER_DEACTIVATED'))
+    expect(await users.findByClerkId('user_ana')).toBeNull()
+  })
+
+  it('refuses another Clerk user with UNAUTHENTICATED, not revealing the User is deactivated', async () => {
+    await authenticate.execute({ token: tokenFor('user_ana', 'ana@example.com') })
+    await deactivated(users, ana.id)
+
+    await expect(
+      authenticate.execute({ token: tokenFor('user_other', 'ana@example.com') }),
+    ).rejects.toEqual(new AppError('UNAUTHENTICATED'))
   })
 
   it('refuses a token the verifier does not accept with UNAUTHENTICATED', async () => {

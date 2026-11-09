@@ -44,6 +44,7 @@ export class InMemoryUserRepository extends UserRepository {
       ...props,
       id: this.nextId++,
       clerkId: null,
+      deactivatedAt: null,
       ...createdWith(stamp),
     })
     this.users.set(user.id, user)

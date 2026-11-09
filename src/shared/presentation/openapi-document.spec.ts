@@ -54,7 +54,7 @@ describe('completeOpenApiDocument', () => {
     const doc = completeOpenApiDocument(docWith({}))
 
     expect(op(doc).responses['401']).toMatchObject({
-      description: '`UNAUTHENTICATED`, `USER_NOT_INVITED`',
+      description: '`UNAUTHENTICATED`, `USER_NOT_INVITED`, `USER_DEACTIVATED`',
     })
     expect(op(doc).security).toBeUndefined()
   })

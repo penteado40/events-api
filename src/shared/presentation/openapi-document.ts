@@ -13,7 +13,11 @@ export const ERROR_CODES_EXTENSION = 'x-error-codes'
 export const PUBLIC_EXTENSION = 'x-public'
 
 /** What the global guard answers on any non-public route (ADR-0020). */
-const GUARD_CODES: readonly ErrorCode[] = ['UNAUTHENTICATED', 'USER_NOT_INVITED']
+const GUARD_CODES: readonly ErrorCode[] = [
+  'UNAUTHENTICATED',
+  'USER_NOT_INVITED',
+  'USER_DEACTIVATED',
+]
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const
 
@@ -21,7 +25,7 @@ const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch'
  * Applies what the decorators mark to every operation: a public route opts out
  * of the global security requirement, and the error responses come from the
  * ERROR_CATALOG (ADR-0008): the codes of `@ApiErrors`, plus the 401s of the
- * guard (UNAUTHENTICATED, USER_NOT_INVITED) on every non-public route and 400 VALIDATION_ERROR on every route with a body
+ * guard (UNAUTHENTICATED, USER_NOT_INVITED, USER_DEACTIVATED) on every non-public route and 400 VALIDATION_ERROR on every route with a body
  * or parameters.
  */
 export function completeOpenApiDocument(document: OpenAPIObject): OpenAPIObject {

@@ -15,6 +15,7 @@ class PrivateTestController {
 }
 
 const UNAUTHENTICATED = { error: { code: 'UNAUTHENTICATED', message: expect.any(String) } }
+const USER_DEACTIVATED = { error: { code: 'USER_DEACTIVATED', message: expect.any(String) } }
 
 describe('GET /api/v1/me', () => {
   let t: TestApp
@@ -102,6 +103,31 @@ describe('GET /api/v1/me', () => {
     expect(res.status).toBe(401)
     expect(res.body).toEqual(UNAUTHENTICATED)
     expect(await clerkIdOf(user.id)).toBe('user_dani')
+  })
+
+  it('answers 401 USER_DEACTIVATED to a Deactivated user with a valid token, on any route', async () => {
+    const user = await createUser({
+      email: 'fabi@example.com',
+      clerkId: 'user_fabi',
+      deactivatedAt: new Date(),
+    })
+    const token = sessionTokenFor(user)
+
+    for (const path of ['/api/v1/me', '/api/v1/test-private']) {
+      const res = await t.http().get(path).auth(token, { type: 'bearer' })
+      expect(res.status, path).toBe(401)
+      expect(res.body).toEqual(USER_DEACTIVATED)
+    }
+  })
+
+  it('answers 401 USER_DEACTIVATED on the first sign-in of a Deactivated user, without linking', async () => {
+    const user = await createUser({ email: 'hugo@example.com', deactivatedAt: new Date() })
+
+    const res = await t.http().get('/api/v1/me').auth(sessionTokenFor(user), { type: 'bearer' })
+
+    expect(res.status).toBe(401)
+    expect(res.body).toEqual(USER_DEACTIVATED)
+    expect(await clerkIdOf(user.id)).toBeNull()
   })
 
   it('answers 401 UNAUTHENTICATED without a token', async () => {

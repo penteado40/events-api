@@ -20,7 +20,7 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   private readonly createdUsers: GroupUser[] = []
   private readonly stamps: Stamp[] = []
   private readonly droppedIds: number[] = []
-  private readonly reissueStamps: Stamp[] = []
+  private readonly reissued: Stamp[] = []
   private nextId = 10
   private nextLink = 1
   private failingDrop = false
@@ -51,7 +51,7 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
     const user = [...this.users.values()].find((u) => u.id === userId)
     if (!user) throw new AppError('NOT_FOUND')
     if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
-    this.reissueStamps.push(stamp)
+    this.reissued.push(stamp)
     return {
       user,
       activationLink: {
@@ -84,8 +84,8 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   }
 
   /** The stamps of every reissueActivationLink call, in order. */
-  reissueStampsSeen(): Stamp[] {
-    return [...this.reissueStamps]
+  reissueStamps(): Stamp[] {
+    return [...this.reissued]
   }
 
   created(): GroupUser[] {

@@ -57,7 +57,7 @@ describe('ReissueActivationLinkUseCase', () => {
       url: 'https://accounts.clerk.test/accept?invitation=2',
       expiresAt: new Date('2026-11-09T12:00:00.000Z'),
     })
-    expect(accounts.reissueStampsSeen()).toEqual([{ by: ANA.id, at: NOW }])
+    expect(accounts.reissueStamps()).toEqual([{ by: ANA.id, at: NOW }])
     expect(mailer.sent).toEqual([
       {
         kind: 'GROUP_ACTIVATION_LINK',
@@ -97,7 +97,7 @@ describe('ReissueActivationLinkUseCase', () => {
     await expect(
       reissue.execute({ actor: ANA, inviter: ANA_INVITER, groupId: 1, userId: bia.id }),
     ).rejects.toEqual(new AppError('NOT_FOUND'))
-    expect(accounts.reissueStampsSeen()).toEqual([])
+    expect(accounts.reissueStamps()).toEqual([])
     expect(mailer.sent).toEqual([])
   })
 
@@ -113,7 +113,7 @@ describe('ReissueActivationLinkUseCase', () => {
         userId: joaoId,
       }),
     ).rejects.toEqual(new AppError('FORBIDDEN'))
-    expect(accounts.reissueStampsSeen()).toEqual([])
+    expect(accounts.reissueStamps()).toEqual([])
   })
 
   it('answers NOT_FOUND to who is not a Group member of the Group', async () => {

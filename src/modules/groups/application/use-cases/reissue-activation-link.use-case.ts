@@ -6,11 +6,7 @@ import type { GroupRosterRepository } from '../../domain/group-roster.repository
 import type { GroupRepository } from '../../domain/group.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
 import type { GroupMailer, GroupMailInviter } from '../ports/group-mailer.js'
-import type {
-  GroupActivationLink,
-  GroupUser,
-  GroupUserAccounts,
-} from '../ports/group-user-accounts.js'
+import type { GroupUserAccounts, ReissuedGroupLink } from '../ports/group-user-accounts.js'
 
 export interface ReissueActivationLinkInput {
   actor: ActingUser
@@ -19,11 +15,6 @@ export interface ReissueActivationLinkInput {
   groupId: number
   /** The pending Group member who needs a new Activation link. */
   userId: number
-}
-
-export interface ReissueActivationLinkOutput {
-  user: GroupUser
-  activationLink: GroupActivationLink
 }
 
 /**
@@ -44,7 +35,7 @@ export class ReissueActivationLinkUseCase {
     private readonly clock: Clock,
   ) {}
 
-  async execute(input: ReissueActivationLinkInput): Promise<ReissueActivationLinkOutput> {
+  async execute(input: ReissueActivationLinkInput): Promise<ReissuedGroupLink> {
     const actor = await actorOf(input.actor, this.members)
     const { groupId } = input
     const group = AccessPolicy.can(actor, { type: 'viewGroup', groupId })

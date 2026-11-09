@@ -9,8 +9,8 @@ import type {
 
 /**
  * The one email of an entry into a Group: the Activation link of a Group for
- * the Pending user born now, the Group access for an active User. A Pending
- * user who already had a link gets none: there is nothing new for them to open.
+ * the Pending user born now, the Group access for anyone else, including a
+ * Pending user who already had a link (there is no new link to send them).
  */
 export function emailEntry(
   mailer: GroupMailer,
@@ -23,7 +23,7 @@ export function emailEntry(
   const to = { email: user.email, name: user.name }
   if (activationLink) {
     mailer.sendActivationLink({ name: group.name }, to, activationLink, inviter, stamp)
-  } else if (!user.isPending) {
+  } else {
     mailer.sendGroupAccess({ name: group.name }, to, inviter, stamp)
   }
 }

@@ -209,12 +209,12 @@ describe('AddViewerUseCase', () => {
       ])
     })
 
-    it('emails nobody about a Pending user who already had a link', async () => {
+    it('emails the Group access to a Pending user who already had a link: there is no new link', async () => {
       accounts.existing({ email: 'joao@x.com', name: 'João', isPending: true })
 
       await addViewer.execute({ actor: ANA, inviter: ANA_INVITER, groupId: 1, ...JOAO })
 
-      expect(mailer.sent).toEqual([])
+      expect(mailer.sent.map((e) => e.kind)).toEqual(['GROUP_ACCESS'])
     })
 
     it('emails nobody when the User is already a Group member or the actor may not add', async () => {

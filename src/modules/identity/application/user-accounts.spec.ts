@@ -60,6 +60,29 @@ describe('UserAccounts', () => {
       expect(links.all().map((l) => [l.invitationId, l.createdById])).toEqual([['inv_1', 10]])
     })
 
+    it('puts the inviter, the Group and the name in the invitation redirect', async () => {
+      const bruno = await existing('bruno@x.com')
+      await accounts.ensureUser(
+        { email: 'lu@x.com', name: ' Lu Andrade ', phone: '+5521987654321', group: 'Vocal Livre' },
+        { by: bruno.id, at: NOW },
+      )
+
+      expect(invitations.redirectOf('inv_1')).toEqual({
+        inviter: 'Existing',
+        group: 'Vocal Livre',
+        name: 'Lu Andrade',
+      })
+    })
+
+    it('leaves the inviter and the Group out when the write has no Author or Group', async () => {
+      await accounts.ensureUser(
+        { email: 'lu@x.com', name: 'Lu', phone: '+5521987654321' },
+        { by: null, at: NOW },
+      )
+
+      expect(invitations.redirectOf('inv_1')).toEqual({ name: 'Lu' })
+    })
+
     it('only finds an existing User, leaving them and their link untouched', async () => {
       const joao = await existing('joao@x.com', { active: false })
       await links.replaceForUser(

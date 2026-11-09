@@ -282,7 +282,7 @@ O fluxo, sempre nesta ordem:
 CancelEventItemUseCase.execute()
   1. item.cancel(stamp)                 → a entidade registra EventItemChanged internamente
   2. await items.save(item)             → grava no banco (commit)
-  3. await events.publish(item.pullEvents())   → SÓ DEPOIS do commit
+  3. events.publish(item.pullEvents())        → SÓ DEPOIS do commit
                 │
                 ▼  InProcessEventPublisher (shared/infrastructure)
           waitUntil(handler(event))     → roda depois da resposta, sem ser congelado

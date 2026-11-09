@@ -1,5 +1,7 @@
 import { AppError } from '../../../shared/domain/app-error.js'
+import { AggregateRoot } from '../../../shared/domain/domain-event.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import { groupMemberRemoved } from './events/group-member-removed.event.js'
 import type { GroupMember, GroupRole } from './group-member.js'
 
 export interface GroupRosterProps {
@@ -33,13 +35,15 @@ export interface GroupRosterChanges {
  * of a Group are serialized (ADR-0014): the roster is read under the Group's
  * lock.
  */
-export class GroupRoster {
+export class GroupRoster extends AggregateRoot {
   private readonly added: GroupRosterChanges['added'] = []
   private readonly roleChanges: GroupRosterChanges['roleChanges'] = []
   private readonly removed: number[] = []
   private firstOwner: Stamp | null = null
 
-  private constructor(private readonly props: GroupRosterProps) {}
+  private constructor(private readonly props: GroupRosterProps) {
+    super()
+  }
 
   static restore(props: GroupRosterProps): GroupRoster {
     return new GroupRoster({ ...props, members: props.members.map((m) => ({ ...m })) })
@@ -80,6 +84,17 @@ export class GroupRoster {
     this.ownerToLose(userId)
     this.props.members = this.props.members.filter((m) => m.userId !== userId)
     this.removed.push(userId)
+  }
+
+  /**
+   * Takes a Viewer out of the Group and records GroupMemberRemoved; an Owner or
+   * a stranger is NOT_FOUND (an Owner leaves by the Owner routes, ADR-0017).
+   */
+  removeViewer(userId: number, at: Date): void {
+    if (this.find(userId)?.role !== 'VIEWER') throw new AppError('NOT_FOUND')
+    this.props.members = this.props.members.filter((m) => m.userId !== userId)
+    this.removed.push(userId)
+    this.record(groupMemberRemoved(this.props.groupId, userId, at))
   }
 
   /** Makes an Owner a Viewer, unless they are the last Owner (LAST_OWNER). */

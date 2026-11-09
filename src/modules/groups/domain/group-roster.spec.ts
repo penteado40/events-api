@@ -16,6 +16,32 @@ function rosterOf(members: GroupMember[], hasHadOwner = true): GroupRoster {
 }
 
 describe('GroupRoster', () => {
+  describe('removeViewer', () => {
+    const AT = new Date('2026-11-09T12:00:00.000Z')
+
+    it('takes the Viewer out and records GroupMemberRemoved, once', () => {
+      const roster = rosterOf([owner(2), viewer(4)])
+
+      roster.removeViewer(4, AT)
+
+      expect(roster.members).toEqual([owner(2)])
+      expect(roster.changes().removed).toEqual([4])
+      expect(roster.pullEvents()).toEqual([
+        { type: 'GroupMemberRemoved', groupId: 10, userId: 4, occurredAt: AT },
+      ])
+      expect(roster.pullEvents()).toEqual([])
+    })
+
+    it('answers NOT_FOUND for an Owner and for who is not a Group member, recording nothing', () => {
+      const roster = rosterOf([owner(2), viewer(4)])
+
+      expect(() => roster.removeViewer(2, AT)).toThrow(new AppError('NOT_FOUND'))
+      expect(() => roster.removeViewer(9, AT)).toThrow(new AppError('NOT_FOUND'))
+      expect(roster.pullEvents()).toEqual([])
+      expect(roster.changes().removed).toEqual([])
+    })
+  })
+
   describe('addViewer', () => {
     it('adds the User as a Viewer, leaving the Owner rule alone', () => {
       const roster = rosterOf([owner(2)])

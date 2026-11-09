@@ -29,6 +29,7 @@ import { LeaveGroupUseCase } from '../application/use-cases/leave-group.use-case
 import { ListGroupsUseCase } from '../application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from '../application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from '../application/use-cases/remove-owner.use-case.js'
+import { RemoveViewerUseCase } from '../application/use-cases/remove-viewer.use-case.js'
 import { RenameGroupUseCase } from '../application/use-cases/rename-group.use-case.js'
 import {
   AddOwnerDto,
@@ -58,6 +59,7 @@ export class GroupsController {
     private readonly leaveGroupUseCase: LeaveGroupUseCase,
     private readonly demoteSelfUseCase: DemoteSelfUseCase,
     private readonly addViewerUseCase: AddViewerUseCase,
+    private readonly removeViewerUseCase: RemoveViewerUseCase,
   ) {}
 
   @Post()
@@ -262,5 +264,22 @@ export class GroupsController {
         activationLink: activationLink && GroupPresenter.toActivationLinkJson(activationLink),
       },
     }
+  }
+
+  @Delete(':id/viewers/:userId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Tirar um Viewer do Group',
+    description:
+      'O Super admin ou um Owner do Group. O vínculo some e o Group publica o domain event GroupMemberRemoved depois do commit, por melhor esforço. Nenhum email é enviado. Um Pending user que fica sem nenhum outro vínculo tem o Activation link revogado. Se o User do caminho não é Viewer do Group, 404 (um Owner sai pelas rotas de Owner). Quem não é Group member do Group recebe 404; um Viewer, 403: Viewer não sai por conta própria.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  async removeViewer(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<void> {
+    await this.removeViewerUseCase.execute({ actor, groupId, userId })
   }
 }

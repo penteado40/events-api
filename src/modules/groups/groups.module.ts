@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
+import { EventPublisher } from '../../shared/application/ports/event-publisher.js'
 import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { EmailsModule, GroupEmails } from '../emails/index.js'
 import { IdentityAccountsModule, UserAccounts } from '../identity/index.js'
@@ -15,6 +16,7 @@ import { LeaveGroupUseCase } from './application/use-cases/leave-group.use-case.
 import { ListGroupsUseCase } from './application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from './application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from './application/use-cases/remove-owner.use-case.js'
+import { RemoveViewerUseCase } from './application/use-cases/remove-viewer.use-case.js'
 import { RenameGroupUseCase } from './application/use-cases/rename-group.use-case.js'
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
@@ -118,6 +120,25 @@ import { GroupsController } from './presentation/groups.controller.js'
         unitOfWork: UnitOfWork,
       ) => new RemoveOwnerUseCase(rosters, members, unitOfWork),
       inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork],
+    },
+    {
+      provide: RemoveViewerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        accounts: GroupUserAccounts,
+        events: EventPublisher,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new RemoveViewerUseCase(rosters, members, accounts, events, unitOfWork, clock),
+      inject: [
+        GroupRosterRepository,
+        GroupMemberRepository,
+        GroupUserAccounts,
+        EventPublisher,
+        UnitOfWork,
+        Clock,
+      ],
     },
     {
       provide: DemoteOwnerUseCase,

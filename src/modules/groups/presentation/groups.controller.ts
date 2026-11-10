@@ -26,6 +26,7 @@ import { DemoteOwnerUseCase } from '../application/use-cases/demote-owner.use-ca
 import { DemoteSelfUseCase } from '../application/use-cases/demote-self.use-case.js'
 import { GetGroupUseCase } from '../application/use-cases/get-group.use-case.js'
 import { LeaveGroupUseCase } from '../application/use-cases/leave-group.use-case.js'
+import { ListGroupMembersUseCase } from '../application/use-cases/list-group-members.use-case.js'
 import { ListGroupsUseCase } from '../application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from '../application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from '../application/use-cases/remove-owner.use-case.js'
@@ -37,6 +38,7 @@ import {
   AddViewerResponseDto,
   CreateGroupDto,
   GroupListResponseDto,
+  GroupMemberListResponseDto,
   GroupResponseDto,
   GroupRoleResponseDto,
   RenameGroupDto,
@@ -58,6 +60,7 @@ export class GroupsController {
     private readonly leaveGroupUseCase: LeaveGroupUseCase,
     private readonly demoteSelfUseCase: DemoteSelfUseCase,
     private readonly addViewerUseCase: AddViewerUseCase,
+    private readonly listGroupMembersUseCase: ListGroupMembersUseCase,
   ) {}
 
   @Post()
@@ -103,6 +106,22 @@ export class GroupsController {
   ): Promise<GroupResponseDto> {
     const group = await this.getGroupUseCase.execute({ actor, groupId })
     return { data: GroupPresenter.toJson(group) }
+  }
+
+  @Get(':id/members')
+  @ApiOperation({
+    summary: 'Listar os Group members',
+    description:
+      'Nome, email, telefone (E.164, para abrir o WhatsApp), papel e se é Pending user, na ordem em que entraram. O Super admin vê os de qualquer Group; um User, só os dos Groups de que é Group member (Owner ou Viewer). Quem não é Group member do Group recebe 404.',
+  })
+  @ApiOkResponse({ type: GroupMemberListResponseDto })
+  @ApiErrors('NOT_FOUND')
+  async listMembers(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+  ): Promise<GroupMemberListResponseDto> {
+    const entries = await this.listGroupMembersUseCase.execute({ actor, groupId })
+    return { data: GroupPresenter.toMemberListJson(entries) }
   }
 
   @Patch(':id')

@@ -2,7 +2,7 @@ import { type DynamicModule, Module } from '@nestjs/common'
 import { APP_FILTER, APP_PIPE } from '@nestjs/core'
 import { ZodValidationPipe } from 'nestjs-zod'
 import { EmailsModule } from './modules/emails/index.js'
-import { GroupsModule } from './modules/groups/index.js'
+import { GroupsModule, GroupsQueriesModule } from './modules/groups/index.js'
 import { IdentityModule } from './modules/identity/index.js'
 import { AppConfig } from './shared/infrastructure/app-config.js'
 import { SharedModule } from './shared/infrastructure/shared.module.js'
@@ -13,7 +13,12 @@ export class AppModule {
   static forRoot(config: AppConfig): DynamicModule {
     return {
       module: AppModule,
-      imports: [SharedModule.forRoot(config), IdentityModule, GroupsModule, EmailsModule],
+      imports: [
+        SharedModule.forRoot(config),
+        IdentityModule.forRoot({ groupMembers: GroupsQueriesModule }),
+        GroupsModule,
+        EmailsModule,
+      ],
       providers: [
         { provide: APP_PIPE, useClass: ZodValidationPipe },
         {

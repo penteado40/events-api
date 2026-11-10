@@ -832,8 +832,8 @@ describe('Groups', () => {
     })
 
     /** A Pending user, with a link, who is a Viewer of the Group. */
-    async function pendingViewer(groupId: number, role: 'USER' | 'SUPER_ADMIN' = 'USER') {
-      const user = await createUser({ role })
+    async function pendingViewer(groupId: number) {
+      const user = await createUser()
       await createGroupMember({ groupId, userId: user.id, role: 'VIEWER' })
       await testPrisma().activationLink.create({
         data: {
@@ -859,21 +859,6 @@ describe('Groups', () => {
 
       expect(res.status).toBe(204)
       expect(await testPrisma().activationLink.count({ where: { userId: lia.id } })).toBe(1)
-    })
-
-    it('keeps the Activation link of a Pending user who is the Super admin', async () => {
-      const { group, owner } = await groupWithOwnerAndViewer()
-      const admin = await pendingViewer(group.id, 'SUPER_ADMIN')
-
-      const res = await t
-        .http()
-        .delete(viewer(group.id, admin.id))
-        .auth(sessionTokenFor(owner), { type: 'bearer' })
-      await t.settle()
-
-      expect(res.status).toBe(204)
-      expect(await testPrisma().groupMember.count({ where: { userId: admin.id } })).toBe(0)
-      expect(await testPrisma().activationLink.count({ where: { userId: admin.id } })).toBe(1)
     })
 
     it('answers 204 and keeps the removal when revoking the Activation link fails', async () => {

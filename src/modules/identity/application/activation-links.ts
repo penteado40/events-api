@@ -65,10 +65,10 @@ export class ActivationLinks {
     return { user, activationLink }
   }
 
-  /** Revokes and drops a Pending user's link; an active User's or a Super admin's link stays. */
+  /** Revokes and drops a Pending user's link; an active User's link stays as history. */
   async dropPending(userId: number): Promise<void> {
     const user = await this.users.findById(userId)
-    if (!user?.isPending || user.isSuperAdmin) return
+    if (!user?.isPending) return
     const link = await this.links.findForUser(user.id)
     if (!link) return
     await this.invitations.revoke(link.invitationId)

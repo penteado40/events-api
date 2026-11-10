@@ -32,7 +32,7 @@ export class PrismaTeamRepository extends TeamRepository {
       })
       return toDomain(row)
     } catch (error) {
-      // The only unique index a new Team can collide on is (groupId, name).
+      // The only unique index a new Team can collide on is (groupId, lower(name)).
       if (isUniqueViolation(error)) throw new AppError('TEAM_NAME_TAKEN')
       throw error
     }

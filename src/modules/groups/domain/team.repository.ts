@@ -6,9 +6,9 @@ export abstract class TeamRepository {
   abstract findInGroup(groupId: number, id: number): Promise<Team | null>
   /** The Teams of the Group, by name. */
   abstract findByGroup(groupId: number): Promise<Team[]>
-  /** Throws TEAM_NAME_TAKEN when the Group already has a Team with that name. */
+  /** Throws TEAM_NAME_TAKEN when the Group already has a Team with that name, ignoring case. */
   abstract create(props: NewTeamProps, stamp: Stamp): Promise<Team>
-  /** Throws TEAM_NAME_TAKEN when the Group already has another Team with that name. */
+  /** Throws TEAM_NAME_TAKEN when the Group already has another Team with that name, ignoring case. */
   abstract save(team: Team): Promise<void>
   abstract delete(id: number): Promise<void>
 }

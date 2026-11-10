@@ -79,6 +79,24 @@ describe('RenameTeamUseCase', () => {
     ).rejects.toEqual(new AppError('TEAM_NAME_TAKEN'))
   })
 
+  it('refuses a name another Team of the Group has in another casing with TEAM_NAME_TAKEN', async () => {
+    await expect(
+      renameTeam.execute({ actor: SUPER_ADMIN, groupId: 1, teamId: 1, name: ' tÉcnica' }),
+    ).rejects.toEqual(new AppError('TEAM_NAME_TAKEN'))
+  })
+
+  it('lets a Team change the casing of its own name, keeping the new casing', async () => {
+    const team = await renameTeam.execute({
+      actor: SUPER_ADMIN,
+      groupId: 1,
+      teamId: 1,
+      name: 'BANDA',
+    })
+
+    expect(team.name).toBe('BANDA')
+    expect((await teams.findInGroup(1, 1))?.name).toBe('BANDA')
+  })
+
   it('accepts the Team keeping its own name', async () => {
     const team = await renameTeam.execute({
       actor: SUPER_ADMIN,

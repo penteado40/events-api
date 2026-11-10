@@ -79,6 +79,26 @@ describe('Teams', () => {
       expect(row).toMatchObject({ createdById: adminId, updatedById: adminId })
     })
 
+    it('refuses a name the Group already has in another casing with 409 TEAM_NAME_TAKEN', async () => {
+      await createTeam({ groupId, name: 'Banda' })
+
+      const res = await t
+        .http()
+        .post(teamsUrl())
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: ' bANDA ' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('TEAM_NAME_TAKEN'))
+      expect(await testPrisma().team.count()).toBe(1)
+    })
+
+    it('enforces the case-insensitive name in the database', async () => {
+      await createTeam({ groupId, name: 'Banda' })
+
+      await expect(createTeam({ groupId, name: 'banda' })).rejects.toThrow()
+    })
+
     it('refuses a name the Group already has with 409 TEAM_NAME_TAKEN', async () => {
       await createTeam({ groupId, name: 'Banda' })
 
@@ -213,6 +233,36 @@ describe('Teams', () => {
 
       expect(res.status).toBe(409)
       expect(res.body).toEqual(errorOf('TEAM_NAME_TAKEN'))
+    })
+
+    it('refuses a name another Team has in another casing with 409 TEAM_NAME_TAKEN', async () => {
+      const team = await createTeam({ groupId, name: 'Banda' })
+      await createTeam({ groupId, name: 'Técnica' })
+
+      const res = await t
+        .http()
+        .patch(`${teamsUrl()}/${team.id}`)
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'tÉcnica' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('TEAM_NAME_TAKEN'))
+    })
+
+    it('lets a Team change the casing of its own name', async () => {
+      const team = await createTeam({ groupId, name: 'Banda' })
+
+      const res = await t
+        .http()
+        .patch(`${teamsUrl()}/${team.id}`)
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'BANDA' })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.name).toBe('BANDA')
+      expect((await testPrisma().team.findUniqueOrThrow({ where: { id: team.id } })).name).toBe(
+        'BANDA',
+      )
     })
 
     it('refuses a Viewer with 403 FORBIDDEN, keeping the name', async () => {

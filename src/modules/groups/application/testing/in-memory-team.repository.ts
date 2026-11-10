@@ -40,8 +40,10 @@ export class InMemoryTeamRepository extends TeamRepository {
   }
 
   private assertNameFree(groupId: number, name: string, exceptId: number | null): void {
+    // Case-insensitive, as the database index on (groupId, lower(name)).
+    const key = name.toLowerCase()
     const taken = [...this.teams.values()].some(
-      (t) => t.groupId === groupId && t.name === name && t.id !== exceptId,
+      (t) => t.groupId === groupId && t.name.toLowerCase() === key && t.id !== exceptId,
     )
     if (taken) throw new AppError('TEAM_NAME_TAKEN')
   }

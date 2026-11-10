@@ -71,6 +71,14 @@ describe('CreateTeamUseCase', () => {
     ).rejects.toEqual(new AppError('TEAM_NAME_TAKEN'))
   })
 
+  it('refuses a name the Group already has in another casing with TEAM_NAME_TAKEN', async () => {
+    await createTeam.execute({ actor: SUPER_ADMIN, groupId: 1, name: 'Banda' })
+
+    await expect(
+      createTeam.execute({ actor: SUPER_ADMIN, groupId: 1, name: ' bANDA ' }),
+    ).rejects.toEqual(new AppError('TEAM_NAME_TAKEN'))
+  })
+
   it('allows the same name in another Group', async () => {
     await groups.create({ name: GroupName.create('Outro') }, SCRIPT_STAMP)
     await createTeam.execute({ actor: SUPER_ADMIN, groupId: 1, name: 'Banda' })

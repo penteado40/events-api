@@ -125,7 +125,8 @@ model GroupMember {
   @@map("group_members")
 }
 
-// A named shortcut of a Group, kept by its Owners (Cantores, Banda). A flat list: the name is unique per Group.
+// A named shortcut of a Group, kept by its Owners (Cantores, Banda). A flat list: the name is unique per Group, ignoring case.
+// The case-insensitive unique index on (groupId, lower(name)) lives only in the migration: Prisma cannot model expression indexes.
 model Team {
   id          Int      @id @default(autoincrement())
   groupId     Int

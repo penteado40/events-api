@@ -58,10 +58,14 @@ export class ActivationLinks {
     if (!user) throw new AppError('NOT_FOUND')
     if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
     const previous = await this.links.findForUser(user.id)
-    const activationLink = await this.withInvitation(user.email, (invitation) =>
-      this.store(user.id, invitation, stamp),
-    )
-    if (previous) await this.invitations.revoke(previous.invitationId)
+    // Clerk cannot join a transaction, so the previous invitation is revoked
+    // before the new one is stored: if that fails, withInvitation revokes the
+    // new invitation too, and the caller gets the error with the previous link
+    // untouched. Never two live links, never an error hiding a new one.
+    const activationLink = await this.withInvitation(user.email, async (invitation) => {
+      if (previous) await this.invitations.revoke(previous.invitationId)
+      return this.store(user.id, invitation, stamp)
+    })
     return { user, activationLink }
   }
 

@@ -190,6 +190,21 @@ describe('UserAccounts', () => {
       )
       expect(invitations.open()).toEqual([])
     })
+
+    it('keeps the previous link and leaves no open new one when revoking the previous fails', async () => {
+      const { user } = await accounts.ensureUser(
+        { email: 'joao@x.com', name: 'João', phone: '+5521987654321' },
+        SCRIPT_STAMP,
+      )
+      invitations.failNextRevoke()
+
+      await expect(accounts.reissueActivationLink(user.id, OWNER_STAMP)).rejects.toThrow(
+        'revoke failed',
+      )
+      expect(links.all().map((l) => l.invitationId)).toEqual(['inv_1'])
+      expect(invitations.open()).toEqual(['inv_1'])
+      expect(invitations.revoked()).toEqual(['inv_2'])
+    })
   })
 
   describe('dropPendingActivation', () => {

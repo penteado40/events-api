@@ -70,7 +70,7 @@ describe('ReissueActivationLinkUseCase', () => {
     ])
   })
 
-  it('lets the Super admin do it in any Group', async () => {
+  it('lets the Super admin do it in any Group, with replyTo on the Super admin', async () => {
     const result = await reissue.execute({
       actor: SUPER_ADMIN,
       inviter: { email: 'admin@x.com' },
@@ -79,6 +79,8 @@ describe('ReissueActivationLinkUseCase', () => {
     })
 
     expect(result.user.id).toBe(joaoId)
+    expect(mailer.sent).toHaveLength(1)
+    expect(mailer.sent[0]).toMatchObject({ inviter: { email: 'admin@x.com' } })
   })
 
   it('refuses an active Group member with USER_ALREADY_ACTIVE, sending nothing', async () => {

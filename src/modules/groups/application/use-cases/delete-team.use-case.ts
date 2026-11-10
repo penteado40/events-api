@@ -26,6 +26,8 @@ export class DeleteTeamUseCase {
     })
     const team = await this.teams.findInGroup(input.groupId, input.teamId)
     if (!team) throw new AppError('NOT_FOUND')
+    // Hard delete, with no Author trace (ADR-0013: soft delete case by case). A Team is a
+    // copy shortcut nothing depends on as history, and its authorship lived on the row.
     await this.teams.delete(team.id)
   }
 }

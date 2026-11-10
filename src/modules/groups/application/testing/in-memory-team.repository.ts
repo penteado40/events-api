@@ -1,6 +1,6 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
-import { type NewTeamProps, Team } from '../../domain/team.entity.js'
+import type { NewTeamProps, Team } from '../../domain/team.entity.js'
 import { TeamRepository } from '../../domain/team.repository.js'
 
 export class InMemoryTeamRepository extends TeamRepository {
@@ -20,12 +20,12 @@ export class InMemoryTeamRepository extends TeamRepository {
 
   async create(props: NewTeamProps, stamp: Stamp): Promise<Team> {
     this.assertNameFree(props.groupId, props.name.value, null)
-    const team = Team.restore({
+    const team: Team = {
       id: this.nextId++,
       groupId: props.groupId,
       name: props.name.value,
       ...createdWith(stamp),
-    })
+    }
     this.teams.set(team.id, team)
     return team
   }

@@ -34,8 +34,15 @@ export class RenameTeamUseCase {
     const team = await this.teams.findInGroup(input.groupId, input.teamId)
     if (!team) throw new AppError('NOT_FOUND')
 
-    team.rename(TeamName.create(input.name), { by: input.actor.id, at: this.clock.now() })
-    await this.teams.save(team)
-    return team
+    const name = TeamName.create(input.name)
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+    const renamed: Team = {
+      ...team,
+      name: name.value,
+      updatedAt: stamp.at,
+      updatedById: stamp.by,
+    }
+    await this.teams.save(renamed)
+    return renamed
   }
 }

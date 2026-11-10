@@ -4,7 +4,7 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { isUniqueViolation } from '../../../shared/infrastructure/prisma-errors.js'
 import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
-import { type NewTeamProps, Team } from '../domain/team.entity.js'
+import type { NewTeamProps, Team } from '../domain/team.entity.js'
 import { TeamRepository } from '../domain/team.repository.js'
 
 const BY_NAME = [{ name: 'asc' as const }, { id: 'asc' as const }]
@@ -57,7 +57,7 @@ export class PrismaTeamRepository extends TeamRepository {
 }
 
 function toDomain(row: PrismaTeam): Team {
-  return Team.restore({
+  return {
     id: row.id,
     groupId: row.groupId,
     name: row.name,
@@ -65,5 +65,5 @@ function toDomain(row: PrismaTeam): Team {
     updatedAt: row.updatedAt,
     createdById: row.createdById,
     updatedById: row.updatedById,
-  })
+  }
 }

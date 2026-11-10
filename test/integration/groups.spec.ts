@@ -807,6 +807,25 @@ describe('Groups', () => {
       expect(await testPrisma().activationLink.count({ where: { userId: viewerId } })).toBe(1)
     })
 
+    it('refuses an Owner with 403 FORBIDDEN for a pending Owner, keeping the link', async () => {
+      const { group, token } = await groupWithPendingViewer(
+        'dono.relink.owner@example.com',
+        'lia.relink.owner@example.com',
+      )
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${group.id}/owners`)
+        .auth(adminToken, { type: 'bearer' })
+        .send({ email: 'caio.relink@example.com', name: 'Caio', phone: '+5521912345678' })
+      const caioId = added.body.data.member.user.id as number
+
+      const res = await t.http().post(linkOf(group.id, caioId)).auth(token, { type: 'bearer' })
+
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      expect(await testPrisma().activationLink.count({ where: { userId: caioId } })).toBe(1)
+    })
+
     it('answers 404 NOT_FOUND to an Owner of another Group', async () => {
       const { viewerId, group } = await groupWithPendingViewer(
         'dono.relink.a@example.com',

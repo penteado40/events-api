@@ -11,6 +11,6 @@ export interface IssuedInvitation {
 export abstract class InvitationIssuer {
   /** Issues a new invitation for the email, even if another one is still open. */
   abstract issue(email: string): Promise<IssuedInvitation>
-  /** Makes the invitation unusable. */
+  /** Makes the invitation unusable; one already revoked is a no-op. */
   abstract revoke(id: string): Promise<void>
 }

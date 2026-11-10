@@ -272,7 +272,7 @@ export class GroupsController {
   @ApiOperation({
     summary: 'Gerar novo Activation link para um Group member pendente',
     description:
-      "O Super admin ou um Owner do Group, quando o convite não chegou. O Activation link anterior deixa de valer; o novo volta na resposta, para repassar por outro meio, e vai por email à pessoa, enviado depois da resposta e com o seu 'replyTo' em quem fez a ação. Quem já entrou pelo Activation link recebe 409 USER_ALREADY_ACTIVE; se o User do caminho não é Group member do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403.",
+      "O Super admin ou um Owner do Group, quando o convite não chegou. O Activation link anterior deixa de valer; o novo volta na resposta, para repassar por outro meio, e vai por email à pessoa, enviado depois da resposta e com o seu 'replyTo' em quem fez a ação. Quem já entrou pelo Activation link recebe 409 USER_ALREADY_ACTIVE; se o User do caminho não é Group member do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403; para um Owner pendente, só o Super admin, e um Owner recebe 403.",
   })
   @ApiCreatedResponse({ type: ActivationLinkResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')

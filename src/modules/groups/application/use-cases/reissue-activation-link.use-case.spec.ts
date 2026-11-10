@@ -83,6 +83,39 @@ describe('ReissueActivationLinkUseCase', () => {
     expect(mailer.sent[0]).toMatchObject({ inviter: { email: 'admin@x.com' } })
   })
 
+  describe('for a pending Owner', () => {
+    let caioId: number
+
+    beforeEach(async () => {
+      const { user } = await accounts.ensureUser(
+        { email: 'caio@x.com', name: 'Caio', phone: '+5521912345678' },
+        SCRIPT_STAMP,
+      )
+      caioId = user.id
+      members.add({ groupId: 1, userId: caioId, role: 'OWNER' })
+    })
+
+    it('refuses an Owner with FORBIDDEN, touching no link', async () => {
+      await expect(
+        reissue.execute({ actor: ANA, inviter: ANA_INVITER, groupId: 1, userId: caioId }),
+      ).rejects.toEqual(new AppError('FORBIDDEN'))
+      expect(accounts.reissueStamps()).toEqual([])
+      expect(mailer.sent).toEqual([])
+    })
+
+    it('lets the Super admin do it', async () => {
+      const result = await reissue.execute({
+        actor: SUPER_ADMIN,
+        inviter: { email: 'admin@x.com' },
+        groupId: 1,
+        userId: caioId,
+      })
+
+      expect(result.user).toMatchObject({ id: caioId, isPending: true })
+      expect(mailer.sent).toHaveLength(1)
+    })
+  })
+
   it('refuses an active Group member with USER_ALREADY_ACTIVE, sending nothing', async () => {
     const bia = accounts.existing({ email: 'bia@x.com', name: 'Bia' })
     members.add({ groupId: 1, userId: bia.id, role: 'VIEWER' })

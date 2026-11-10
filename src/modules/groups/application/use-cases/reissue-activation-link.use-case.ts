@@ -23,7 +23,15 @@ export interface ReissueActivationLinkInput {
  * is revoked, the new one goes back in the answer and by email to the
  * person. Only a Group member of this Group qualifies (NOT_FOUND otherwise);
  * one who already signed in gets USER_ALREADY_ACTIVE. Who cannot see the
- * Group gets NOT_FOUND; a Viewer gets FORBIDDEN.
+ * Group gets NOT_FOUND; a Viewer gets FORBIDDEN. An Owner target needs the
+ * Super admin (FORBIDDEN to an Owner): the link lets whoever holds it claim
+ * the account, and a pending Owner may be Owner of other Groups only the
+ * Super admin gave them (ADR-0017).
+ *
+ * A removal of the same Group member running at the same time can leave a
+ * link without a tie; the damage is limited as with the removal handler
+ * (access comes only from Group members, AccessPolicy), and it needs two
+ * Owners acting on the same person at the same moment.
  */
 export class ReissueActivationLinkUseCase {
   constructor(
@@ -45,7 +53,10 @@ export class ReissueActivationLinkUseCase {
     if (!group || !roster) throw new AppError('NOT_FOUND')
     if (!AccessPolicy.can(actor, { type: 'manageViewers', groupId }))
       throw new AppError('FORBIDDEN')
-    if (roster.roleOf(input.userId) === null) throw new AppError('NOT_FOUND')
+    const role = roster.roleOf(input.userId)
+    if (role === null) throw new AppError('NOT_FOUND')
+    if (role === 'OWNER' && !AccessPolicy.can(actor, { type: 'manageOwners', groupId }))
+      throw new AppError('FORBIDDEN')
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
     const { user, activationLink } = await this.accounts.reissueActivationLink(input.userId, stamp)

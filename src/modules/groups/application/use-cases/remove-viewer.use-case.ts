@@ -7,7 +7,6 @@ import { AccessPolicy } from '../../domain/access-policy.js'
 import type { GroupMemberRepository } from '../../domain/group-member.repository.js'
 import type { GroupRosterRepository } from '../../domain/group-roster.repository.js'
 import { type ActingUser, actorOf } from '../actor.js'
-import type { GroupUserAccounts } from '../ports/group-user-accounts.js'
 
 export interface RemoveViewerInput {
   actor: ActingUser
@@ -18,8 +17,8 @@ export interface RemoveViewerInput {
 
 /**
  * An Owner of the Group, or the Super admin, takes a Viewer out. After the
- * commit, GroupMemberRemoved goes out (best effort, ADR-0010), and a Pending
- * user left with no Group member anywhere loses their Activation link. No
+ * commit, GroupMemberRemoved goes out (best effort, ADR-0010); a Pending user
+ * left with no Group member loses their Activation link in its handler. No
  * email is sent. The Roster is read under the Group's lock (ADR-0014). Who
  * cannot see the Group gets NOT_FOUND; a Viewer gets FORBIDDEN.
  */
@@ -27,7 +26,6 @@ export class RemoveViewerUseCase {
   constructor(
     private readonly rosters: GroupRosterRepository,
     private readonly members: GroupMemberRepository,
-    private readonly accounts: GroupUserAccounts,
     private readonly events: EventPublisher,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
@@ -49,10 +47,5 @@ export class RemoveViewerUseCase {
       return roster.pullEvents()
     })
     this.events.publish(events)
-
-    // Identity keeps the link of an active User as history; only a Pending user loses it.
-    if ((await this.members.findByUser(userId)).length === 0) {
-      await this.accounts.dropPendingActivation(userId)
-    }
   }
 }

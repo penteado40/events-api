@@ -207,6 +207,22 @@ describe('UserAccounts', () => {
       await expect(accounts.dropPendingActivation(joao.id)).resolves.toBeUndefined()
     })
 
+    it("keeps a Pending Super admin's link: the Super admin has a tie of their own", async () => {
+      const admin = await users.create(
+        { name: 'Admin', email: Email.create('admin@x.com'), phone: PHONE, role: 'SUPER_ADMIN' },
+        SCRIPT_STAMP,
+      )
+      await links.replaceForUser(
+        { userId: admin.id, invitationId: 'inv_admin', expiresAt: NOW },
+        SCRIPT_STAMP,
+      )
+
+      await accounts.dropPendingActivation(admin.id)
+
+      expect(links.all()).toHaveLength(1)
+      expect(invitations.revoked()).toEqual([])
+    })
+
     it("keeps an active User's used link as history", async () => {
       const ana = await existing('ana@x.com')
       await links.replaceForUser(

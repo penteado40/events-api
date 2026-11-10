@@ -267,7 +267,7 @@ Existem três jeitos, e cada um tem seu caso (ADR-0010):
 | Situação | Mecanismo | Exemplo |
 |---|---|---|
 | Preciso de uma **resposta** de outro contexto | Chamada direta ao que o outro módulo **exporta** no `*.module.ts` | Todo contexto pergunta à AccessPolicy se a ação é permitida |
-| Uma regra minha exige que o dono de um dado o **escreva agora**, e preciso do resultado | Chamada direta a um serviço de comandos que o dono exporta num módulo próprio | Um Owner adiciona um Group member por email e o `identity` cria o Pending user, devolvendo o Activation link; ao remover o último vínculo, quem removeu pede ao `identity` que derrube o link |
+| Uma regra minha exige que o dono de um dado o **escreva agora**, e preciso do resultado | Chamada direta a um serviço de comandos que o dono exporta num módulo próprio | Um Owner adiciona um Group member por email e o `identity` cria o Pending user, devolvendo o Activation link; quando o último vínculo cai, o handler de `GroupMemberRemoved` pede ao `identity` que derrube o link (melhor esforço, depois da resposta) |
 | Aconteceu um **fato** e outro contexto reage | Domain event | O contexto dos Event items publica `EventItemChanged`; o de notificações agenda o aviso |
 
 O que separa um comando de um domain event: no comando, a escrita faz parte da regra de quem chama, que precisa dela concluída (ou do resultado) antes de responder. No domain event, quem publica não sabe nem se importa com quem reage. Quem executa o comando continua dono do dado e das próprias invariantes; a autorização é de quem chama.

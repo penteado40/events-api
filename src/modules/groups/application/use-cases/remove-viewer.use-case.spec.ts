@@ -32,7 +32,6 @@ describe('RemoveViewerUseCase', () => {
     removeViewer = new RemoveViewerUseCase(
       rosters,
       members,
-      accounts,
       events,
       unitOfWork,
       new FixedClock(NOW),
@@ -62,25 +61,6 @@ describe('RemoveViewerUseCase', () => {
 
     expect(members.ofGroup(1)).toHaveLength(1)
     expect(events.published()).toHaveLength(1)
-  })
-
-  it('revokes the Activation link of a Pending user left with no Group member', async () => {
-    const lia = accounts.existing({ email: 'lia@x.com', name: 'Lia', isPending: true })
-    members.add({ groupId: 1, userId: lia.id, role: 'VIEWER' })
-
-    await removeViewer.execute({ actor: ANA, groupId: 1, userId: lia.id })
-
-    expect(accounts.dropped()).toEqual([lia.id])
-  })
-
-  it('keeps the Activation link of a Pending user who still has a Group member elsewhere', async () => {
-    const lia = accounts.existing({ email: 'lia@x.com', name: 'Lia', isPending: true })
-    members.add({ groupId: 1, userId: lia.id, role: 'VIEWER' })
-    members.add({ groupId: 2, userId: lia.id, role: 'VIEWER' })
-
-    await removeViewer.execute({ actor: ANA, groupId: 1, userId: lia.id })
-
-    expect(accounts.dropped()).toEqual([])
   })
 
   it('refuses a Viewer, even for themselves, with FORBIDDEN, publishing nothing', async () => {
@@ -118,6 +98,5 @@ describe('RemoveViewerUseCase', () => {
       new AppError('NOT_FOUND'),
     )
     expect(events.published()).toEqual([])
-    expect(accounts.dropped()).toEqual([])
   })
 })

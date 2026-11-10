@@ -14,7 +14,10 @@ export class InMemoryGroupMemberRepository extends GroupMemberRepository {
     return this.ofGroup(groupId)
   }
 
-  /** The Group members of the Group, in the order they were added. */
+  /**
+   * The Group members of the Group, in the order they were added. Synchronous
+   * helper for test assertions; findByGroup is the port contract.
+   */
   ofGroup(groupId: number): GroupMember[] {
     return this.all().filter((m) => m.groupId === groupId)
   }

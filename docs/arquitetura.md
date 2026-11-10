@@ -272,6 +272,8 @@ Existem três jeitos, e cada um tem seu caso (ADR-0010):
 
 O que separa um comando de um domain event: no comando, a escrita faz parte da regra de quem chama, que precisa dela concluída (ou do resultado) antes de responder. No domain event, quem publica não sabe nem se importa com quem reage. Quem executa o comando continua dono do dado e das próprias invariantes; a autorização é de quem chama.
 
+Quando um contexto precisa de uma resposta de outro que já depende dele, quem consome declara o port e o dono do dado fornece a implementação: o `identity` declara `GroupMembers` para o `/me`, o `groups` o implementa (`MembershipLookup`, no `GroupsQueriesModule`) e o `AppModule` liga os dois com `IdentityModule.forRoot({ groupMembers: GroupsQueriesModule })`, sem ciclo de imports.
+
 Regra de fronteira: um módulo só usa o que outro **exporta**. Nunca importa arquivos de `domain/`, `application/` ou `infrastructure/` de outro módulo.
 
 ### 5.6 Domain events

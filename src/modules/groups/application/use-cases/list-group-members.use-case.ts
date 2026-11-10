@@ -36,6 +36,9 @@ export class ListGroupMembersUseCase {
     const groupMembers = await this.members.findByGroup(groupId)
     const users = await this.users.findManyByIds(groupMembers.map((m) => m.userId))
     const byId = new Map(users.map((u) => [u.id, u]))
+    // The FKs (GroupMember.user Restrict, GroupMember.group Cascade) make a
+    // persistent orphan impossible: a row without its User only shows up in a
+    // race with the Group's deletion, and skipping it is correct.
     return groupMembers.flatMap((member) => {
       const user = byId.get(member.userId)
       return user ? [{ member, user }] : []

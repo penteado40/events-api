@@ -1,9 +1,8 @@
-import { Module } from '@nestjs/common'
+import { type DynamicModule, Module, type Type } from '@nestjs/common'
 import { APP_GUARD } from '@nestjs/core'
 import { Clock } from '../../shared/application/clock.js'
 import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { EmailsModule } from '../emails/index.js'
-import { GroupsQueriesModule } from '../groups/index.js'
 import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
 import { GroupMembers } from './application/ports/group-members.js'
@@ -19,7 +18,6 @@ import { UserRepository } from './domain/user.repository.js'
 import { IdentityInvitationsModule } from './identity-invitations.module.js'
 import { IdentityPersistenceModule } from './identity-persistence.module.js'
 import { ClerkAuthVerifier } from './infrastructure/clerk-auth-verifier.js'
-import { InProcessGroupMembers } from './infrastructure/in-process-group-members.js'
 import { InProcessActivationLinkMailer } from './infrastructure/in-process-activation-link-mailer.js'
 import { SvixIdentityWebhookVerifier } from './infrastructure/svix-identity-webhook-verifier.js'
 import { ClerkWebhookController } from './presentation/clerk-webhook.controller.js'
@@ -27,21 +25,24 @@ import { CredentialsGuard } from './presentation/credentials.guard.js'
 import { MeController } from './presentation/me.controller.js'
 import { UsersController } from './presentation/users.controller.js'
 
+export interface IdentityModuleOptions {
+  /**
+   * A module that provides and exports GroupMembers. The Membership lives in
+   * the groups context, which depends on identity, so identity declares the
+   * port and the AppModule hands it the implementation (docs/arquitetura.md §5.5).
+   */
+  groupMembers: Type | DynamicModule
+}
+
 /**
  * Composition root of the identity context: Users, their Activation links, the
  * global guard that authenticates every request by the Clerk token, and the
  * Clerk webhook that keeps the User mirror in step.
  */
 @Module({
-  imports: [
-    IdentityPersistenceModule,
-    IdentityInvitationsModule,
-    EmailsModule,
-    GroupsQueriesModule,
-  ],
+  imports: [IdentityPersistenceModule, IdentityInvitationsModule, EmailsModule],
   controllers: [MeController, UsersController, ClerkWebhookController],
   providers: [
-    { provide: GroupMembers, useClass: InProcessGroupMembers },
     { provide: ActivationLinkMailer, useClass: InProcessActivationLinkMailer },
     {
       provide: AuthVerifier,
@@ -100,4 +101,8 @@ import { UsersController } from './presentation/users.controller.js'
     { provide: APP_GUARD, useClass: CredentialsGuard },
   ],
 })
-export class IdentityModule {}
+export class IdentityModule {
+  static forRoot(options: IdentityModuleOptions): DynamicModule {
+    return { module: IdentityModule, imports: [options.groupMembers] }
+  }
+}

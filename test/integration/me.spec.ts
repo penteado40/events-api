@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { FakeAuthVerifier } from '../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
-import { createUser, sessionTokenFor } from './support/factories.js'
+import { createGroup, createGroupMember, createUser, sessionTokenFor } from './support/factories.js'
 
 /** A route with no `@Public()`: the global guard must protect it. */
 @Controller('test-private')
@@ -57,7 +57,28 @@ describe('GET /api/v1/me', () => {
     })
   })
 
-  // GET /me does not read the groups context until PROJ-178: nobody has a Membership.
+  it('gives a Group member the Groups they are in, by name, with their role in each', async () => {
+    const user = await createUser({ email: 'eva@example.com', clerkId: 'user_eva' })
+    const vocal = await createGroup({ name: 'Vocal Livre' })
+    const coral = await createGroup({ name: 'Coral' })
+    const other = await createGroup({ name: 'Outro' })
+    await createGroupMember({ groupId: vocal.id, userId: user.id, role: 'VIEWER' })
+    await createGroupMember({ groupId: coral.id, userId: user.id, role: 'OWNER' })
+    const stranger = await createUser({ email: 'leo@example.com' })
+    await createGroupMember({ groupId: other.id, userId: stranger.id, role: 'OWNER' })
+
+    const res = await t.http().get('/api/v1/me').auth(sessionTokenFor(user), { type: 'bearer' })
+
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({
+      isSuperAdmin: false,
+      memberships: [
+        { groupId: coral.id, groupName: 'Coral', role: 'OWNER' },
+        { groupId: vocal.id, groupName: 'Vocal Livre', role: 'VIEWER' },
+      ],
+    })
+  })
+
   it('tells a User apart from the Super admin, with no Membership while there are no Groups', async () => {
     const user = await createUser({ email: 'duda@example.com', clerkId: 'user_duda' })
 

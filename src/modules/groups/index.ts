@@ -4,3 +4,4 @@ export {
   type GroupMemberRemoved,
   groupMemberRemoved,
 } from './domain/events/group-member-removed.event.js'
+export { GroupsQueriesModule } from './groups-queries.module.js'

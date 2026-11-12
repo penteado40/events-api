@@ -255,6 +255,123 @@ describe('Groups', () => {
     })
   })
 
+  describe('GET /api/v1/groups/:id/members', () => {
+    const membersOf = (groupId: number) => `/api/v1/groups/${groupId}/members`
+
+    let run = 0
+
+    async function arrangeGroup() {
+      run += 1
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const ana = await createUser({
+        name: 'Ana',
+        email: `ana.members${run}@example.com`,
+        phone: '+5511911111111',
+        clerkId: `user_ana_members${run}`,
+      })
+      const bia = await createUser({
+        name: 'Bia',
+        email: `bia.members${run}@example.com`,
+        phone: '+5511922222222',
+      })
+      const caio = await createUser({
+        name: 'Caio',
+        email: `caio.viewer${run}@example.com`,
+        phone: '+5511933333333',
+        clerkId: `user_caio_members${run}`,
+      })
+      await createGroupMember({ groupId: group.id, userId: ana.id, role: 'OWNER' })
+      await createGroupMember({ groupId: group.id, userId: bia.id, role: 'VIEWER' })
+      await createGroupMember({ groupId: group.id, userId: caio.id, role: 'VIEWER' })
+      return { group, ana, bia, caio }
+    }
+
+    const expectedList = (u: {
+      ana: { id: number; email: string }
+      bia: { id: number; email: string }
+      caio: { id: number; email: string }
+    }) => ({
+      data: [
+        {
+          userId: u.ana.id,
+          name: 'Ana',
+          email: u.ana.email,
+          phone: '+5511911111111',
+          role: 'OWNER',
+          isPending: false,
+        },
+        {
+          userId: u.bia.id,
+          name: 'Bia',
+          email: u.bia.email,
+          phone: '+5511922222222',
+          role: 'VIEWER',
+          isPending: true,
+        },
+        {
+          userId: u.caio.id,
+          name: 'Caio',
+          email: u.caio.email,
+          phone: '+5511933333333',
+          role: 'VIEWER',
+          isPending: false,
+        },
+      ],
+    })
+
+    it('lists name, email, phone, role and Pending user to the Super admin', async () => {
+      const arranged = await arrangeGroup()
+
+      const res = await t
+        .http()
+        .get(membersOf(arranged.group.id))
+        .auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual(expectedList(arranged))
+    })
+
+    it.each(['ana', 'caio'] as const)('lists them to a Group member (%s)', async (who) => {
+      const arranged = await arrangeGroup()
+
+      const res = await t
+        .http()
+        .get(membersOf(arranged.group.id))
+        .auth(sessionTokenFor(arranged[who]), { type: 'bearer' })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual(expectedList(arranged))
+    })
+
+    it('answers 404 NOT_FOUND to a User who is not a Group member of the Group', async () => {
+      const { group } = await arrangeGroup()
+      const caio = await createUser({ email: 'stranger.members@example.com' })
+
+      const res = await t
+        .http()
+        .get(membersOf(group.id))
+        .auth(sessionTokenFor(caio), { type: 'bearer' })
+
+      expect(res.status).toBe(404)
+      expect(res.body).toEqual(errorOf('NOT_FOUND'))
+    })
+
+    it('answers 404 NOT_FOUND for a Group that does not exist', async () => {
+      const res = await t.http().get(membersOf(999999)).auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(404)
+      expect(res.body).toEqual(errorOf('NOT_FOUND'))
+    })
+
+    it('answers 401 without a token', async () => {
+      const { group } = await arrangeGroup()
+
+      const res = await t.http().get(membersOf(group.id))
+
+      expect(res.status).toBe(401)
+    })
+  })
+
   describe('POST /api/v1/groups/:id/owners', () => {
     const owners = (groupId: number) => `/api/v1/groups/${groupId}/owners`
     const NEW_PERSON = { email: 'Joao@Example.com', name: ' João ', phone: '+55 21 98765-4321' }

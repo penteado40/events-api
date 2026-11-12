@@ -1,3 +1,4 @@
+import type { ListGroupMembersOutput } from '../application/use-cases/list-group-members.use-case.js'
 import type { GroupActivationLink, GroupUser } from '../application/ports/group-user-accounts.js'
 import type { GroupMember } from '../domain/group-member.js'
 import type { Group } from '../domain/group.entity.js'
@@ -5,6 +6,7 @@ import type {
   ActivationLinkJson,
   GroupJson,
   GroupMemberJson,
+  GroupMemberListItemJson,
   GroupRoleJson,
 } from './dto/group.dto.js'
 
@@ -19,6 +21,17 @@ export const GroupPresenter = {
       role: member.role,
       user: { id: user.id, name: user.name, email: user.email, isPending: user.isPending },
     }
+  },
+
+  toMemberListJson(entries: ListGroupMembersOutput): GroupMemberListItemJson[] {
+    return entries.map(({ member, user }) => ({
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: member.role,
+      isPending: user.isPending,
+    }))
   },
 
   toRoleJson(member: GroupMember): GroupRoleJson {

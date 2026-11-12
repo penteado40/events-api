@@ -15,4 +15,12 @@ export class PrismaGroupMemberRepository extends GroupMemberRepository {
       select: { groupId: true, userId: true, role: true },
     })
   }
+
+  async findByGroup(groupId: number): Promise<GroupMember[]> {
+    return this.prisma.groupMember.findMany({
+      where: { groupId },
+      select: { groupId: true, userId: true, role: true },
+      orderBy: { id: 'asc' },
+    })
+  }
 }

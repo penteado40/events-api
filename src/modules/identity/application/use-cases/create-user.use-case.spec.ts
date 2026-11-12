@@ -44,6 +44,17 @@ describe('CreateUserUseCase', () => {
     )
   })
 
+  it('carries the Super admin and the new name in the invitation redirect', async () => {
+    await createUser.execute({
+      actor: superAdmin,
+      name: '  Pedro  ',
+      email: 'pedro@example.com',
+      phone: '+55 (11) 98765-4321',
+    })
+
+    expect(invitations.redirectOf('inv_1')).toEqual({ inviter: 'Admin', name: 'Pedro' })
+  })
+
   it('creates a Pending user with an Activation link valid for the TTL', async () => {
     const result = await createUser.execute({
       actor: superAdmin,

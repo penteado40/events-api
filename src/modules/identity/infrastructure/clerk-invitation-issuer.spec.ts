@@ -12,7 +12,11 @@ if (secretKey) {
   let sequence = 0
 
   describeInvitationIssuerContract('Clerk', () => ({
-    issuer: new ClerkInvitationIssuer({ secretKey, redirectUrl: null, ttlDays: 1 }),
+    issuer: new ClerkInvitationIssuer({
+      secretKey,
+      redirectUrl: 'events-expo://activate',
+      ttlDays: 1,
+    }),
     freshEmail: () => `contract+${run}-${++sequence}@example.com`,
     async cleanup(ids) {
       await Promise.allSettled(ids.map((id) => clerk.invitations.revokeInvitation(id)))

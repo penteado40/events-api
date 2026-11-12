@@ -72,6 +72,12 @@ describe('IssueActivationLinkUseCase', () => {
     expect(invitations.open()).toEqual(['inv_2'])
   })
 
+  it('carries the Super admin and the Pending user in the new invitation redirect', async () => {
+    await issueLink.execute({ actor: superAdmin, userId: pedro.id })
+
+    expect(invitations.redirectOf('inv_2')).toEqual({ inviter: 'Admin', name: 'Pedro' })
+  })
+
   it('emails the new link to the Pending user, by the Super admin', async () => {
     const result = await issueLink.execute({ actor: superAdmin, userId: pedro.id })
 

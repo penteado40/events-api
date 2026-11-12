@@ -61,7 +61,7 @@ export class AddOwnerUseCase {
 
     const stamp = { by: input.actor.id, at: this.clock.now() }
     const { user, activationLink } = await this.accounts.ensureUser(
-      { email: input.email, name: input.name, phone: input.phone },
+      { email: input.email, name: input.name, phone: input.phone, group: group.name },
       stamp,
     )
     try {

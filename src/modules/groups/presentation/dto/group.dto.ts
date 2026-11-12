@@ -40,6 +40,26 @@ const AddMemberBodySchema = z.strictObject({
   }),
 })
 
+const GroupMemberListItemJsonSchema = z.object({
+  userId: z.number().int().meta({ example: 2 }),
+  name: z.string().meta({ example: 'Maria Silva' }),
+  email: z.email().meta({ example: 'maria@local.test' }),
+  phone: z
+    .string()
+    .meta({ description: 'E.164, para abrir o WhatsApp.', example: '+5511987654321' }),
+  role: z.enum(GROUP_ROLES).meta({ example: 'OWNER' }),
+  isPending: z.boolean().meta({
+    description: 'Ainda não entrou pela primeira vez pelo Activation link.',
+    example: false,
+  }),
+})
+
+export type GroupMemberListItemJson = z.infer<typeof GroupMemberListItemJsonSchema>
+
+export class GroupMemberListResponseDto extends createZodDto(
+  z.object({ data: z.array(GroupMemberListItemJsonSchema) }),
+) {}
+
 export class AddOwnerDto extends createZodDto(AddMemberBodySchema) {}
 
 export class AddViewerDto extends createZodDto(AddMemberBodySchema) {}

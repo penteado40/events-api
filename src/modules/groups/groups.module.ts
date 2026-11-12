@@ -2,9 +2,15 @@ import { Module } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
 import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { EmailsModule, GroupEmails } from '../emails/index.js'
-import { IdentityAccountsModule, UserAccounts } from '../identity/index.js'
+import {
+  IdentityAccountsModule,
+  IdentityQueriesModule,
+  UserAccounts,
+  UserLookup,
+} from '../identity/index.js'
 import { GroupMailer } from './application/ports/group-mailer.js'
 import { GroupUserAccounts } from './application/ports/group-user-accounts.js'
+import { GroupUsers } from './application/ports/group-users.js'
 import { AddOwnerUseCase } from './application/use-cases/add-owner.use-case.js'
 import { AddViewerUseCase } from './application/use-cases/add-viewer.use-case.js'
 import { CreateGroupUseCase } from './application/use-cases/create-group.use-case.js'
@@ -12,6 +18,7 @@ import { DemoteOwnerUseCase } from './application/use-cases/demote-owner.use-cas
 import { DemoteSelfUseCase } from './application/use-cases/demote-self.use-case.js'
 import { GetGroupUseCase } from './application/use-cases/get-group.use-case.js'
 import { LeaveGroupUseCase } from './application/use-cases/leave-group.use-case.js'
+import { ListGroupMembersUseCase } from './application/use-cases/list-group-members.use-case.js'
 import { ListGroupsUseCase } from './application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from './application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from './application/use-cases/remove-owner.use-case.js'
@@ -20,25 +27,28 @@ import { RenameGroupUseCase } from './application/use-cases/rename-group.use-cas
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
 import { GroupRepository } from './domain/group.repository.js'
+import { GroupsPersistenceModule } from './groups-persistence.module.js'
 import { InProcessGroupMailer } from './infrastructure/in-process-group-mailer.js'
 import { InProcessGroupUserAccounts } from './infrastructure/in-process-group-user-accounts.js'
-import { PrismaGroupMemberRepository } from './infrastructure/prisma-group-member.repository.js'
+import { InProcessGroupUsers } from './infrastructure/in-process-group-users.js'
 import { PrismaGroupRosterRepository } from './infrastructure/prisma-group-roster.repository.js'
-import { PrismaGroupRepository } from './infrastructure/prisma-group.repository.js'
 import { GroupsController } from './presentation/groups.controller.js'
 
 /** Composition root of the groups context: Groups, their Group members and the AccessPolicy. */
 @Module({
-  imports: [IdentityAccountsModule, EmailsModule],
+  imports: [GroupsPersistenceModule, IdentityAccountsModule, IdentityQueriesModule, EmailsModule],
   controllers: [GroupsController],
   providers: [
-    { provide: GroupRepository, useClass: PrismaGroupRepository },
-    { provide: GroupMemberRepository, useClass: PrismaGroupMemberRepository },
     { provide: GroupRosterRepository, useClass: PrismaGroupRosterRepository },
     {
       provide: GroupUserAccounts,
       useFactory: (accounts: UserAccounts) => new InProcessGroupUserAccounts(accounts),
       inject: [UserAccounts],
+    },
+    {
+      provide: GroupUsers,
+      useFactory: (lookup: UserLookup) => new InProcessGroupUsers(lookup),
+      inject: [UserLookup],
     },
     {
       provide: GroupMailer,
@@ -68,6 +78,12 @@ import { GroupsController } from './presentation/groups.controller.js'
       useFactory: (groups: GroupRepository, members: GroupMemberRepository) =>
         new GetGroupUseCase(groups, members),
       inject: [GroupRepository, GroupMemberRepository],
+    },
+    {
+      provide: ListGroupMembersUseCase,
+      useFactory: (groups: GroupRepository, members: GroupMemberRepository, users: GroupUsers) =>
+        new ListGroupMembersUseCase(groups, members, users),
+      inject: [GroupRepository, GroupMemberRepository, GroupUsers],
     },
     {
       provide: AddOwnerUseCase,

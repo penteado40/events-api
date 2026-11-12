@@ -22,6 +22,11 @@ export interface GroupUserContact {
   phone: string
 }
 
+/** A contact being added to a Group: the Group's name shows on a new Pending user's activation screen. */
+export interface GroupUserEntry extends GroupUserContact {
+  group: string
+}
+
 export interface EnsuredGroupUser {
   user: GroupUser
   /** Only for a Pending user created just now. */
@@ -36,7 +41,7 @@ export interface ReissuedGroupLink {
 /** The Users behind the Group members: identity's UserAccounts, seen from groups. */
 export abstract class GroupUserAccounts {
   /** The User of the email, created as a Pending user with an Activation link when there is none. */
-  abstract ensureUser(contact: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser>
+  abstract ensureUser(contact: GroupUserEntry, stamp: Stamp): Promise<EnsuredGroupUser>
   /**
    * A fresh Activation link for a Pending user, and the previous one stops
    * working. NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.

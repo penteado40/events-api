@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common'
 import { createClerkClient } from '@clerk/backend'
 import { isClerkAPIResponseError } from '@clerk/backend/errors'
-import { InvitationIssuer, type IssuedInvitation } from '../application/ports/invitation-issuer.js'
+import {
+  InvitationIssuer,
+  type InvitationRedirect,
+  type IssuedInvitation,
+} from '../application/ports/invitation-issuer.js'
+import { activationRedirectUrl } from './activation-redirect-url.js'
 
 export interface ClerkInvitationIssuerOptions {
   /** Null outside production when unset: issuing is then a server error. */
   secretKey: string | null
-  /** Where the invitation lands (the events-expo deep link); null keeps Clerk's default. */
+  /** Where the invitation lands (the events-expo deep link), to which each invitation adds its own query; null keeps Clerk's default. */
   redirectUrl: string | null
   /** Lifetime of each invitation, in whole days (Clerk's unit). */
   ttlDays: number
@@ -44,7 +49,7 @@ export class ClerkInvitationIssuer extends InvitationIssuer {
     super()
   }
 
-  async issue(email: string): Promise<IssuedInvitation> {
+  async issue(email: string, redirect: InvitationRedirect = {}): Promise<IssuedInvitation> {
     const { redirectUrl, ttlDays } = this.options
     const invitation = await this.clerk().invitations.createInvitation({
       emailAddress: email,
@@ -52,7 +57,7 @@ export class ClerkInvitationIssuer extends InvitationIssuer {
       // A reissued Activation link is issued before the previous one is revoked.
       ignoreExisting: true,
       expiresInDays: ttlDays,
-      ...(redirectUrl && { redirectUrl }),
+      ...(redirectUrl && { redirectUrl: activationRedirectUrl(redirectUrl, redirect) }),
     })
     if (!invitation.url) throw new Error(`Convite ${invitation.id} do Clerk veio sem url`)
     // The API answers `expires_at`, which the SDK's Invitation does not map yet.

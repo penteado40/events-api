@@ -2,7 +2,7 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { UserAccounts } from '../../identity/index.js'
 import {
   type EnsuredGroupUser,
-  type GroupUserContact,
+  type GroupUserEntry,
   type ReissuedGroupLink,
   GroupUserAccounts,
 } from '../application/ports/group-user-accounts.js'
@@ -13,7 +13,7 @@ export class InProcessGroupUserAccounts extends GroupUserAccounts {
     super()
   }
 
-  ensureUser(contact: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser> {
+  ensureUser(contact: GroupUserEntry, stamp: Stamp): Promise<EnsuredGroupUser> {
     return this.accounts.ensureUser(contact, stamp)
   }
 

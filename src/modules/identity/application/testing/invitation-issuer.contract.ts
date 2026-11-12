@@ -31,6 +31,21 @@ export function describeInvitationIssuerContract(
       }
     })
 
+    it('issues an invitation that carries the inviter, the Group and the name', async () => {
+      const subject = setup()
+      const invitation = await subject.issuer.issue(subject.freshEmail(), {
+        inviter: 'Bruno Reis',
+        group: 'Vocal Livre & Cia',
+        name: 'Lu Andrade',
+      })
+      try {
+        expect(invitation.id).toEqual(expect.any(String))
+        expect(() => new URL(invitation.url)).not.toThrow()
+      } finally {
+        await subject.cleanup?.([invitation.id])
+      }
+    })
+
     it('issues a second invitation for an email that still has one open', async () => {
       const subject = setup()
       const email = subject.freshEmail()

@@ -29,9 +29,12 @@ export class UserAccounts {
     private readonly activationLinks: ActivationLinks,
   ) {}
 
-  /** The User of the email, created as a Pending user with an Activation link when there is none. */
+  /**
+   * The User of the email, created as a Pending user with an Activation link when
+   * there is none. `group` names the Group they are added to, for the link's screen.
+   */
   async ensureUser(
-    input: { email: string; name: string; phone: string },
+    input: { email: string; name: string; phone: string; group?: string },
     stamp: Stamp,
   ): Promise<EnsuredUser> {
     const email = Email.create(input.email)
@@ -41,7 +44,7 @@ export class UserAccounts {
 
     try {
       const { user, activationLink } = await this.activationLinks.createPendingUser(
-        { name: input.name, email, phone },
+        { name: input.name, email, phone, group: input.group },
         stamp,
       )
       return { user: toUserSummary(user), activationLink }

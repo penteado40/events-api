@@ -37,7 +37,7 @@ describe('ReissueActivationLinkUseCase', () => {
     await groups.create({ name: GroupName.create('Vocal Livre') }, SCRIPT_STAMP)
     members.add({ groupId: 1, userId: ANA.id, role: 'OWNER' })
     const { user } = await accounts.ensureUser(
-      { email: 'joao@x.com', name: 'João', phone: '+5521987654321' },
+      { email: 'joao@x.com', name: 'João', phone: '+5521987654321', group: 'Vocal Livre' },
       SCRIPT_STAMP,
     )
     joaoId = user.id
@@ -88,7 +88,7 @@ describe('ReissueActivationLinkUseCase', () => {
 
     beforeEach(async () => {
       const { user } = await accounts.ensureUser(
-        { email: 'caio@x.com', name: 'Caio', phone: '+5521912345678' },
+        { email: 'caio@x.com', name: 'Caio', phone: '+5521912345678', group: 'Vocal Livre' },
         SCRIPT_STAMP,
       )
       caioId = user.id

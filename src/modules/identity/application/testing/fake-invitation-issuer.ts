@@ -1,5 +1,9 @@
 import type { Clock } from '../../../../shared/application/clock.js'
-import { InvitationIssuer, type IssuedInvitation } from '../ports/invitation-issuer.js'
+import {
+  InvitationIssuer,
+  type InvitationRedirect,
+  type IssuedInvitation,
+} from '../ports/invitation-issuer.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -11,7 +15,10 @@ export class FakeInvitationIssuer extends InvitationIssuer {
   private sequence = 0
   private failing = false
   private failingRevoke = false
-  private readonly invitations = new Map<string, { email: string; revoked: boolean }>()
+  private readonly invitations = new Map<
+    string,
+    { email: string; redirect: InvitationRedirect; revoked: boolean }
+  >()
 
   constructor(
     private readonly clock: Clock,
@@ -20,14 +27,14 @@ export class FakeInvitationIssuer extends InvitationIssuer {
     super()
   }
 
-  async issue(email: string): Promise<IssuedInvitation> {
+  async issue(email: string, redirect: InvitationRedirect = {}): Promise<IssuedInvitation> {
     if (this.failing) {
       this.failing = false
       throw new Error('fake invitation issuer: issue failed')
     }
     this.sequence += 1
     const id = `inv_${this.sequence}`
-    this.invitations.set(id, { email, revoked: false })
+    this.invitations.set(id, { email, redirect, revoked: false })
     return {
       id,
       url: `https://accounts.clerk.test/accept?invitation=${id}`,
@@ -51,6 +58,11 @@ export class FakeInvitationIssuer extends InvitationIssuer {
 
   failNextRevoke(): void {
     this.failingRevoke = true
+  }
+
+  /** What the invitation was issued to carry in its redirect. */
+  redirectOf(id: string): InvitationRedirect | undefined {
+    return this.invitations.get(id)?.redirect
   }
 
   /** Ids of the invitations still usable. */

@@ -3,7 +3,7 @@ import type { Stamp } from '../../../../shared/domain/stamp.js'
 import {
   type EnsuredGroupUser,
   type GroupUser,
-  type GroupUserContact,
+  type GroupUserEntry,
   type ReissuedGroupLink,
   GroupUserAccounts,
 } from '../ports/group-user-accounts.js'
@@ -19,6 +19,7 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   private readonly users = new Map<string, GroupUser>()
   private readonly createdUsers: GroupUser[] = []
   private readonly stamps: Stamp[] = []
+  private readonly entries: GroupUserEntry[] = []
   private readonly droppedIds: number[] = []
   private readonly reissued: Stamp[] = []
   private nextId = 10
@@ -29,8 +30,9 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
     super()
   }
 
-  async ensureUser(input: GroupUserContact, stamp: Stamp): Promise<EnsuredGroupUser> {
+  async ensureUser(input: GroupUserEntry, stamp: Stamp): Promise<EnsuredGroupUser> {
     this.stamps.push(stamp)
+    this.entries.push(input)
     const email = input.email.trim().toLowerCase()
     const found = this.users.get(email)
     if (found) return { user: found, activationLink: null }
@@ -86,6 +88,11 @@ export class FakeGroupUserAccounts extends GroupUserAccounts {
   /** The stamps of every reissueActivationLink call, in order. */
   reissueStamps(): Stamp[] {
     return [...this.reissued]
+  }
+
+  /** The entries of every ensureUser call, in order. */
+  ensureEntries(): GroupUserEntry[] {
+    return [...this.entries]
   }
 
   created(): GroupUser[] {

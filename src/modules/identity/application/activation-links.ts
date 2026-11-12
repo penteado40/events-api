@@ -5,7 +5,11 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ActivationLinkRepository } from '../domain/activation-link.repository.js'
 import type { User } from '../domain/user.entity.js'
 import type { UserRepository } from '../domain/user.repository.js'
-import type { InvitationIssuer, IssuedInvitation } from './ports/invitation-issuer.js'
+import type {
+  InvitationIssuer,
+  InvitationRedirect,
+  IssuedInvitation,
+} from './ports/invitation-issuer.js'
 
 /** What goes back to whoever delivers the Activation link (ADR-0020). */
 export interface IssuedActivationLink {
@@ -35,14 +39,17 @@ export class ActivationLinks {
   /**
    * Creates a Pending user and their first Activation link, both by the stamp's
    * Author. The invitation comes first: if Clerk fails, no User is created.
+   * `group` is the Group the person is being added to, if any.
    */
   async createPendingUser(
-    props: { name: string; email: Email; phone: Phone },
+    props: { name: string; email: Email; phone: Phone; group?: string },
     stamp: Stamp,
   ): Promise<UserWithActivationLink> {
-    return this.withInvitation(props.email, async (invitation) => {
+    const name = props.name.trim()
+    const redirect = await this.redirectFor({ name, group: props.group }, stamp)
+    return this.withInvitation(props.email, redirect, async (invitation) => {
       const user = await this.users.create(
-        { name: props.name.trim(), email: props.email, phone: props.phone, role: 'USER' },
+        { name, email: props.email, phone: props.phone, role: 'USER' },
         stamp,
       )
       return { user, activationLink: await this.store(user.id, invitation, stamp) }
@@ -58,11 +65,12 @@ export class ActivationLinks {
     if (!user) throw new AppError('NOT_FOUND')
     if (!user.isPending) throw new AppError('USER_ALREADY_ACTIVE')
     const previous = await this.links.findForUser(user.id)
+    const redirect = await this.redirectFor({ name: user.name }, stamp)
     // Clerk cannot join a transaction, so the previous invitation is revoked
     // before the new one is stored: if that fails, withInvitation revokes the
     // new invitation too, and the caller gets the error with the previous link
     // untouched. Never two live links, never an error hiding a new one.
-    const activationLink = await this.withInvitation(user.email, async (invitation) => {
+    const activationLink = await this.withInvitation(user.email, redirect, async (invitation) => {
       if (previous) await this.invitations.revoke(previous.invitationId)
       return this.store(user.id, invitation, stamp)
     })
@@ -87,9 +95,10 @@ export class ActivationLinks {
    */
   private async withInvitation<T>(
     email: Email,
+    redirect: InvitationRedirect,
     write: (invitation: IssuedInvitation) => Promise<T>,
   ): Promise<T> {
-    const invitation = await this.invitations.issue(email.value)
+    const invitation = await this.invitations.issue(email.value, redirect)
     try {
       return await write(invitation)
     } catch (error) {
@@ -103,6 +112,20 @@ export class ActivationLinks {
         )
       }
       throw error
+    }
+  }
+
+  /** What the app shows on the activation screen: the stamp's Author is who invited. */
+  private async redirectFor(
+    props: { name: string; group?: string },
+    stamp: Stamp,
+  ): Promise<InvitationRedirect> {
+    const author = stamp.by === null ? null : await this.users.findById(stamp.by)
+    const group = props.group?.trim()
+    return {
+      ...(author && { inviter: author.name }),
+      ...(group && { group }),
+      name: props.name.trim(),
     }
   }
 

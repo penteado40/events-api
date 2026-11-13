@@ -12,6 +12,11 @@ export interface EnsuredUser {
   activationLink: IssuedActivationLink | null
 }
 
+export interface ReissuedUserLink {
+  user: UserSummary
+  activationLink: IssuedActivationLink
+}
+
 /**
  * The writes on Users that identity offers other contexts: making sure a User
  * exists for an email (e.g. a Group member added by email), and managing a
@@ -52,10 +57,13 @@ export class UserAccounts {
     }
   }
 
-  /** A fresh link for a Pending user; the previous one stops working. Emails nobody. */
-  async reissueActivationLink(userId: number, stamp: Stamp): Promise<IssuedActivationLink> {
-    const { activationLink } = await this.activationLinks.reissue(userId, stamp)
-    return activationLink
+  /**
+   * A fresh link for a Pending user; the previous one stops working. Emails
+   * nobody. NOT_FOUND without the User, USER_ALREADY_ACTIVE once active.
+   */
+  async reissueActivationLink(userId: number, stamp: Stamp): Promise<ReissuedUserLink> {
+    const { user, activationLink } = await this.activationLinks.reissue(userId, stamp)
+    return { user: toUserSummary(user), activationLink }
   }
 
   /** Revokes a Pending user's link, so nobody activates an account with no purpose. */

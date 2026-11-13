@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { createClerkClient } from '@clerk/backend'
+import { isClerkAPIResponseError } from '@clerk/backend/errors'
 import {
   InvitationIssuer,
   type InvitationRedirect,
@@ -17,6 +18,24 @@ export interface ClerkInvitationIssuerOptions {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * What Clerk answers when the invitation can no longer be revoked: gone
+ * (404 `resource_not_found`) or already revoked (400 `revoked_invitation`,
+ * the code Clerk's api_errors lists for a revoked invitation, BAPI included).
+ * Any other error, 4xx or not, still throws.
+ */
+const ALREADY_UNUSABLE: ReadonlyArray<{ status: number; code: string }> = [
+  { status: 404, code: 'resource_not_found' },
+  { status: 400, code: 'revoked_invitation' },
+]
+
+function isAlreadyUnusable(error: unknown): boolean {
+  if (!isClerkAPIResponseError(error)) return false
+  return ALREADY_UNUSABLE.some(
+    ({ status, code }) => error.status === status && error.errors.some((e) => e.code === code),
+  )
+}
 
 /**
  * Activation links as Clerk invitations (ADR-0020), created with `notify: false`:
@@ -51,7 +70,12 @@ export class ClerkInvitationIssuer extends InvitationIssuer {
   }
 
   async revoke(id: string): Promise<void> {
-    await this.clerk().invitations.revokeInvitation(id)
+    try {
+      await this.clerk().invitations.revokeInvitation(id)
+    } catch (error) {
+      // Already unusable: a reissue that failed after revoking retries the same id.
+      if (!isAlreadyUnusable(error)) throw error
+    }
   }
 
   private clerk(): ReturnType<typeof createClerkClient> {

@@ -6,5 +6,9 @@ export type { Role, User } from './domain/user.entity.js'
 export type { GroupMember } from './domain/group-member.js'
 export { GroupMembers } from './application/ports/group-members.js'
 export { UserLookup, type UserSummary } from './application/user-lookup.js'
-export { UserAccounts, type EnsuredUser } from './application/user-accounts.js'
+export {
+  UserAccounts,
+  type EnsuredUser,
+  type ReissuedUserLink,
+} from './application/user-accounts.js'
 export type { IssuedActivationLink } from './application/activation-links.js'

@@ -64,5 +64,13 @@ export function describeInvitationIssuerContract(
 
       await expect(subject.issuer.revoke(invitation.id)).resolves.toBeUndefined()
     })
+
+    it('revokes an invitation already revoked as a no-op', async () => {
+      const subject = setup()
+      const invitation = await subject.issuer.issue(subject.freshEmail())
+      await subject.issuer.revoke(invitation.id)
+
+      await expect(subject.issuer.revoke(invitation.id)).resolves.toBeUndefined()
+    })
   })
 }

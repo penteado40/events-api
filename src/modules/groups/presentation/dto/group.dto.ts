@@ -122,3 +122,7 @@ export class AddViewerResponseDto extends createZodDto(
     }),
   }),
 ) {}
+
+export class ActivationLinkResponseDto extends createZodDto(
+  z.object({ data: ActivationLinkJsonSchema }),
+) {}

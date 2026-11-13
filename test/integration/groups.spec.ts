@@ -810,6 +810,165 @@ describe('Groups', () => {
     })
   })
 
+  describe('POST /api/v1/groups/:id/members/:userId/activation-link', () => {
+    const linkOf = (groupId: number, userId: number) =>
+      `/api/v1/groups/${groupId}/members/${userId}/activation-link`
+
+    async function groupWithPendingViewer(ownerEmail: string, viewerEmail: string) {
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const owner = await createUser({ email: ownerEmail, clerkId: `u_${ownerEmail}` })
+      await createGroupMember({ groupId: group.id, userId: owner.id, role: 'OWNER' })
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${group.id}/viewers`)
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+        .send({ email: viewerEmail, name: 'Lia', phone: '+5521987654321' })
+      const link = added.body.data.activationLink.url as string
+      return {
+        group,
+        owner,
+        token: sessionTokenFor(owner),
+        viewerId: added.body.data.member.user.id as number,
+        link,
+      }
+    }
+
+    it('gives the Owner a new link, revoking the previous one and emailing the Viewer', async () => {
+      const { group, token, viewerId, link } = await groupWithPendingViewer(
+        'dono.relink@example.com',
+        'lia.relink@example.com',
+      )
+      await t.settle()
+      const before = await testPrisma().activationLink.findFirstOrThrow({
+        where: { userId: viewerId },
+      })
+
+      const res = await t.http().post(linkOf(group.id, viewerId)).auth(token, { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(201)
+      expect(res.body).toEqual({ data: { url: expect.any(String), expiresAt: expect.any(String) } })
+      expect(res.body.data.url).not.toBe(link)
+      const stored = await testPrisma().activationLink.findMany({ where: { userId: viewerId } })
+      expect(stored).toHaveLength(1)
+      expect(stored[0]?.invitationId).not.toBe(before.invitationId)
+      expect(t.invitations.revoked()).toContain(before.invitationId)
+      const sent = t.emails.sent.filter((e) => e.to === 'lia.relink@example.com')
+      expect(sent).toHaveLength(2)
+      expect(sent[1]).toMatchObject({ replyTo: 'dono.relink@example.com' })
+      const logs = await testPrisma().emailLog.findMany({
+        where: { kind: 'GROUP_ACTIVATION_LINK', recipient: 'lia.relink@example.com' },
+      })
+      expect(logs).toHaveLength(2)
+    })
+
+    it('lets the Super admin do it in any Group', async () => {
+      const { group, viewerId } = await groupWithPendingViewer(
+        'dono.relink.sa@example.com',
+        'lia.relink.sa@example.com',
+      )
+
+      const res = await t
+        .http()
+        .post(linkOf(group.id, viewerId))
+        .auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(201)
+    })
+
+    it('refuses an active Group member with 409 USER_ALREADY_ACTIVE', async () => {
+      const { group, token } = await groupWithPendingViewer(
+        'dono.relink.active@example.com',
+        'lia.relink.active@example.com',
+      )
+      const mel = await createUser({ email: 'mel.relink@example.com', clerkId: 'u_mel_relink' })
+      await createGroupMember({ groupId: group.id, userId: mel.id, role: 'VIEWER' })
+
+      const res = await t.http().post(linkOf(group.id, mel.id)).auth(token, { type: 'bearer' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('USER_ALREADY_ACTIVE'))
+    })
+
+    it('answers 404 NOT_FOUND for a User who is not a Group member of the Group', async () => {
+      const { group, token } = await groupWithPendingViewer(
+        'dono.relink.404@example.com',
+        'lia.relink.404@example.com',
+      )
+      const other = await createGroup({ name: 'Banda Norte' })
+      const otherMember = await createUser({ email: 'outro.relink@example.com' })
+      await createGroupMember({ groupId: other.id, userId: otherMember.id, role: 'VIEWER' })
+
+      const res = await t
+        .http()
+        .post(linkOf(group.id, otherMember.id))
+        .auth(token, { type: 'bearer' })
+
+      expect(res.status).toBe(404)
+      expect(res.body).toEqual(errorOf('NOT_FOUND'))
+    })
+
+    it('refuses a Viewer with 403 FORBIDDEN, keeping the link', async () => {
+      const { group, viewerId } = await groupWithPendingViewer(
+        'dono.relink.403@example.com',
+        'lia.relink.403@example.com',
+      )
+      const vera = await createUser({ email: 'vera.relink@example.com' })
+      await createGroupMember({ groupId: group.id, userId: vera.id, role: 'VIEWER' })
+
+      const res = await t
+        .http()
+        .post(linkOf(group.id, viewerId))
+        .auth(sessionTokenFor(vera), { type: 'bearer' })
+
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      expect(await testPrisma().activationLink.count({ where: { userId: viewerId } })).toBe(1)
+    })
+
+    it('refuses an Owner with 403 FORBIDDEN for a pending Owner, keeping the link', async () => {
+      const { group, token } = await groupWithPendingViewer(
+        'dono.relink.owner@example.com',
+        'lia.relink.owner@example.com',
+      )
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${group.id}/owners`)
+        .auth(adminToken, { type: 'bearer' })
+        .send({ email: 'caio.relink@example.com', name: 'Caio', phone: '+5521912345678' })
+      const caioId = added.body.data.member.user.id as number
+
+      const res = await t.http().post(linkOf(group.id, caioId)).auth(token, { type: 'bearer' })
+
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      expect(await testPrisma().activationLink.count({ where: { userId: caioId } })).toBe(1)
+    })
+
+    it('answers 404 NOT_FOUND to an Owner of another Group', async () => {
+      const { viewerId, group } = await groupWithPendingViewer(
+        'dono.relink.a@example.com',
+        'lia.relink.a@example.com',
+      )
+      const outsider = await createUser({ email: 'dono.relink.b@example.com' })
+      const otherGroup = await createGroup({ name: 'Banda Norte' })
+      await createGroupMember({ groupId: otherGroup.id, userId: outsider.id, role: 'OWNER' })
+
+      const res = await t
+        .http()
+        .post(linkOf(group.id, viewerId))
+        .auth(sessionTokenFor(outsider), { type: 'bearer' })
+
+      expect(res.status).toBe(404)
+    })
+
+    it('answers 401 without a token', async () => {
+      const res = await t.http().post(linkOf(1, 1))
+
+      expect(res.status).toBe(401)
+    })
+  })
+
   describe('DELETE /api/v1/groups/:id/viewers/:userId', () => {
     const viewer = (groupId: number, userId: number) =>
       `/api/v1/groups/${groupId}/viewers/${userId}`

@@ -30,9 +30,11 @@ import { ListGroupMembersUseCase } from '../application/use-cases/list-group-mem
 import { ListGroupsUseCase } from '../application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from '../application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from '../application/use-cases/remove-owner.use-case.js'
+import { ReissueActivationLinkUseCase } from '../application/use-cases/reissue-activation-link.use-case.js'
 import { RemoveViewerUseCase } from '../application/use-cases/remove-viewer.use-case.js'
 import { RenameGroupUseCase } from '../application/use-cases/rename-group.use-case.js'
 import {
+  ActivationLinkResponseDto,
   AddOwnerDto,
   AddOwnerResponseDto,
   AddViewerDto,
@@ -61,6 +63,7 @@ export class GroupsController {
     private readonly leaveGroupUseCase: LeaveGroupUseCase,
     private readonly demoteSelfUseCase: DemoteSelfUseCase,
     private readonly addViewerUseCase: AddViewerUseCase,
+    private readonly reissueActivationLinkUseCase: ReissueActivationLinkUseCase,
     private readonly removeViewerUseCase: RemoveViewerUseCase,
     private readonly listGroupMembersUseCase: ListGroupMembersUseCase,
   ) {}
@@ -283,6 +286,29 @@ export class GroupsController {
         activationLink: activationLink && GroupPresenter.toActivationLinkJson(activationLink),
       },
     }
+  }
+
+  @Post(':id/members/:userId/activation-link')
+  @HttpCode(201)
+  @ApiOperation({
+    summary: 'Gerar novo Activation link para um Group member pendente',
+    description:
+      "O Super admin ou um Owner do Group, quando o convite não chegou. O Activation link anterior deixa de valer; o novo volta na resposta, para repassar por outro meio, e vai por email à pessoa, enviado depois da resposta e com o seu 'replyTo' em quem fez a ação. Quem já entrou pelo Activation link recebe 409 USER_ALREADY_ACTIVE; se o User do caminho não é Group member do Group, 404. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403; para um Owner pendente, só o Super admin, e um Owner recebe 403.",
+  })
+  @ApiCreatedResponse({ type: ActivationLinkResponseDto })
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')
+  async reissueActivationLink(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<ActivationLinkResponseDto> {
+    const { activationLink } = await this.reissueActivationLinkUseCase.execute({
+      actor,
+      inviter: { email: actor.email.value },
+      groupId,
+      userId,
+    })
+    return { data: GroupPresenter.toActivationLinkJson(activationLink) }
   }
 
   @Delete(':id/viewers/:userId')

@@ -17,6 +17,9 @@ const eventPlaceSchema = z.string().trim().min(1).max(EVENT_PLACE_MAX_LENGTH).me
   example: 'Manaus - AM',
 })
 
+/** An IANA zone, kept exactly as written; the domain (Timezone) decides which names pass. */
+export const timezoneSchema = z.string().min(1).max(64)
+
 /** The period travels as written, with no conversion (ADR-0016). */
 const EventPeriodSchema = z.strictObject({
   startDate: z.iso.date().meta({
@@ -28,7 +31,7 @@ const EventPeriodSchema = z.strictObject({
       'Último dia do Event, igual ou depois de startDate (senão 400 EVENT_PERIOD_INVALID).',
     example: '2026-11-16',
   }),
-  timezone: z.string().min(1).max(64).meta({
+  timezone: timezoneSchema.meta({
     description:
       'Fuso IANA do lugar, com o nome exato (America/Manaus, Asia/Kolkata, UTC); abreviação, alias de país (Brazil/East, US/Eastern), Etc/, offset, outra caixa ou espaços em volta: 400 VALIDATION_ERROR. Volta como enviado, e as datas nunca são convertidas para UTC.',
     example: 'America/Manaus',

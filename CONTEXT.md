@@ -77,6 +77,10 @@ _Avoid_: favorito, fixado, importante
 A visão rápida de um Event para uma pessoa: um cartão por Event item que tenha algum Field com Highlight, mostrando só esses Fields, primeiro os da General info e depois os da Timeline, na mesma ordem.
 _Avoid_: dashboard, visão geral
 
+**Schedule** (programação):
+A programação de um Event como uma pessoa a vê: a General info e a Timeline, só com os Event items que ela vê. Não guarda nada: é sempre montada a partir dos Event items do Event.
+_Avoid_: agenda, cronograma, roteiro, itinerário
+
 **Timeline** (linha do tempo):
 Os Event items com data de um Event, dia a dia, como a pessoa os vê: em cada dia, primeiro os sem hora, na ordem da produção, e depois os com hora, pela hora. Mostra os dias que têm itens, mesmo fora do período do Event. Um dia da Timeline não é um conceito à parte: não tem título nem estado próprio.
 _Avoid_: ordem do dia, cronograma, roteiro

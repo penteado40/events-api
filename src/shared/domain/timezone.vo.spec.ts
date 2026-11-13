@@ -14,6 +14,18 @@ describe('Timezone', () => {
   })
 
   it.each([
+    'Asia/Kolkata',
+    'Europe/Kyiv',
+    'America/Nuuk',
+    'Asia/Ho_Chi_Minh',
+    'Asia/Yangon',
+    'Atlantic/Faroe',
+    'Pacific/Kanton',
+  ])('accepts the current IANA name %j, kept as sent even where Intl lists an older one', (raw) => {
+    expect(Timezone.create(raw).value).toBe(raw)
+  })
+
+  it.each([
     'America/Atlantida',
     'GMT-3',
     '-03:00',
@@ -24,10 +36,14 @@ describe('Timezone', () => {
     'EST',
     'GMT',
     'Brazil/East',
+    'US/Eastern',
+    'Etc/GMT+3',
     // Another casing or spacing of a real zone.
     'america/sao_paulo',
     'AMERICA/MANAUS',
     'utc',
+    'America/manaus',
+    'Asia/kolkata',
     ' America/Manaus ',
   ])('refuses %j with VALIDATION_ERROR', (raw) => {
     expect(() => Timezone.create(raw)).toThrow(new AppError('VALIDATION_ERROR'))

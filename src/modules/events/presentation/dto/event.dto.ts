@@ -30,7 +30,7 @@ const EventPeriodSchema = z.strictObject({
   }),
   timezone: z.string().min(1).max(64).meta({
     description:
-      'Fuso IANA padrão do lugar, com o nome canônico exato (America/Manaus, UTC); abreviação, alias antigo, outra caixa ou espaços em volta: 400 VALIDATION_ERROR. Volta como enviado, e as datas nunca são convertidas para UTC.',
+      'Fuso IANA do lugar, com o nome exato (America/Manaus, Asia/Kolkata, UTC); abreviação, alias de país (Brazil/East, US/Eastern), Etc/, offset, outra caixa ou espaços em volta: 400 VALIDATION_ERROR. Volta como enviado, e as datas nunca são convertidas para UTC.',
     example: 'America/Manaus',
   }),
 })

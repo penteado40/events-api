@@ -102,6 +102,23 @@ describe('Events', () => {
       expect(res.status).toBe(201)
     })
 
+    it('keeps a current IANA name Intl knows only as an alias exactly as sent', async () => {
+      const period = { startDate: '2026-11-13', endDate: '2026-11-16', timezone: 'Asia/Kolkata' }
+      const res = await t
+        .http()
+        .post(groupEventsUrl())
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ ...body, period })
+
+      expect(res.status).toBe(201)
+      expect(res.body.data.period).toEqual(period)
+      const fetched = await t
+        .http()
+        .get(eventUrl(res.body.data.id))
+        .auth(ownerToken, { type: 'bearer' })
+      expect(fetched.body.data.period.timezone).toBe('Asia/Kolkata')
+    })
+
     it('answers 400 EVENT_PERIOD_INVALID when the end date is before the start date', async () => {
       const res = await t
         .http()

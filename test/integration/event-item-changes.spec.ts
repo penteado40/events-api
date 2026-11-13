@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { GroupDirectory } from '../../src/modules/events/application/ports/group-directory.js'
+import { CreateEventItemUseCase } from '../../src/modules/events/application/use-cases/create-event-item.use-case.js'
+import { DeleteEventItemUseCase } from '../../src/modules/events/application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from '../../src/modules/events/application/use-cases/edit-event-item.use-case.js'
 import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
@@ -159,43 +161,80 @@ describe('Changes of an Event item', () => {
     ])
   })
 
-  it('undoes the edit and its Changes together when the unit fails after the Changes are written', async () => {
-    const itemId = await soundcheck()
-    const changeLog = t.app.get(ChangeRepository)
-    const unitOfWork = t.app.get(PrismaUnitOfWork)
-    let writtenInsideTheUnit = 0
-    class FailingAfterWrite extends ChangeRepository {
-      async create(id: number, changes: readonly NewChange[], stamp: Stamp): Promise<void> {
-        await changeLog.create(id, changes, stamp)
-        writtenInsideTheUnit = await unitOfWork
-          .transaction()
-          .change.count({ where: { eventId: id } })
-        throw new Error('forced failure after writing the Changes')
-      }
-    }
-    const editItem = new EditEventItemUseCase(
-      t.app.get(GroupDirectory),
-      t.app.get(EventRepository),
-      t.app.get(EventItemRepository),
-      new FailingAfterWrite(),
-      t.app.get(UnitOfWork),
-      clock,
-    )
+  describe('when the unit fails after the Changes are written', () => {
+    let writtenInsideTheUnit: number
+    let failing: ChangeRepository
 
-    await expect(
-      editItem.execute({
-        actor: { id: ownerId, isSuperAdmin: false },
-        eventId,
-        itemId,
-        name: 'Passagem de som (banda)',
-        time: '16:00',
-      }),
-    ).rejects.toThrow('forced failure after writing the Changes')
+    beforeEach(() => {
+      const changeLog = t.app.get(ChangeRepository)
+      const unitOfWork = t.app.get(PrismaUnitOfWork)
+      writtenInsideTheUnit = 0
+      failing = new (class extends ChangeRepository {
+        async create(id: number, changes: readonly NewChange[], stamp: Stamp): Promise<void> {
+          await changeLog.create(id, changes, stamp)
+          writtenInsideTheUnit = await unitOfWork
+            .transaction()
+            .change.count({ where: { eventId: id } })
+          throw new Error('forced failure after writing the Changes')
+        }
+      })()
+    })
 
-    // The creation's Change, then the two of the edit, seen inside the unit only.
-    expect(writtenInsideTheUnit).toBe(3)
-    expect((await changeRows()).map((c) => c.attribute)).toEqual(['item'])
-    const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
-    expect(row).toMatchObject({ name: 'Passagem de som', time: '15:00' })
+    const actor = () => ({ id: ownerId, isSuperAdmin: false })
+    const deps = () =>
+      [
+        t.app.get(GroupDirectory),
+        t.app.get(EventRepository),
+        t.app.get(EventItemRepository),
+        failing,
+        t.app.get(UnitOfWork),
+        clock,
+      ] as const
+
+    it('undoes the creation and its Change together', async () => {
+      await expect(
+        new CreateEventItemUseCase(...deps()).execute({
+          actor: actor(),
+          eventId,
+          name: 'Passagem de som',
+        }),
+      ).rejects.toThrow('forced failure after writing the Changes')
+
+      expect(writtenInsideTheUnit).toBe(1)
+      expect(await changeRows()).toEqual([])
+      expect(await testPrisma().eventItem.count({ where: { eventId } })).toBe(0)
+    })
+
+    it('undoes the edit and its Changes together', async () => {
+      const itemId = await soundcheck()
+
+      await expect(
+        new EditEventItemUseCase(...deps()).execute({
+          actor: actor(),
+          eventId,
+          itemId,
+          name: 'Passagem de som (banda)',
+          time: '16:00',
+        }),
+      ).rejects.toThrow('forced failure after writing the Changes')
+
+      // The creation's Change, then the two of the edit, seen inside the unit only.
+      expect(writtenInsideTheUnit).toBe(3)
+      expect((await changeRows()).map((c) => c.attribute)).toEqual(['item'])
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row).toMatchObject({ name: 'Passagem de som', time: '15:00' })
+    })
+
+    it('undoes the removal and its Change together', async () => {
+      const itemId = await soundcheck()
+
+      await expect(
+        new DeleteEventItemUseCase(...deps()).execute({ actor: actor(), eventId, itemId }),
+      ).rejects.toThrow('forced failure after writing the Changes')
+
+      expect(writtenInsideTheUnit).toBe(2)
+      expect(await changeRows()).toHaveLength(1)
+      expect(await testPrisma().eventItem.findUnique({ where: { id: itemId } })).not.toBeNull()
+    })
   })
 })

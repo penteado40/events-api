@@ -1,8 +1,7 @@
 import type { ChangeValue, NewChange } from './change.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import { eventItemReach, type ReachMember } from './event-item-reach.js'
-
-export type { ReachMember } from './event-item-reach.js'
+import type { GroupMemberRole } from './event-access-policy.js'
+import { eventItemReach } from './event-item-reach.js'
 
 /** The attributes of an Event item that make Changes on an edit, in the order their Changes come. */
 const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place'] as const
@@ -20,7 +19,7 @@ const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place'] as const
 export function eventItemChanges(
   before: EventItemSnapshot | null,
   after: EventItemSnapshot | null,
-  members: readonly ReachMember[],
+  members: readonly GroupMemberRole[],
 ): NewChange[] {
   const item = after ?? before
   if (item === null) return []

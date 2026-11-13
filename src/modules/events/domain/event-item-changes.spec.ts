@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { eventItemChanges, type ReachMember } from './event-item-changes.js'
+import type { GroupMemberRole } from './event-access-policy.js'
+import { eventItemChanges } from './event-item-changes.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 
 const SOUNDCHECK: EventItemSnapshot = {
@@ -11,7 +12,7 @@ const SOUNDCHECK: EventItemSnapshot = {
   state: 'PUBLISHED',
 }
 
-const MEMBERS: ReachMember[] = [
+const MEMBERS: GroupMemberRole[] = [
   { userId: 2, role: 'OWNER' },
   { userId: 3, role: 'VIEWER' },
   { userId: 7, role: 'OWNER' },

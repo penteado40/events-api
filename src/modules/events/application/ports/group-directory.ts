@@ -1,5 +1,4 @@
-import type { GroupRole } from '../../domain/event-access-policy.js'
-import type { ReachMember } from '../../domain/event-item-reach.js'
+import type { GroupMemberRole, GroupRole } from '../../domain/event-access-policy.js'
 
 /** What events asks the groups context about a Group and its Group members. */
 export abstract class GroupDirectory {
@@ -12,5 +11,5 @@ export abstract class GroupDirectory {
    * UnitOfWork ends (ADR-0014): a Viewer added or removed meanwhile waits, and
    * so does another holder of it, in arrival order. Only inside a UnitOfWork.
    */
-  abstract lockMembers(groupId: number): Promise<ReachMember[]>
+  abstract lockMembers(groupId: number): Promise<GroupMemberRole[]>
 }

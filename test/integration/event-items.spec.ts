@@ -294,6 +294,50 @@ describe('Event items and the schedule', () => {
     })
   })
 
+  describe('with the Event Cancelled', () => {
+    const cancelUrl = (action: 'cancel' | 'uncancel') => `/api/v1/events/${eventId}/${action}`
+
+    it('freezes creating, editing and deleting its items with 409 EVENT_CANCELLED, until it is uncancelled', async () => {
+      const itemId = (await createItem({ name: 'O que levar' })).body.data.id as number
+      await t.http().post(cancelUrl('cancel')).auth(ownerToken, { type: 'bearer' }).expect(200)
+
+      const refused409 = await createItem({ name: 'Bis' })
+      expect(refused409.status).toBe(409)
+      expect(refused409.body).toEqual(errorOf('EVENT_CANCELLED'))
+      await t
+        .http()
+        .patch(itemUrl(itemId))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Outro nome' })
+        .expect(409)
+        .expect((res) => expect(res.body).toEqual(errorOf('EVENT_CANCELLED')))
+      await t
+        .http()
+        .delete(itemUrl(itemId))
+        .auth(adminToken, { type: 'bearer' })
+        .expect(409)
+        .expect((res) => expect(res.body).toEqual(errorOf('EVENT_CANCELLED')))
+      const kept = await testPrisma().eventItem.findMany({ where: { eventId } })
+      expect(kept.map((i) => i.name)).toEqual(['O que levar'])
+
+      await t.http().post(cancelUrl('uncancel')).auth(ownerToken, { type: 'bearer' }).expect(200)
+      await t
+        .http()
+        .patch(itemUrl(itemId))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Outro nome' })
+        .expect(200)
+    })
+
+    it('answers a Viewer with 403 before the 409, as for an Event that is not Cancelled', async () => {
+      await t.http().post(cancelUrl('cancel')).auth(ownerToken, { type: 'bearer' }).expect(200)
+
+      const refused403 = await createItem({ name: 'Bis' }, viewerToken)
+      expect(refused403.status).toBe(403)
+      expect(refused403.body).toEqual(errorOf('FORBIDDEN'))
+    })
+  })
+
   describe('GET /api/v1/events/:id/schedule', () => {
     beforeEach(async () => {
       // Created out of order, as the production would.

@@ -30,7 +30,8 @@ export type EditEventItemOutput = EventItemView
 /**
  * An Owner of its Group, or the Super admin, edits the name, the date, the
  * time or the place of an Event item. A field left out stays as it is, null
- * clears it; what is left must keep the time only with a date.
+ * clears it; what is left must keep the time only with a date. A Cancelled
+ * Event is frozen: EVENT_CANCELLED.
  */
 export class EditEventItemUseCase {
   constructor(
@@ -55,6 +56,10 @@ export class EditEventItemUseCase {
     }
 
     return this.unitOfWork.run(async () => {
+      // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
+      const frozen = await this.events.lockById(event.id)
+      if (!frozen) throw new AppError('NOT_FOUND')
+      frozen.assertWritable()
       // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')

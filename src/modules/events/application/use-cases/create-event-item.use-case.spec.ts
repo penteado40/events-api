@@ -8,21 +8,29 @@ import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { CreateEventItemUseCase } from './create-event-item.use-case.js'
 
 const NOW = new Date('2026-11-01T12:00:00.000Z')
 
 describe('CreateEventItemUseCase', () => {
   let directory: FakeGroupDirectory
+  let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
   let createItem: CreateEventItemUseCase
   let eventId: number
 
   beforeEach(async () => {
     directory = new FakeGroupDirectory().addGroup(1)
-    const events = new InMemoryEventRepository()
+    events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
-    createItem = new CreateEventItemUseCase(directory, events, items, new FixedClock(NOW))
+    createItem = new CreateEventItemUseCase(
+      directory,
+      events,
+      items,
+      new InMemoryUnitOfWork(),
+      new FixedClock(NOW),
+    )
     const event = await events.create(
       {
         groupId: 1,
@@ -128,5 +136,20 @@ describe('CreateEventItemUseCase', () => {
     await expect(
       createItem.execute({ actor: SUPER_ADMIN, eventId: 42, name: 'Show' }),
     ).rejects.toEqual(new AppError('NOT_FOUND'))
+  })
+  async function cancelEvent(): Promise<void> {
+    const event = await events.findById(eventId)
+    event!.cancel({ by: null, at: NOW })
+    await events.save(event!)
+  }
+
+  it('refuses creating an item in a Cancelled Event with EVENT_CANCELLED, creating nothing', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    await cancelEvent()
+
+    await expect(createItem.execute({ actor: ANA, eventId, name: 'Bis' })).rejects.toEqual(
+      new AppError('EVENT_CANCELLED'),
+    )
+    expect(items.ofEvent(eventId)).toEqual([])
   })
 })

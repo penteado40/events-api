@@ -1,4 +1,5 @@
 import type { Clock } from '../../../../shared/application/clock.js'
+import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
@@ -27,13 +28,15 @@ export type CreateEventItemOutput = EventItemView
  * An Owner of its Group, or the Super admin, creates an Event item in an Event
  * in Draft, where it is born published. Date and time are local and optional,
  * the time only with a date (else EVENT_ITEM_TIME_WITHOUT_DATE); the place is
- * optional, and without its own zone the Event's applies.
+ * optional, and without its own zone the Event's applies. A Cancelled Event is
+ * frozen: EVENT_CANCELLED.
  */
 export class CreateEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
   ) {}
 
@@ -44,15 +47,20 @@ export class CreateEventItemUseCase {
 
     // Every Event is in Draft for now, so the item is born published. With
     // publishing the Event (PROJ-185, PROJ-194), it is born in Draft there.
-    const item = await this.items.create(
-      {
-        eventId: event.id,
-        name: EventItemName.create(input.name),
-        start: EventItemStart.create({ date: input.date ?? null, time: input.time ?? null }),
-        place: input.place == null ? null : EventItemPlace.create(input.place),
-      },
-      { by: input.actor.id, at: this.clock.now() },
-    )
-    return itemViewOf(item, event.period.timezone.value)
+    const props = {
+      eventId: event.id,
+      name: EventItemName.create(input.name),
+      start: EventItemStart.create({ date: input.date ?? null, time: input.time ?? null }),
+      place: input.place == null ? null : EventItemPlace.create(input.place),
+    }
+
+    return this.unitOfWork.run(async () => {
+      // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
+      const frozen = await this.events.lockById(event.id)
+      if (!frozen) throw new AppError('NOT_FOUND')
+      frozen.assertWritable()
+      const item = await this.items.create(props, { by: input.actor.id, at: this.clock.now() })
+      return itemViewOf(item, event.period.timezone.value)
+    })
   }
 }

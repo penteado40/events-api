@@ -37,10 +37,10 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Criar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event. Num Event em Draft, o item nasce publicado. Data e hora de início são locais e opcionais, nunca convertidas; hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. O lugar é opcional e, sem fuso próprio, vale o do Event. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group do Event. Num Event em Draft, o item nasce publicado. Data e hora de início são locais e opcionais, nunca convertidas; hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. O lugar é opcional e, sem fuso próprio, vale o do Event. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiCreatedResponse({ type: EventItemResponseDto })
-  @ApiErrors('EVENT_ITEM_TIME_WITHOUT_DATE', 'FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors('EVENT_ITEM_TIME_WITHOUT_DATE', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
   async create(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
@@ -54,10 +54,10 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Editar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar vai inteiro. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar vai inteiro. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiOkResponse({ type: EventItemResponseDto })
-  @ApiErrors('EVENT_ITEM_TIME_WITHOUT_DATE', 'FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors('EVENT_ITEM_TIME_WITHOUT_DATE', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
   async edit(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
@@ -73,10 +73,10 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Apagar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group do Event. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiNoContentResponse()
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors('EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
   async delete(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,

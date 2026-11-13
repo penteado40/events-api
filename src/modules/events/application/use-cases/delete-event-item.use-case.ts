@@ -12,7 +12,10 @@ export interface DeleteEventItemInput {
   itemId: number
 }
 
-/** An Owner of its Group, or the Super admin, deletes an Event item of the Event. */
+/**
+ * An Owner of its Group, or the Super admin, deletes an Event item of the Event.
+ * A Cancelled Event is frozen: EVENT_CANCELLED.
+ */
 export class DeleteEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
@@ -26,6 +29,10 @@ export class DeleteEventItemUseCase {
     if (!event) throw new AppError('NOT_FOUND')
     await requireEventsEditor(input.actor, event.groupId, this.directory)
     await this.unitOfWork.run(async () => {
+      // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
+      const frozen = await this.events.lockById(event.id)
+      if (!frozen) throw new AppError('NOT_FOUND')
+      frozen.assertWritable()
       // Under the lock, a delete or an edit that came first leaves it gone: NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')

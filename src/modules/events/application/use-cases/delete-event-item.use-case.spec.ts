@@ -16,6 +16,7 @@ const AT = new Date('2026-10-01T12:00:00.000Z')
 
 describe('DeleteEventItemUseCase', () => {
   let directory: FakeGroupDirectory
+  let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
   let deleteItem: DeleteEventItemUseCase
   let eventId: number
@@ -23,7 +24,7 @@ describe('DeleteEventItemUseCase', () => {
 
   beforeEach(async () => {
     directory = new FakeGroupDirectory().addGroup(1)
-    const events = new InMemoryEventRepository()
+    events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
     deleteItem = new DeleteEventItemUseCase(directory, events, items, new InMemoryUnitOfWork())
     eventId = (
@@ -80,5 +81,20 @@ describe('DeleteEventItemUseCase', () => {
     await expect(deleteItem.execute({ actor: ANA, eventId, itemId })).rejects.toEqual(
       new AppError('NOT_FOUND'),
     )
+  })
+  async function cancelEvent(): Promise<void> {
+    const event = await events.findById(eventId)
+    event!.cancel({ by: null, at: AT })
+    await events.save(event!)
+  }
+
+  it('refuses deleting an item of a Cancelled Event with EVENT_CANCELLED, keeping it', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    await cancelEvent()
+
+    await expect(deleteItem.execute({ actor: ANA, eventId, itemId })).rejects.toEqual(
+      new AppError('EVENT_CANCELLED'),
+    )
+    expect(items.ofEvent(eventId)).toHaveLength(1)
   })
 })

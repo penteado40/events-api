@@ -66,6 +66,19 @@ describe('AccessPolicy', () => {
     })
   })
 
+  describe('manageTeams', () => {
+    it('allows the Super admin and an Owner of the Group, not a Viewer or an outsider', () => {
+      expect(AccessPolicy.can(SUPER_ADMIN, { type: 'manageTeams', groupId: 10 })).toBe(true)
+      expect(AccessPolicy.can(OWNER_OF_10, { type: 'manageTeams', groupId: 10 })).toBe(true)
+      expect(AccessPolicy.can(VIEWER_OF_10, { type: 'manageTeams', groupId: 10 })).toBe(false)
+      expect(AccessPolicy.can(NOBODY, { type: 'manageTeams', groupId: 10 })).toBe(false)
+    })
+
+    it('does not carry over to another Group', () => {
+      expect(AccessPolicy.can(OWNER_OF_10, { type: 'manageTeams', groupId: 11 })).toBe(false)
+    })
+  })
+
   describe('manageOwners', () => {
     it('allows only the Super admin: Owners never give, take or demote Owners (ADR-0017)', () => {
       expect(AccessPolicy.can(SUPER_ADMIN, { type: 'manageOwners', groupId: 10 })).toBe(true)

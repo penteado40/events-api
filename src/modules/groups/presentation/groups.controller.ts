@@ -31,6 +31,7 @@ import { ListGroupsUseCase } from '../application/use-cases/list-groups.use-case
 import { PromoteToOwnerUseCase } from '../application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from '../application/use-cases/remove-owner.use-case.js'
 import { ReissueActivationLinkUseCase } from '../application/use-cases/reissue-activation-link.use-case.js'
+import { RemoveViewerUseCase } from '../application/use-cases/remove-viewer.use-case.js'
 import { RenameGroupUseCase } from '../application/use-cases/rename-group.use-case.js'
 import {
   ActivationLinkResponseDto,
@@ -63,6 +64,7 @@ export class GroupsController {
     private readonly demoteSelfUseCase: DemoteSelfUseCase,
     private readonly addViewerUseCase: AddViewerUseCase,
     private readonly reissueActivationLinkUseCase: ReissueActivationLinkUseCase,
+    private readonly removeViewerUseCase: RemoveViewerUseCase,
     private readonly listGroupMembersUseCase: ListGroupMembersUseCase,
   ) {}
 
@@ -307,5 +309,22 @@ export class GroupsController {
       userId,
     })
     return { data: GroupPresenter.toActivationLinkJson(activationLink) }
+  }
+
+  @Delete(':id/viewers/:userId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Tirar um Viewer do Group',
+    description:
+      'O Super admin ou um Owner do Group. O vínculo some e o Group publica o domain event GroupMemberRemoved depois do commit, por melhor esforço. Nenhum email é enviado. Um Pending user que fica sem nenhum outro vínculo tem o Activation link revogado. Se o User do caminho não é Viewer do Group, 404 (um Owner sai pelas rotas de Owner). Quem não é Group member do Group recebe 404; um Viewer, 403: Viewer não sai por conta própria.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  async removeViewer(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+  ): Promise<void> {
+    await this.removeViewerUseCase.execute({ actor, groupId, userId })
   }
 }

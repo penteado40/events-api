@@ -9,11 +9,7 @@ export const EventPresenter = {
       groupId: event.groupId,
       name: event.name,
       place: event.place,
-      period: {
-        startDate: event.period.startDate.value,
-        endDate: event.period.endDate.value,
-        timezone: event.period.timezone.value,
-      },
+      period: event.period.toValues(),
       state: event.state,
       isFinished,
       createdAt: event.createdAt.toISOString(),

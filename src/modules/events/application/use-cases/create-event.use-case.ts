@@ -4,7 +4,7 @@ import { EventPeriod, type EventPeriodValues } from '../../domain/event-period.v
 import { EventPlace } from '../../domain/event-place.vo.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireEventsManager } from '../event-access.js'
+import { requireEventsEditor } from '../event-access.js'
 import { type EventView, viewOf } from '../event-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
 
@@ -31,7 +31,7 @@ export class CreateEventUseCase {
   ) {}
 
   async execute(input: CreateEventInput): Promise<CreateEventOutput> {
-    await requireEventsManager(input.actor, input.groupId, this.directory)
+    await requireEventsEditor(input.actor, input.groupId, this.directory)
     const now = this.clock.now()
     const event = await this.events.create(
       {

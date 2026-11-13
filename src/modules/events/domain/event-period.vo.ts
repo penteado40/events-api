@@ -30,6 +30,15 @@ export class EventPeriod {
     return new EventPeriod(startDate, endDate, timezone)
   }
 
+  /** The period as it travels, with no conversion. */
+  toValues(): EventPeriodValues {
+    return {
+      startDate: this.startDate.value,
+      endDate: this.endDate.value,
+      timezone: this.timezone.value,
+    }
+  }
+
   /** Whether, at that instant, the zone of the Event is already past the end date. */
   hasEnded(at: Date): boolean {
     return this.endDate.isBefore(this.timezone.today(at))

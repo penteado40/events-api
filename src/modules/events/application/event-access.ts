@@ -17,13 +17,13 @@ export async function requireEventsReader(
 }
 
 /** Lets the user create and edit the Events of a Group: like the reader check, plus FORBIDDEN for a Viewer. */
-export async function requireEventsManager(
+export async function requireEventsEditor(
   user: ActingUser,
   groupId: number,
   directory: GroupDirectory,
 ): Promise<void> {
   const actor = await visibleActor(user, groupId, directory)
-  if (!EventAccessPolicy.can(actor, 'manageEvents')) throw new AppError('FORBIDDEN')
+  if (!EventAccessPolicy.can(actor, 'editEvents')) throw new AppError('FORBIDDEN')
 }
 
 async function visibleActor(

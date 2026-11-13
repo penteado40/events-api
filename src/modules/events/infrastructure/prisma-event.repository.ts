@@ -56,10 +56,11 @@ export class PrismaEventRepository extends EventRepository {
  * calendar day is read or written, so no zone ever shifts it.
  */
 function periodColumns(period: EventPeriod) {
+  const { startDate, endDate, timezone } = period.toValues()
   return {
-    startDate: new Date(`${period.startDate.value}T00:00:00.000Z`),
-    endDate: new Date(`${period.endDate.value}T00:00:00.000Z`),
-    timezone: period.timezone.value,
+    startDate: new Date(`${startDate}T00:00:00.000Z`),
+    endDate: new Date(`${endDate}T00:00:00.000Z`),
+    timezone,
   }
 }
 

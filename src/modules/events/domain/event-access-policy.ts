@@ -11,7 +11,7 @@ export type EventAction =
   /** See the Events of the Group (where and when, even in Draft): the Super admin or any Group member. */
   | 'viewEvents'
   /** Create and edit the Events of the Group: the Super admin or an Owner. */
-  | 'manageEvents'
+  | 'editEvents'
 
 /** Decides whether an actor may take an action on the Events of a Group (docs/arquitetura.md §2). */
 export const EventAccessPolicy = {
@@ -19,7 +19,7 @@ export const EventAccessPolicy = {
     switch (action) {
       case 'viewEvents':
         return actor.isSuperAdmin || actor.role !== null
-      case 'manageEvents':
+      case 'editEvents':
         return actor.isSuperAdmin || actor.role === 'OWNER'
     }
   },

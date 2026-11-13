@@ -5,7 +5,7 @@ import { EventPeriod, type EventPeriodValues } from '../../domain/event-period.v
 import { EventPlace } from '../../domain/event-place.vo.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
-import { requireEventsManager } from '../event-access.js'
+import { requireEventsEditor } from '../event-access.js'
 import { type EventView, viewOf } from '../event-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
 
@@ -35,7 +35,7 @@ export class EditEventUseCase {
   async execute(input: EditEventInput): Promise<EditEventOutput> {
     const event = await this.events.findById(input.eventId)
     if (!event) throw new AppError('NOT_FOUND')
-    await requireEventsManager(input.actor, event.groupId, this.directory)
+    await requireEventsEditor(input.actor, event.groupId, this.directory)
 
     const changes = {
       name: input.name === undefined ? undefined : EventName.create(input.name),

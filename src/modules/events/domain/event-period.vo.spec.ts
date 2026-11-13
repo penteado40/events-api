@@ -15,6 +15,12 @@ describe('EventPeriod', () => {
     expect(period.timezone.value).toBe('America/Manaus')
   })
 
+  it('goes back to the values it travels as, unchanged', () => {
+    const values = { startDate: '2026-11-13', endDate: '2026-11-16', timezone: 'America/Manaus' }
+
+    expect(EventPeriod.create(values).toValues()).toEqual(values)
+  })
+
   it('may start and end on the same day (a rehearsal of an afternoon)', () => {
     const period = EventPeriod.create({
       startDate: '2026-11-13',

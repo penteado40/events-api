@@ -20,6 +20,10 @@ enum GroupRole {
   VIEWER
 }
 
+enum EventState {
+  DRAFT
+}
+
 enum EmailKind {
   ACCOUNT_ACTIVATION_LINK
   GROUP_ACTIVATION_LINK
@@ -63,6 +67,8 @@ model User {
   updatedTeams           Team[]           @relation("TeamUpdated")
   createdEmailLogs       EmailLog[]       @relation("EmailLogCreated")
   updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
+  createdEvents          Event[]          @relation("EventCreated")
+  updatedEvents          Event[]          @relation("EventUpdated")
 
   groupMembers GroupMember[] @relation("GroupMemberUser")
 
@@ -100,6 +106,7 @@ model Group {
 
   members GroupMember[]
   teams   Team[]
+  events  Event[]
 
   @@map("groups")
 }
@@ -142,6 +149,32 @@ model Team {
 
   @@unique([groupId, name])
   @@map("teams")
+}
+
+// Any commitment of a Group (a rehearsal, a trip): only where and when; the rest are Event items.
+// The dates are calendar days in the zone of the place, never converted to UTC (ADR-0016).
+// A Finished event is derived (endDate before today in `timezone`), never stored.
+// The CHECK that endDate is not before startDate lives only in the migration.
+model Event {
+  id          Int        @id @default(autoincrement())
+  groupId     Int
+  name        String
+  place       String // Free text: a city or a venue
+  startDate   DateTime   @db.Date
+  endDate     DateTime   @db.Date
+  timezone    String // IANA zone of the place (America/Manaus)
+  state       EventState @default(DRAFT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?      @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?      @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, startDate])
+  @@map("events")
 }
 
 // One attempt to send an email (Email log): internal, for diagnosis, never resent from here.

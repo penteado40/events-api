@@ -69,3 +69,26 @@ export async function createTeam(options: { groupId: number; name?: string }) {
     data: { groupId: options.groupId, name: options.name ?? `Team ${sequence}` },
   })
 }
+
+/** An Event written straight to the table, to arrange state without the routes. Born in Draft. */
+export async function createEvent(options: {
+  groupId: number
+  name?: string
+  place?: string
+  startDate?: string
+  endDate?: string
+  timezone?: string
+}) {
+  sequence += 1
+  const startDate = options.startDate ?? '2026-11-13'
+  return testPrisma().event.create({
+    data: {
+      groupId: options.groupId,
+      name: options.name ?? `Event ${sequence}`,
+      place: options.place ?? 'Manaus - AM',
+      startDate: new Date(`${startDate}T00:00:00.000Z`),
+      endDate: new Date(`${options.endDate ?? startDate}T00:00:00.000Z`),
+      timezone: options.timezone ?? 'America/Manaus',
+    },
+  })
+}

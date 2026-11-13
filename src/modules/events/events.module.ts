@@ -108,9 +108,10 @@ import { EventsController } from './presentation/events.controller.js'
         directory: GroupDirectory,
         events: EventRepository,
         items: EventItemRepository,
+        unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new CreateEventItemUseCase(directory, events, items, clock),
-      inject: [GroupDirectory, EventRepository, EventItemRepository, Clock],
+      ) => new CreateEventItemUseCase(directory, events, items, unitOfWork, clock),
+      inject: [GroupDirectory, EventRepository, EventItemRepository, UnitOfWork, Clock],
     },
     {
       provide: EditEventItemUseCase,

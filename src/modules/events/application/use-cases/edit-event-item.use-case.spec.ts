@@ -140,4 +140,19 @@ describe('EditEventItemUseCase', () => {
       new AppError('NOT_FOUND'),
     )
   })
+  async function cancelEvent(): Promise<void> {
+    const event = await events.findById(eventId)
+    event!.cancel({ by: null, at: NOW })
+    await events.save(event!)
+  }
+
+  it('refuses editing an item of a Cancelled Event with EVENT_CANCELLED, keeping it', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    await cancelEvent()
+
+    await expect(
+      editItem.execute({ actor: ANA, eventId, itemId, name: 'Outro nome' }),
+    ).rejects.toEqual(new AppError('EVENT_CANCELLED'))
+    expect(items.ofEvent(eventId)[0]?.name).toBe('Passagem de som')
+  })
 })

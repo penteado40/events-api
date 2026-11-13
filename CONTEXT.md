@@ -9,7 +9,7 @@ A unidade de tenant da plataforma: um grupo artístico (ex.: o Vocal Livre) com 
 _Avoid_: banda, companhia, coral (são tipos de Group), tenant, organização
 
 **Event** (evento):
-Qualquer compromisso de um Group, de um ensaio de uma tarde a uma viagem de vários dias. Tem só onde (uma cidade ou um local, com o fuso padrão) e quando (o período); todo o resto é Event item. Uma viagem é só um Event com deslocamentos.
+Qualquer compromisso de um Group, de um ensaio de uma tarde a uma viagem de vários dias. Tem só onde (uma cidade ou um local) e quando (o período, com o fuso padrão do lugar); todo o resto é Event item. Uma viagem é só um Event com deslocamentos.
 _Avoid_: Trip, viagem (como conceito separado), agenda (lembra calendário), compromisso, turnê
 
 **Event item** (item do evento):

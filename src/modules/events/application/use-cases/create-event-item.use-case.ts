@@ -1,7 +1,7 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
-import { EventItemPlace } from '../../domain/event-item-place.vo.js'
+import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
@@ -9,14 +9,6 @@ import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
-
-/** A place as it comes in: each part optional, not all missing. */
-export interface EventItemPlaceInput {
-  name?: string | null
-  address?: string | null
-  /** IANA zone of the place; without it, the Event's applies. */
-  timezone?: string | null
-}
 
 export interface CreateEventItemInput {
   actor: ActingUser
@@ -50,6 +42,8 @@ export class CreateEventItemUseCase {
     if (!event) throw new AppError('NOT_FOUND')
     await requireEventsEditor(input.actor, event.groupId, this.directory)
 
+    // Every Event is in Draft for now, so the item is born published. With
+    // publishing the Event (PROJ-185, PROJ-194), it is born in Draft there.
     const item = await this.items.create(
       {
         eventId: event.id,

@@ -20,6 +20,10 @@ export class EventItemStart {
     return new EventItemStart(date, time)
   }
 
+  equals(other: EventItemStart): boolean {
+    return this.date?.value === other.date?.value && this.time?.value === other.time?.value
+  }
+
   /** From `YYYY-MM-DD` and `HH:mm`, each optional; a bad date or time is VALIDATION_ERROR. */
   static create(raw: { date: string | null; time: string | null }): EventItemStart {
     return EventItemStart.of(

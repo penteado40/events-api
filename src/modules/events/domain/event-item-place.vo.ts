@@ -11,6 +11,9 @@ export interface EventItemPlaceValues {
   timezone: string | null
 }
 
+/** A place as it comes in: each part optional or null, not all missing. */
+export type EventItemPlaceInput = Partial<EventItemPlaceValues>
+
 /**
  * Where an Event item happens: a name ("Teatro Amazonas"), an address and the
  * zone of the place, each optional but not all missing. Without a zone, the
@@ -25,11 +28,7 @@ export class EventItemPlace {
   ) {}
 
   /** Blank parts count as missing; a place with no part, a part too long or a bad zone is VALIDATION_ERROR. */
-  static create(raw: {
-    name?: string | null
-    address?: string | null
-    timezone?: string | null
-  }): EventItemPlace {
+  static create(raw: EventItemPlaceInput): EventItemPlace {
     const name = trimmedOrNull(raw.name, EVENT_ITEM_PLACE_NAME_MAX_LENGTH)
     const address = trimmedOrNull(raw.address, EVENT_ITEM_PLACE_ADDRESS_MAX_LENGTH)
     const timezone = raw.timezone == null ? null : Timezone.create(raw.timezone)
@@ -41,6 +40,14 @@ export class EventItemPlace {
 
   toValues(): EventItemPlaceValues {
     return { name: this.name, address: this.address, timezone: this.timezone?.value ?? null }
+  }
+
+  equals(other: EventItemPlace): boolean {
+    return (
+      this.name === other.name &&
+      this.address === other.address &&
+      this.timezone?.value === other.timezone?.value
+    )
   }
 }
 

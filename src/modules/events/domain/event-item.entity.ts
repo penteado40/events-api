@@ -110,12 +110,17 @@ export class EventItem {
       edit.date === undefined ? this.props.start.date : edit.date,
       edit.time === undefined ? this.props.start.time : edit.time,
     )
-    const before = this.snapshot()
-    if (edit.name !== undefined) this.props.name = edit.name.value
-    this.props.start = start
-    if (edit.place !== undefined) this.props.place = edit.place
+    const name = edit.name?.value ?? this.props.name
+    const place = edit.place === undefined ? this.props.place : edit.place
+    const changed =
+      name !== this.props.name ||
+      !start.equals(this.props.start) ||
+      !samePlace(place, this.props.place)
     // An edit that changes nothing is no write: the item keeps its last Author.
-    if (JSON.stringify(before) === JSON.stringify(this.snapshot())) return
+    if (!changed) return
+    this.props.name = name
+    this.props.start = start
+    this.props.place = place
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
   }
@@ -131,4 +136,9 @@ export class EventItem {
       state: this.props.state,
     }
   }
+}
+
+function samePlace(a: EventItemPlace | null, b: EventItemPlace | null): boolean {
+  if (a === null || b === null) return a === b
+  return a.equals(b)
 }

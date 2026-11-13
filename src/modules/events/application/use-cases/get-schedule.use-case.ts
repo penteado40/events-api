@@ -29,6 +29,6 @@ export class GetScheduleUseCase {
     const data = await this.reader.load(input.eventId)
     if (!data) throw new AppError('NOT_FOUND')
     await requireEventsEditor(input.actor, data.groupId, this.directory)
-    return assembleSchedule({ timezone: data.timezone, items: data.items })
+    return assembleSchedule(data)
   }
 }

@@ -3,14 +3,13 @@ import { AppError } from '../../../../shared/domain/app-error.js'
 import { LocalDate } from '../../../../shared/domain/local-date.vo.js'
 import { LocalTime } from '../../../../shared/domain/local-time.vo.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
-import { EventItemPlace } from '../../domain/event-item-place.vo.js'
+import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
-import type { EventItemPlaceInput } from './create-event-item.use-case.js'
 
 export interface EditEventItemInput {
   actor: ActingUser
@@ -50,13 +49,22 @@ export class EditEventItemUseCase {
     item.edit(
       {
         name: input.name === undefined ? undefined : EventItemName.create(input.name),
-        date: input.date == null ? input.date : LocalDate.create(input.date),
-        time: input.time == null ? input.time : LocalTime.create(input.time),
-        place: input.place == null ? input.place : EventItemPlace.create(input.place),
+        // undefined keeps it, null clears it, a value replaces it.
+        date: keepClearOr(input.date, LocalDate.create),
+        time: keepClearOr(input.time, LocalTime.create),
+        place: keepClearOr(input.place, EventItemPlace.create),
       },
       { by: input.actor.id, at: this.clock.now() },
     )
     await this.items.save(item)
     return itemViewOf(item, event.period.timezone.value)
   }
+}
+
+function keepClearOr<Raw, Value>(
+  raw: Raw | null | undefined,
+  create: (raw: Raw) => Value,
+): Value | null | undefined {
+  if (raw === undefined) return undefined
+  return raw === null ? null : create(raw)
 }

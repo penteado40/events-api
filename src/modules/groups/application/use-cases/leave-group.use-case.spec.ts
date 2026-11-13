@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { GroupName } from '../../domain/group-name.vo.js'
@@ -80,19 +80,14 @@ describe('LeaveGroupUseCase', () => {
 
   it('refuses with FORBIDDEN an Owner demoted between the check and the lock', async () => {
     members.add({ groupId: 1, userId: BIA.id, role: 'OWNER' })
-    const demoteAnaFirst = new LeaveGroupUseCase(
-      rosters,
-      {
-        findByUser: async (userId: number) => {
-          const found = await members.findByUser(userId)
-          members.update({ groupId: 1, userId: ANA.id, role: 'VIEWER' }, SCRIPT_STAMP)
-          return found
-        },
-      },
-      new InMemoryUnitOfWork(),
-    )
+    const findByUser = members.findByUser.bind(members)
+    vi.spyOn(members, 'findByUser').mockImplementation(async (userId) => {
+      const found = await findByUser(userId)
+      members.update({ groupId: 1, userId: ANA.id, role: 'VIEWER' }, SCRIPT_STAMP)
+      return found
+    })
 
-    await expect(demoteAnaFirst.execute({ actor: ANA, groupId: 1 })).rejects.toEqual(
+    await expect(leave.execute({ actor: ANA, groupId: 1 })).rejects.toEqual(
       new AppError('FORBIDDEN'),
     )
     expect(members.ofGroup(1)).toHaveLength(2)

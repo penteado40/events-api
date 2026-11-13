@@ -6,6 +6,7 @@ export interface UserSummary {
   id: number
   name: string
   email: string
+  phone: string
   isSuperAdmin: boolean
   isPending: boolean
 }
@@ -15,6 +16,7 @@ export function toUserSummary(user: User): UserSummary {
     id: user.id,
     name: user.name,
     email: user.email.value,
+    phone: user.phone.value,
     isSuperAdmin: user.isSuperAdmin,
     isPending: user.isPending,
   }

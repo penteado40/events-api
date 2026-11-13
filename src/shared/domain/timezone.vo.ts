@@ -1,8 +1,13 @@
 import { AppError } from './app-error.js'
 import { LocalDate } from './local-date.vo.js'
 
-/** An IANA name (`America/Manaus`, `UTC`); Intl also takes offsets (`-03:00`), which are not one. */
-const IANA_NAME = /^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/
+/**
+ * The canonical IANA names this runtime knows, spelled exactly as listed. Intl
+ * also takes offsets (`-03:00`), abbreviations (`EST`), legacy aliases
+ * (`Brazil/East`) and any casing, and resolves them to another name; none of
+ * those is accepted, so a zone is never rewritten. Node's list leaves `UTC` out.
+ */
+const IANA_NAMES: ReadonlySet<string> = new Set([...Intl.supportedValuesOf('timeZone'), 'UTC'])
 
 /**
  * The IANA time zone of a place (`America/Manaus`). It labels and orders the
@@ -15,21 +20,16 @@ export class Timezone {
     private readonly calendar: Intl.DateTimeFormat,
   ) {}
 
-  /** From an IANA name, written back as IANA spells it; anything else is VALIDATION_ERROR. */
+  /** From a canonical IANA name, kept exactly as written; anything else is VALIDATION_ERROR. */
   static create(raw: string): Timezone {
-    if (!IANA_NAME.test(raw)) throw new AppError('VALIDATION_ERROR')
-    let calendar: Intl.DateTimeFormat
-    try {
-      calendar = new Intl.DateTimeFormat('en-US', {
-        timeZone: raw,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-    } catch {
-      throw new AppError('VALIDATION_ERROR')
-    }
-    return new Timezone(calendar.resolvedOptions().timeZone, calendar)
+    if (!IANA_NAMES.has(raw)) throw new AppError('VALIDATION_ERROR')
+    const calendar = new Intl.DateTimeFormat('en-US', {
+      timeZone: raw,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+    return new Timezone(raw, calendar)
   }
 
   /** The calendar date in this zone at that instant. */

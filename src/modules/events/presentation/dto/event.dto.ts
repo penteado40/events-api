@@ -28,8 +28,9 @@ const EventPeriodSchema = z.strictObject({
       'Último dia do Event, igual ou depois de startDate (senão 400 EVENT_PERIOD_INVALID).',
     example: '2026-11-16',
   }),
-  timezone: z.string().trim().min(1).max(64).meta({
-    description: 'Fuso IANA padrão do lugar. As datas nunca são convertidas para UTC.',
+  timezone: z.string().min(1).max(64).meta({
+    description:
+      'Fuso IANA padrão do lugar, com o nome canônico exato (America/Manaus, UTC); abreviação, alias antigo, outra caixa ou espaços em volta: 400 VALIDATION_ERROR. Volta como enviado, e as datas nunca são convertidas para UTC.',
     example: 'America/Manaus',
   }),
 })

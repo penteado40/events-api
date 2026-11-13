@@ -119,6 +119,10 @@ describe('Events', () => {
       ['a date the calendar does not have', { ...MANAUS_PERIOD, endDate: '2026-11-31' }],
       ['an offset instead of an IANA zone', { ...MANAUS_PERIOD, timezone: '-04:00' }],
       ['a zone that does not exist', { ...MANAUS_PERIOD, timezone: 'America/Atlantida' }],
+      ['an abbreviation instead of an IANA zone', { ...MANAUS_PERIOD, timezone: 'EST' }],
+      ['a legacy alias of an IANA zone', { ...MANAUS_PERIOD, timezone: 'Brazil/East' }],
+      ['an IANA zone in another casing', { ...MANAUS_PERIOD, timezone: 'america/manaus' }],
+      ['an IANA zone with spaces around', { ...MANAUS_PERIOD, timezone: ' America/Manaus ' }],
     ])('answers 400 VALIDATION_ERROR for %s', async (_, period) => {
       const res = await t
         .http()

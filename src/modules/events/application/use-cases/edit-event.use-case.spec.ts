@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
+import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { EditEventUseCase } from './edit-event.use-case.js'
 
@@ -16,13 +18,17 @@ const NOW = new Date('2026-11-30T12:00:00.000Z')
 describe('EditEventUseCase', () => {
   let directory: FakeGroupDirectory
   let events: InMemoryEventRepository
+  let changes: InMemoryChangeRepository
+  let unitOfWork: InMemoryUnitOfWork
   let editEvent: EditEventUseCase
   let eventId: number
 
   beforeEach(async () => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
-    editEvent = new EditEventUseCase(directory, events, new FixedClock(NOW))
+    changes = new InMemoryChangeRepository()
+    unitOfWork = new InMemoryUnitOfWork()
+    editEvent = new EditEventUseCase(directory, events, changes, unitOfWork, new FixedClock(NOW))
     const event = await events.create(
       {
         groupId: 1,
@@ -78,6 +84,89 @@ describe('EditEventUseCase', () => {
     })
 
     expect(isFinished).toBe(false)
+  })
+
+  describe('Changes', () => {
+    const BIA = 3
+
+    beforeEach(() => {
+      directory.addMember(1, ANA.id, 'OWNER').addMember(1, BIA, 'VIEWER').addMember(2, 99, 'OWNER')
+    })
+
+    it('records one Change per attribute that changed, by the Author, at the instant of the Clock', async () => {
+      await editEvent.execute({
+        actor: ANA,
+        eventId,
+        name: 'Shows em Manaus',
+        place: 'Manaus',
+        period: { startDate: '2026-11-12', endDate: '2026-11-16', timezone: 'America/Manaus' },
+      })
+
+      expect(changes.ofEvent(eventId)).toEqual([
+        {
+          id: expect.any(Number),
+          eventId,
+          attribute: 'name',
+          before: 'Show em Manaus',
+          after: 'Shows em Manaus',
+          productionOnly: false,
+          reachBefore: [ANA.id, BIA],
+          reachAfter: [ANA.id, BIA],
+          by: ANA.id,
+          at: NOW,
+        },
+        {
+          id: expect.any(Number),
+          eventId,
+          attribute: 'period',
+          before: { startDate: '2026-11-13', endDate: '2026-11-16', timezone: 'America/Manaus' },
+          after: { startDate: '2026-11-12', endDate: '2026-11-16', timezone: 'America/Manaus' },
+          productionOnly: false,
+          reachBefore: [ANA.id, BIA],
+          reachAfter: [ANA.id, BIA],
+          by: ANA.id,
+          at: NOW,
+        },
+      ])
+    })
+
+    it('records no Change, and leaves the Event untouched, when nothing changed', async () => {
+      const { event } = await editEvent.execute({
+        actor: ANA,
+        eventId,
+        name: ' Show em Manaus ',
+        period: MANAUS_PERIOD,
+      })
+
+      expect(changes.ofEvent(eventId)).toEqual([])
+      expect(event).toMatchObject({ updatedAt: CREATED_AT, updatedById: null })
+    })
+
+    it('records the Changes of the Super admin, who is not in the reach (not a Group member)', async () => {
+      await editEvent.execute({ actor: SUPER_ADMIN, eventId, place: 'Teatro Amazonas' })
+
+      expect(changes.ofEvent(eventId)).toMatchObject([
+        { attribute: 'place', by: SUPER_ADMIN.id, reachBefore: [ANA.id, BIA] },
+      ])
+    })
+
+    it('writes the Event and its Changes in one unit of work', async () => {
+      await editEvent.execute({ actor: ANA, eventId, name: 'Turnê' })
+
+      expect(unitOfWork.runs()).toBe(1)
+    })
+
+    it('records no Change when the edit is refused', async () => {
+      await expect(
+        editEvent.execute({
+          actor: ANA,
+          eventId,
+          name: 'Turnê',
+          period: { startDate: '2026-11-16', endDate: '2026-11-13', timezone: 'America/Manaus' },
+        }),
+      ).rejects.toEqual(new AppError('EVENT_PERIOD_INVALID'))
+      expect(changes.ofEvent(eventId)).toEqual([])
+    })
   })
 
   it('lets the Super admin edit the Event', async () => {

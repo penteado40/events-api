@@ -1,5 +1,8 @@
 import type { Clock } from '../../../../shared/application/clock.js'
+import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
+import type { ChangeRepository } from '../../domain/change.repository.js'
+import { eventChanges } from '../../domain/event-changes.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod, type EventPeriodValues } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
@@ -24,27 +27,49 @@ export type EditEventOutput = EventView
  * An Owner of its Group, or the Super admin, edits the name, the place or the
  * period of an Event, a Finished event included. A field left out stays as it
  * is; an end date before the start date is EVENT_PERIOD_INVALID.
+ *
+ * Each attribute that changed becomes a Change (CONTEXT.md), written in the
+ * same unit of work as the Event, never by a domain event handler (amendment
+ * of ADR-0010): both commit or neither does. An edit that changes nothing
+ * writes nothing. The reach of a Change of an Event is every Group member.
  */
 export class EditEventUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
+    private readonly changeLog: ChangeRepository,
+    private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
   ) {}
 
   async execute(input: EditEventInput): Promise<EditEventOutput> {
-    const event = await this.events.findById(input.eventId)
-    if (!event) throw new AppError('NOT_FOUND')
-    await requireEventsEditor(input.actor, event.groupId, this.directory)
+    const found = await this.events.findById(input.eventId)
+    if (!found) throw new AppError('NOT_FOUND')
+    const { groupId } = found
+    await requireEventsEditor(input.actor, groupId, this.directory)
 
     const changes = {
       name: input.name === undefined ? undefined : EventName.create(input.name),
       place: input.place === undefined ? undefined : EventPlace.create(input.place),
       period: input.period === undefined ? undefined : EventPeriod.create(input.period),
     }
+    // Where and when are seen by every Group member (Draft included).
+    const reach = await this.directory.memberIds(groupId)
     const now = this.clock.now()
-    event.edit(changes, { by: input.actor.id, at: now })
-    await this.events.save(event)
-    return viewOf(event, now)
+    const stamp = { by: input.actor.id, at: now }
+
+    return this.unitOfWork.run(async () => {
+      // Re-read under the lock: the Changes start from what the last edit left.
+      const event = await this.events.lockById(input.eventId)
+      if (!event) throw new AppError('NOT_FOUND')
+      const before = event.snapshot(reach)
+      event.edit(changes, stamp)
+      const recorded = eventChanges(before, event.snapshot(reach), stamp)
+      if (recorded.length > 0) {
+        await this.events.save(event)
+        await this.changeLog.add(event.id, recorded)
+      }
+      return viewOf(event, now)
+    })
   }
 }

@@ -10,6 +10,11 @@ export class InMemoryEventRepository extends EventRepository {
     return this.events.get(id) ?? null
   }
 
+  /** The in-memory unit of work already runs one unit at a time: no lock to take. */
+  async lockById(id: number): Promise<Event | null> {
+    return this.findById(id)
+  }
+
   async findByGroup(groupId: number): Promise<Event[]> {
     return [...this.events.values()]
       .filter((e) => e.groupId === groupId)

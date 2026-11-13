@@ -1,4 +1,5 @@
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import type { EventSnapshot } from './event-changes.js'
 import type { EventName } from './event-name.vo.js'
 import type { EventPeriod } from './event-period.vo.js'
 import type { EventPlace } from './event-place.vo.js'
@@ -83,12 +84,32 @@ export class Event {
     return this.props.period.hasEnded(at)
   }
 
-  /** Changes the name, the place or the period, a Finished event included. */
+  /**
+   * Changes the name, the place or the period, a Finished event included. An
+   * edit that changes nothing is no write: the Event keeps its last Author.
+   */
   edit(changes: EventChanges, stamp: Stamp): void {
-    if (changes.name) this.props.name = changes.name.value
-    if (changes.place) this.props.place = changes.place.value
-    if (changes.period) this.props.period = changes.period
+    const name = changes.name?.value ?? this.props.name
+    const place = changes.place?.value ?? this.props.place
+    const period = changes.period ?? this.props.period
+    const changed =
+      name !== this.props.name || place !== this.props.place || !period.equals(this.props.period)
+    if (!changed) return
+    this.props.name = name
+    this.props.place = place
+    this.props.period = period
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
+  }
+
+  /** The Event as plain data at this moment, with who it reaches, for its Changes. */
+  snapshot(reach: readonly number[]): EventSnapshot {
+    return {
+      name: this.props.name,
+      place: this.props.place,
+      period: this.props.period.toValues(),
+      state: this.props.state,
+      reach: [...reach],
+    }
   }
 }

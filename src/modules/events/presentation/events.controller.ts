@@ -80,7 +80,7 @@ export class EventsController {
   @ApiOperation({
     summary: 'Editar um Event',
     description:
-      'O Super admin ou um Owner do Group do Event edita nome, onde e quando, também de um Finished event. O que não é enviado não muda; o período vai inteiro. Data final antes da inicial: 400 EVENT_PERIOD_INVALID. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group do Event edita nome, onde e quando, também de um Finished event. O que não é enviado não muda; o período vai inteiro. Cada atributo alterado vira uma Change no Change log, gravada junto com a edição; salvar sem alterar nada não grava nada. Data final antes da inicial: 400 EVENT_PERIOD_INVALID. Quem não é Group member do Group recebe 404; um Viewer, 403.',
   })
   @ApiOkResponse({ type: EventResponseDto })
   @ApiErrors('EVENT_PERIOD_INVALID', 'FORBIDDEN', 'NOT_FOUND')

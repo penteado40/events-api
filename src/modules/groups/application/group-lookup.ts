@@ -23,4 +23,9 @@ export class GroupLookup {
     const member = (await this.members.findByUser(userId)).find((m) => m.groupId === groupId)
     return member?.role ?? null
   }
+
+  /** The ids of every Group member of the Group (Owners and Viewers), in the order they joined. */
+  async memberIds(groupId: number): Promise<number[]> {
+    return (await this.members.findByGroup(groupId)).map((m) => m.userId)
+  }
 }

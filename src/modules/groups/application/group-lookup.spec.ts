@@ -30,6 +30,15 @@ describe('GroupLookup', () => {
     expect(await lookup.roleIn(2, ANA.id)).toBe('OWNER')
   })
 
+  it('gives the ids of every Group member of that Group only, in the order they joined', async () => {
+    members.add({ groupId: 1, userId: 5, role: 'VIEWER' })
+    members.add({ groupId: 2, userId: 6, role: 'OWNER' })
+    members.add({ groupId: 1, userId: ANA.id, role: 'OWNER' })
+
+    expect(await lookup.memberIds(1)).toEqual([5, ANA.id])
+    expect(await lookup.memberIds(42)).toEqual([])
+  })
+
   it('gives null to who is not a Group member of the Group', async () => {
     members.add({ groupId: 2, userId: ANA.id, role: 'OWNER' })
 

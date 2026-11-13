@@ -39,6 +39,15 @@ export class EventPeriod {
     }
   }
 
+  /** Whether both periods have the same dates and the same zone. */
+  equals(other: EventPeriod): boolean {
+    return (
+      this.startDate.value === other.startDate.value &&
+      this.endDate.value === other.endDate.value &&
+      this.timezone.value === other.timezone.value
+    )
+  }
+
   /** Whether, at that instant, the zone of the Event is already past the end date. */
   hasEnded(at: Date): boolean {
     return this.endDate.isBefore(this.timezone.today(at))

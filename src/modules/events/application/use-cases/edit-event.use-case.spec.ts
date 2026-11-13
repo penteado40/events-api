@@ -106,6 +106,7 @@ describe('EditEventUseCase', () => {
         {
           id: expect.any(Number),
           eventId,
+          eventItemId: null,
           attribute: 'name',
           before: 'Show em Manaus',
           after: 'Shows em Manaus',
@@ -118,6 +119,7 @@ describe('EditEventUseCase', () => {
         {
           id: expect.any(Number),
           eventId,
+          eventItemId: null,
           attribute: 'period',
           before: { startDate: '2026-11-13', endDate: '2026-11-16', timezone: 'America/Manaus' },
           after: { startDate: '2026-11-12', endDate: '2026-11-16', timezone: 'America/Manaus' },

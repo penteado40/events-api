@@ -64,6 +64,7 @@ describe('CancelEventUseCase', () => {
     expect(changes.ofEvent(eventId)[1]).toEqual({
       id: expect.any(Number),
       eventId,
+      eventItemId: null,
       attribute: 'state',
       before: 'PUBLISHED',
       after: 'CANCELLED',

@@ -1,6 +1,7 @@
 import type { GroupLookup } from '../../groups/index.js'
 import { GroupDirectory } from '../application/ports/group-directory.js'
 import type { GroupRole } from '../domain/event-access-policy.js'
+import type { ReachMember } from '../domain/event-item-reach.js'
 
 /** The GroupDirectory port over the read-only queries groups offers other contexts. */
 export class InProcessGroupDirectory extends GroupDirectory {
@@ -16,7 +17,7 @@ export class InProcessGroupDirectory extends GroupDirectory {
     return this.lookup.roleIn(groupId, userId)
   }
 
-  lockMemberIds(groupId: number): Promise<number[]> {
-    return this.lookup.lockMemberIds(groupId)
+  lockMembers(groupId: number): Promise<ReachMember[]> {
+    return this.lookup.lockMembers(groupId)
   }
 }

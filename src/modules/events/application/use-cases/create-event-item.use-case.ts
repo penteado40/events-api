@@ -1,6 +1,8 @@
 import type { Clock } from '../../../../shared/application/clock.js'
 import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
+import type { ChangeRepository } from '../../domain/change.repository.js'
+import { eventItemChanges } from '../../domain/event-item-changes.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
@@ -30,12 +32,17 @@ export type CreateEventItemOutput = EventItemView
  * the time only with a date (else EVENT_ITEM_TIME_WITHOUT_DATE); the place is
  * optional, and without its own zone the Event's applies. A Cancelled Event is
  * frozen: EVENT_CANCELLED.
+ *
+ * The creation is a Change of the item, written in the same unit of work
+ * (amendment of ADR-0010), reaching whom the reach rule says, over the Group
+ * members read under the Group's lock; before it, the item reached no one.
  */
 export class CreateEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly changeLog: ChangeRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
   ) {}
@@ -54,12 +61,17 @@ export class CreateEventItemUseCase {
       place: input.place == null ? null : EventItemPlace.create(input.place),
     }
 
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+
     return this.unitOfWork.run(async () => {
+      // Locks go Group, then Event, always (see EditEventItemUseCase).
+      const members = await this.directory.lockMembers(event.groupId)
       // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const item = await this.items.create(props, { by: input.actor.id, at: this.clock.now() })
+      const item = await this.items.create(props, stamp)
+      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), members), stamp)
       return itemViewOf(item, event.period.timezone.value)
     })
   }

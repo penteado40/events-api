@@ -39,7 +39,7 @@ export async function changeEventState(
 
   return deps.unitOfWork.run(async () => {
     // Locks go Group, then Event, always (see EditEventUseCase).
-    const reach = await deps.directory.lockMemberIds(groupId)
+    const reach = (await deps.directory.lockMembers(groupId)).map((m) => m.userId)
     // Re-read under the lock: of two moves that race, the second sees the first's state.
     const event = await deps.events.lockById(eventId)
     if (!event) throw new AppError('NOT_FOUND')

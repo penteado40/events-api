@@ -9,6 +9,7 @@ import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { EditEventItemUseCase } from './edit-event-item.use-case.js'
@@ -20,6 +21,7 @@ describe('EditEventItemUseCase', () => {
   let directory: FakeGroupDirectory
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
+  let changeLog: InMemoryChangeRepository
   let editItem: EditEventItemUseCase
   let eventId: number
   let itemId: number
@@ -28,10 +30,12 @@ describe('EditEventItemUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
+    changeLog = new InMemoryChangeRepository()
     editItem = new EditEventItemUseCase(
       directory,
       events,
       items,
+      changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),
     )
@@ -82,6 +86,41 @@ describe('EditEventItemUseCase', () => {
     expect(when).toEqual({ date: '2026-11-14', time: '16:00', timezone: 'America/Manaus' })
   })
 
+  it('records moving the Passagem de som from 15h to 16h as a Change of the time, by its Author', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER')
+
+    await editItem.execute({ actor: ANA, eventId, itemId, time: '16:00' })
+
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: itemId,
+        attribute: 'time',
+        before: '15:00',
+        after: '16:00',
+        reachBefore: [ANA.id],
+        reachAfter: [ANA.id],
+        by: ANA.id,
+        at: NOW,
+      }),
+    ])
+  })
+
+  it('records one Change per attribute that changed', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+
+    await editItem.execute({
+      actor: ANA,
+      eventId,
+      itemId,
+      name: 'Passagem de som (banda)',
+      date: '2026-11-15',
+      time: '15:00',
+      place: { name: 'Teatro Amazonas' },
+    })
+
+    expect(changeLog.ofEvent(eventId).map((c) => c.attribute)).toEqual(['name', 'date', 'place'])
+  })
+
   it('clears the date and the time together, moving the item to the General info', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
 
@@ -106,6 +145,7 @@ describe('EditEventItemUseCase', () => {
     const { item } = await editItem.execute({ actor: ANA, eventId, itemId, time: '15:00' })
 
     expect(item).toMatchObject({ updatedAt: CREATED_AT, updatedById: null })
+    expect(changeLog.ofEvent(eventId)).toEqual([])
   })
 
   it('lets the Super admin edit the Event item', async () => {

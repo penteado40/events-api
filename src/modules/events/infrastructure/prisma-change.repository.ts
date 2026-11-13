@@ -16,6 +16,7 @@ export class PrismaChangeRepository extends ChangeRepository {
     await this.unitOfWork.client.change.createMany({
       data: changes.map((change) => ({
         eventId,
+        eventItemId: change.eventItemId,
         attribute: change.attribute,
         before: change.before as Prisma.InputJsonValue,
         after: change.after as Prisma.InputJsonValue,

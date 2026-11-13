@@ -15,6 +15,7 @@ export function eventChanges(before: EventSnapshot, after: EventSnapshot): NewCh
   return EVENT_ATTRIBUTES.filter(
     (attribute) => !sameValue(before[attribute], after[attribute]),
   ).map((attribute) => ({
+    eventItemId: null,
     attribute,
     before: valueOf(before[attribute]),
     after: valueOf(after[attribute]),

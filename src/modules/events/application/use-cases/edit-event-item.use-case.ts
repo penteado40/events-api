@@ -3,6 +3,8 @@ import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { LocalDate } from '../../../../shared/domain/local-date.vo.js'
 import { LocalTime } from '../../../../shared/domain/local-time.vo.js'
+import type { ChangeRepository } from '../../domain/change.repository.js'
+import { eventItemChanges } from '../../domain/event-item-changes.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
@@ -32,12 +34,18 @@ export type EditEventItemOutput = EventItemView
  * time or the place of an Event item. A field left out stays as it is, null
  * clears it; what is left must keep the time only with a date. A Cancelled
  * Event is frozen: EVENT_CANCELLED.
+ *
+ * Each attribute that changed becomes a Change, written in the same unit of
+ * work as the item (amendment of ADR-0010); an edit that changes nothing
+ * writes nothing. The reach of before and of after comes from the reach rule
+ * over the Group members, read under the Group's lock.
  */
 export class EditEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly changeLog: ChangeRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
   ) {}
@@ -45,7 +53,8 @@ export class EditEventItemUseCase {
   async execute(input: EditEventItemInput): Promise<EditEventItemOutput> {
     const event = await this.events.findById(input.eventId)
     if (!event) throw new AppError('NOT_FOUND')
-    await requireEventsEditor(input.actor, event.groupId, this.directory)
+    const { groupId } = event
+    await requireEventsEditor(input.actor, groupId, this.directory)
 
     const edit = {
       name: input.name === undefined ? undefined : EventItemName.create(input.name),
@@ -55,7 +64,12 @@ export class EditEventItemUseCase {
       place: keepClearOr(input.place, EventItemPlace.create),
     }
 
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+
     return this.unitOfWork.run(async () => {
+      // The roster is held until commit (ADR-0014), so the reach is the one
+      // that stands when the Changes land. Locks go Group, Event, item, always.
+      const members = await this.directory.lockMembers(groupId)
       // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
@@ -63,8 +77,13 @@ export class EditEventItemUseCase {
       // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')
-      item.edit(edit, { by: input.actor.id, at: this.clock.now() })
-      await this.items.save(item)
+      const before = item.snapshot()
+      item.edit(edit, stamp)
+      const changes = eventItemChanges(before, item.snapshot(), members)
+      if (changes.length > 0) {
+        await this.items.save(item)
+        await this.changeLog.create(event.id, changes, stamp)
+      }
       return itemViewOf(item, event.period.timezone.value)
     })
   }

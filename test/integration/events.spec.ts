@@ -358,4 +358,31 @@ describe('Events', () => {
       expect((await t.http().patch(eventUrl(event.id)).send({ name: 'Outro' })).status).toBe(401)
     })
   })
+
+  describe('an id out of the range of ids', () => {
+    // Above int4: the database would refuse it with an error of its own.
+    const HUGE_ID = '99999999999'
+
+    it.each([
+      ['GET /groups/:id/events', () => t.http().get(`/api/v1/groups/${HUGE_ID}/events`)],
+      [
+        'POST /groups/:id/events',
+        () =>
+          t
+            .http()
+            .post(`/api/v1/groups/${HUGE_ID}/events`)
+            .send({ name: 'Ensaio', place: 'Sede', period: MANAUS_PERIOD }),
+      ],
+      ['GET /events/:id', () => t.http().get(`/api/v1/events/${HUGE_ID}`)],
+      [
+        'PATCH /events/:id',
+        () => t.http().patch(`/api/v1/events/${HUGE_ID}`).send({ name: 'Outro' }),
+      ],
+    ])('answers 400 VALIDATION_ERROR on %s', async (_, request) => {
+      const res = await request().auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(400)
+      expect(res.body).toEqual(errorOf('VALIDATION_ERROR'))
+    })
+  })
 })

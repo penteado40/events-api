@@ -1,7 +1,8 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
+import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import type { User } from '../../identity/index.js'
 import { CreateEventUseCase } from '../application/use-cases/create-event.use-case.js'
 import { EditEventUseCase } from '../application/use-cases/edit-event.use-case.js'
@@ -36,7 +37,7 @@ export class EventsController {
   @ApiErrors('EVENT_PERIOD_INVALID', 'FORBIDDEN', 'NOT_FOUND')
   async create(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
     @Body() body: CreateEventDto,
   ): Promise<EventResponseDto> {
     const view = await this.createEventUseCase.execute({ actor, groupId, ...body })
@@ -53,7 +54,7 @@ export class EventsController {
   @ApiErrors('NOT_FOUND')
   async list(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<EventListResponseDto> {
     const views = await this.listEventsUseCase.execute({ actor, groupId })
     return { data: views.map(EventPresenter.toJson) }
@@ -69,7 +70,7 @@ export class EventsController {
   @ApiErrors('NOT_FOUND')
   async get(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) eventId: number,
+    @Param('id', ParseIdPipe) eventId: number,
   ): Promise<EventResponseDto> {
     const view = await this.getEventUseCase.execute({ actor, eventId })
     return { data: EventPresenter.toJson(view) }
@@ -85,7 +86,7 @@ export class EventsController {
   @ApiErrors('EVENT_PERIOD_INVALID', 'FORBIDDEN', 'NOT_FOUND')
   async edit(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) eventId: number,
+    @Param('id', ParseIdPipe) eventId: number,
     @Body() body: EditEventDto,
   ): Promise<EventResponseDto> {
     const view = await this.editEventUseCase.execute({ actor, eventId, ...body })

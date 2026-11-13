@@ -253,6 +253,16 @@ describe('Groups', () => {
 
       expect(res.status).toBe(401)
     })
+
+    it.each(['abc', '0', '99999999999'])(
+      'answers 400 VALIDATION_ERROR for the id %j, not a Group id',
+      async (id) => {
+        const res = await t.http().get(`/api/v1/groups/${id}`).auth(adminToken, { type: 'bearer' })
+
+        expect(res.status).toBe(400)
+        expect(res.body).toEqual(errorOf('VALIDATION_ERROR'))
+      },
+    )
   })
 
   describe('GET /api/v1/groups/:id/members', () => {

@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, Param, ParseIntPipe, Post } from '@nestjs/common'
+import { Body, Controller, HttpCode, Param, Post } from '@nestjs/common'
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
+import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import { CreateUserUseCase } from '../application/use-cases/create-user.use-case.js'
 import { IssueActivationLinkUseCase } from '../application/use-cases/issue-activation-link.use-case.js'
 import type { User } from '../domain/user.entity.js'
@@ -53,7 +54,7 @@ export class UsersController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')
   async issueActivationLink(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) userId: number,
   ): Promise<ActivationLinkResponseDto> {
     const link = await this.issueActivationLinkUseCase.execute({ actor, userId })
     return { data: UserPresenter.toActivationLinkJson(link) }

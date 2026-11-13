@@ -46,7 +46,11 @@ const EventJsonSchema = z.object({
     endDate: z.iso.date().meta({ example: '2026-11-16' }),
     timezone: z.string().meta({ example: 'America/Manaus' }),
   }),
-  state: z.enum(EVENT_STATES).meta({ example: 'DRAFT' }),
+  state: z.enum(EVENT_STATES).meta({
+    description:
+      'DRAFT: nasce assim, e todo Group member vê onde e quando; PUBLISHED: publicado pela produção; CANCELLED: não vai mais acontecer.',
+    example: 'DRAFT',
+  }),
   isFinished: z.boolean().meta({
     description: 'Finished event: a data final já passou no fuso do Event. Continua editável.',
     example: false,

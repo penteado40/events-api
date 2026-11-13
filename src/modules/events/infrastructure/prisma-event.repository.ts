@@ -57,6 +57,7 @@ export class PrismaEventRepository extends EventRepository {
         name: event.name,
         place: event.place,
         ...periodColumns(event.period),
+        state: event.state,
         updatedAt: event.updatedAt,
         updatedById: event.updatedById,
       },

@@ -36,6 +36,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 400,
     message: 'A data final do Event não pode ser antes da data inicial.',
   },
+  EVENT_NOT_DRAFT: { status: 409, message: 'Só um Event em Draft pode ser publicado.' },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

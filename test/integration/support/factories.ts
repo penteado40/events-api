@@ -1,5 +1,6 @@
 import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import type { Role } from '../../../src/modules/identity/index.js'
+import type { EventState } from '../../../src/modules/events/domain/event.entity.js'
 import { testPrisma } from './database.js'
 
 let sequence = 0
@@ -70,9 +71,10 @@ export async function createTeam(options: { groupId: number; name?: string }) {
   })
 }
 
-/** An Event written straight to the table, to arrange state without the routes. Born in Draft. */
+/** An Event written straight to the table, to arrange state without the routes. Born in Draft unless a state is given. */
 export async function createEvent(options: {
   groupId: number
+  state?: EventState
   name?: string
   place?: string
   startDate?: string
@@ -89,6 +91,7 @@ export async function createEvent(options: {
       startDate: new Date(`${startDate}T00:00:00.000Z`),
       endDate: new Date(`${options.endDate ?? startDate}T00:00:00.000Z`),
       timezone: options.timezone ?? 'America/Manaus',
+      state: options.state,
     },
   })
 }

@@ -16,6 +16,7 @@ export type ErrorCode =
   | 'LAST_OWNER'
   | 'TEAM_NAME_TAKEN'
   | 'EVENT_PERIOD_INVALID'
+  | 'EVENT_NOT_DRAFT'
   | 'RATE_LIMITED'
   | 'INTERNAL_ERROR'
 

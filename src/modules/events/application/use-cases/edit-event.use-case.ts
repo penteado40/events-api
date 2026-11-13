@@ -57,11 +57,13 @@ export class EditEventUseCase {
     const stamp = { by: input.actor.id, at: now }
 
     return this.unitOfWork.run(async () => {
+      // Where and when are seen by every Group member (Draft included). The
+      // roster is held until commit (ADR-0014), so the reach is the one that
+      // stands when the Changes land. Locks go Group, then Event, always.
+      const reach = await this.directory.lockMemberIds(groupId)
       // Re-read under the lock: the Changes start from what the last edit left.
       const event = await this.events.lockById(input.eventId)
       if (!event) throw new AppError('NOT_FOUND')
-      // Where and when are seen by every Group member (Draft included).
-      const reach = await this.directory.memberIds(groupId)
       const before = event.snapshot(reach)
       event.edit(edit, stamp)
       const changes = eventChanges(before, event.snapshot(reach))

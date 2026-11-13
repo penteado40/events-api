@@ -21,7 +21,8 @@ export class FakeGroupDirectory extends GroupDirectory {
     return this.groups.has(groupId)
   }
 
-  async memberIds(groupId: number): Promise<number[]> {
+  /** The in-memory unit of work already runs one unit at a time: no lock to take. */
+  async lockMemberIds(groupId: number): Promise<number[]> {
     return [...this.roles.keys()]
       .map((key) => key.split(':').map(Number) as [number, number])
       .filter(([group]) => group === groupId)

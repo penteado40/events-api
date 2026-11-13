@@ -4,6 +4,7 @@ import { EditEventUseCase } from '../../src/modules/events/application/use-cases
 import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
 import { EventRepository } from '../../src/modules/events/domain/event.repository.js'
+import { GroupRosterRepository } from '../../src/modules/groups/domain/group-roster.repository.js'
 import { Clock } from '../../src/shared/application/clock.js'
 import { FixedClock } from '../../src/shared/application/testing/fixed-clock.js'
 import { UnitOfWork } from '../../src/shared/application/unit-of-work.js'
@@ -18,6 +19,20 @@ import {
   createUser,
   sessionTokenFor,
 } from './support/factories.js'
+
+/** Whether the promise is still pending after `ms`. */
+async function stillPending(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  const pending = Symbol('pending')
+  const settled = promise.then(
+    () => 'settled',
+    () => 'settled',
+  )
+  const winner = await Promise.race([
+    settled,
+    new Promise((resolve) => setTimeout(() => resolve(pending), ms)),
+  ])
+  return winner === pending
+}
 
 const NOW = new Date('2026-11-13T15:00:00.000Z')
 const CREATED_AT = new Date('2026-10-01T12:00:00.000Z')
@@ -57,7 +72,12 @@ describe('Changes of an Event', () => {
     await createGroupMember({ groupId, userId: owner.id, role: 'OWNER' })
     await createGroupMember({ groupId, userId: viewer.id, role: 'VIEWER' })
     await createGroupMember({ groupId: otherGroupId, userId: outsider.id, role: 'OWNER' })
-    ownerToken = sessionTokenFor(owner)
+    // Linked up front: the burst of concurrent edits below must not race the first sign-in.
+    await testPrisma().user.update({
+      where: { id: owner.id },
+      data: { clerkId: `user_test_${owner.id}` },
+    })
+    ownerToken = sessionTokenFor({ ...owner, clerkId: `user_test_${owner.id}` })
     const event = await createEvent({
       groupId,
       name: 'Show em Manaus',
@@ -160,5 +180,103 @@ describe('Changes of an Event', () => {
     expect(await changeRows()).toEqual([])
     const row = await testPrisma().event.findUniqueOrThrow({ where: { id: eventId } })
     expect(row).toMatchObject({ name: 'Show em Manaus', place: 'Manaus', updatedAt: CREATED_AT })
+  })
+
+  // More concurrent edits than the pool has connections: each unit must hold only its own.
+  it('queues concurrent edits of the same Event, each with its Change, without exhausting the pool', async () => {
+    const names = Array.from({ length: 15 }, (_, i) => `Show ${i + 1}`)
+
+    const results = await Promise.all(names.map((name) => patch({ name })))
+
+    expect(results.map((r) => r.status)).toEqual(names.map(() => 200))
+    const rows = await changeRows()
+    expect(rows).toHaveLength(15)
+    // Each edit starts from what the previous one left: the Changes form one chain.
+    expect(rows.map((c) => c.before)).toEqual([
+      'Show em Manaus',
+      ...rows.slice(0, -1).map((c) => c.after),
+    ])
+  }, 30_000)
+
+  it('runs concurrent edits of different Events of the same Group, each with its Change', async () => {
+    const ids = [eventId]
+    for (let i = 0; i < 14; i++) ids.push((await createEvent({ groupId, ...MANAUS_PERIOD })).id)
+
+    const results = await Promise.all(
+      ids.map((id) =>
+        t
+          .http()
+          .patch(`/api/v1/events/${id}`)
+          .auth(ownerToken, { type: 'bearer' })
+          .send({ place: `Palco ${id}` }),
+      ),
+    )
+
+    expect(results.map((r) => r.status)).toEqual(ids.map(() => 200))
+    expect(await testPrisma().change.count({ where: { eventId: { in: ids } } })).toBe(15)
+  }, 30_000)
+
+  // Roster writes lock the Group's row (ADR-0014); the reach is read under that same lock.
+  it('waits for a roster write in progress and records the reach it leaves', async () => {
+    const unitOfWork = t.app.get(PrismaUnitOfWork)
+    const rosters = t.app.get(GroupRosterRepository)
+    const newcomerId = (await createUser()).id
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    let locked!: () => void
+    const hasLock = new Promise<void>((resolve) => (locked = resolve))
+
+    const addsViewer = unitOfWork.run(async () => {
+      await rosters.lockByGroup(groupId)
+      await unitOfWork
+        .transaction()
+        .groupMember.create({ data: { groupId, userId: newcomerId, role: 'VIEWER' } })
+      locked()
+      await released
+    })
+    await hasLock
+
+    const edit = Promise.resolve(patch({ name: 'Turnê' }))
+    expect(await stillPending(edit, 300)).toBe(true)
+
+    release()
+    await addsViewer
+    expect((await edit).status).toBe(200)
+    expect(await changeRows()).toEqual([
+      expect.objectContaining({
+        attribute: 'name',
+        reachBefore: [ownerId, viewerId, newcomerId],
+        reachAfter: [ownerId, viewerId, newcomerId],
+      }),
+    ])
+  })
+
+  it('makes a roster write wait for an edit in progress', async () => {
+    const editEvent = t.app.get(EditEventUseCase)
+    const unitOfWork = t.app.get(PrismaUnitOfWork)
+    const rosters = t.app.get(GroupRosterRepository)
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    let edited!: () => void
+    const hasEdited = new Promise<void>((resolve) => (edited = resolve))
+
+    // The edit joins this unit, so its locks hold until the unit ends.
+    const editing = unitOfWork.run(async () => {
+      await editEvent.execute({
+        actor: { id: ownerId, isSuperAdmin: false },
+        eventId,
+        name: 'Turnê',
+      })
+      edited()
+      await released
+    })
+    await hasEdited
+
+    const rosterWrite = unitOfWork.run(() => rosters.lockByGroup(groupId))
+    expect(await stillPending(rosterWrite, 300)).toBe(true)
+
+    release()
+    await editing
+    await rosterWrite
   })
 })

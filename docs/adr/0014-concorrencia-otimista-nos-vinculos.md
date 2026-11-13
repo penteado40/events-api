@@ -27,3 +27,4 @@ Com a regra do último Owner (ADR-0017) já em vigor, trocamos a concorrência o
 - A trava é por Group, não global: escritas em Groups diferentes não esperam umas pelas outras. Uma unidade dentro de outra se junta a ela.
 - Tirar um Owner (ou ele sair) apaga o vínculo, então não há linha para carregar o Author: `removeOwner` não recebe Stamp, a exceção de hard delete que a §5.8 da arquitetura admite.
 - Cada transação espera até 15 s, contando o tempo na fila da trava (o padrão do Prisma, 5 s, faria uma fila curta virar `500`), e até 5 s por uma conexão do pool.
+- Quem só **lê** o Roster para gravar algo que depende dele (o alcance das Changes de um Event, PROJ-184) lê pela transação da unidade e segura a linha do Group com `FOR SHARE` até o commit: uma escrita de Group members espera, e duas edições no mesmo Group não esperam uma pela outra. A ordem das travas é sempre Group, depois Event.

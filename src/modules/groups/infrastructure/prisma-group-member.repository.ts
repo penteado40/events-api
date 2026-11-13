@@ -21,10 +21,11 @@ export class PrismaGroupMemberRepository extends GroupMemberRepository {
     return ofGroup(this.unitOfWork.client, groupId)
   }
 
-  // FOR SHARE on the Group's row conflicts with the FOR UPDATE of a roster write (ADR-0014).
+  // The same FOR UPDATE a roster write takes (ADR-0014): a FOR SHARE would let
+  // overlapping readers jump the queue and starve a roster write waiting for the row.
   async lockByGroup(groupId: number): Promise<GroupMember[]> {
     const tx = this.unitOfWork.transaction()
-    await tx.$queryRaw`SELECT id FROM groups WHERE id = ${groupId} FOR SHARE`
+    await tx.$queryRaw`SELECT id FROM groups WHERE id = ${groupId} FOR UPDATE`
     return ofGroup(tx, groupId)
   }
 }

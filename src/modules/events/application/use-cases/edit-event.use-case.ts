@@ -59,7 +59,8 @@ export class EditEventUseCase {
     return this.unitOfWork.run(async () => {
       // Where and when are seen by every Group member (Draft included). The
       // roster is held until commit (ADR-0014), so the reach is the one that
-      // stands when the Changes land. Locks go Group, then Event, always.
+      // stands when the Changes land; edits in the same Group queue on it too.
+      // Locks go Group, then Event, always.
       const reach = await this.directory.lockMemberIds(groupId)
       // Re-read under the lock: the Changes start from what the last edit left.
       const event = await this.events.lockById(input.eventId)

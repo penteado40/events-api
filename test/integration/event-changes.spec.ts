@@ -198,7 +198,8 @@ describe('Changes of an Event', () => {
     ])
   }, 30_000)
 
-  it('runs concurrent edits of different Events of the same Group, each with its Change', async () => {
+  // They queue on the Group's lock, like roster writes (ADR-0014).
+  it('queues concurrent edits of different Events of the same Group, each with its Change', async () => {
     const ids = [eventId]
     for (let i = 0; i < 14; i++) ids.push((await createEvent({ groupId, ...MANAUS_PERIOD })).id)
 
@@ -250,6 +251,56 @@ describe('Changes of an Event', () => {
       }),
     ])
   })
+
+  // Edits that only shared the Group's lock kept overlapping, so the lock was
+  // never free for a roster write: it waited for as long as the edits went on.
+  it('lets a roster write through while the Events of the Group are edited nonstop', async () => {
+    const editEvent = t.app.get(EditEventUseCase)
+    const unitOfWork = t.app.get(PrismaUnitOfWork)
+    const rosters = t.app.get(GroupRosterRepository)
+    const newcomerId = (await createUser()).id
+    const ids = [eventId]
+    for (let i = 0; i < 7; i++) ids.push((await createEvent({ groupId, ...MANAUS_PERIOD })).id)
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    let editing = true
+    let edits = 0
+    // Eight editors in a loop, each unit held a little longer, as over a slower link.
+    const editors = Promise.all(
+      ids.map(async (id, n) => {
+        await sleep(n * 5)
+        for (let i = 0; editing; i++) {
+          await unitOfWork.run(async () => {
+            await editEvent.execute({
+              actor: { id: ownerId, isSuperAdmin: false },
+              eventId: id,
+              name: `Show ${i}`,
+            })
+            await sleep(10 + ((n * 7 + i * 13) % 30))
+          })
+          edits++
+        }
+      }),
+    )
+    while (edits < 16) await sleep(10)
+
+    const started = Date.now()
+    const rosterWrite = unitOfWork.run(async () => {
+      await rosters.lockByGroup(groupId)
+      await unitOfWork
+        .transaction()
+        .groupMember.create({ data: { groupId, userId: newcomerId, role: 'VIEWER' } })
+    })
+    // The editors stop only after the race: a roster write that wins it got through them.
+    const waited = await Promise.race([
+      rosterWrite.then(() => Date.now() - started),
+      sleep(3_000).then(() => Infinity),
+    ])
+    editing = false
+    await editors
+    await rosterWrite
+
+    expect(waited).toBeLessThan(3_000)
+  }, 30_000)
 
   it('makes a roster write wait for an edit in progress', async () => {
     const editEvent = t.app.get(EditEventUseCase)

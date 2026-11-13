@@ -7,10 +7,10 @@ export abstract class GroupMemberRepository {
   /** Every Group member of the Group, in the order they joined. */
   abstract findByGroup(groupId: number): Promise<GroupMember[]>
   /**
-   * Every Group member of the Group, in the order they joined, read under a
-   * shared lock of the Group (ADR-0014) held until the running UnitOfWork ends:
-   * a roster write waits for it, and other readers holding it do not. Only
-   * inside a UnitOfWork, where the lock holds.
+   * Every Group member of the Group, in the order they joined, read under the
+   * Group's lock (ADR-0014), the same one a roster write takes, held until the
+   * running UnitOfWork ends: whoever else takes it waits, in arrival order.
+   * Only inside a UnitOfWork, where the lock holds.
    */
   abstract lockByGroup(groupId: number): Promise<GroupMember[]>
 }

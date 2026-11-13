@@ -8,8 +8,8 @@ export abstract class GroupDirectory {
   /**
    * The ids of every Group member of the Group (Owners and Viewers), in the
    * order they joined, holding its roster against writes until the running
-   * UnitOfWork ends (ADR-0014): a Viewer added or removed meanwhile waits.
-   * Only inside a UnitOfWork.
+   * UnitOfWork ends (ADR-0014): a Viewer added or removed meanwhile waits, and
+   * so does another holder of it, in arrival order. Only inside a UnitOfWork.
    */
   abstract lockMemberIds(groupId: number): Promise<number[]>
 }

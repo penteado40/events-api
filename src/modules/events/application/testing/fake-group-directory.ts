@@ -1,4 +1,4 @@
-import type { GroupRole } from '../../domain/event-access-policy.js'
+import type { GroupMemberRole, GroupRole } from '../../domain/event-access-policy.js'
 import { GroupDirectory } from '../ports/group-directory.js'
 
 /** The Groups and Group members the test arranges, standing in for the groups context. */
@@ -22,11 +22,13 @@ export class FakeGroupDirectory extends GroupDirectory {
   }
 
   /** The in-memory unit of work already runs one unit at a time: no lock to take. */
-  async lockMemberIds(groupId: number): Promise<number[]> {
-    return [...this.roles.keys()]
-      .map((key) => key.split(':').map(Number) as [number, number])
-      .filter(([group]) => group === groupId)
-      .map(([, userId]) => userId)
+  async lockMembers(groupId: number): Promise<GroupMemberRole[]> {
+    const members: GroupMemberRole[] = []
+    for (const [key, role] of this.roles) {
+      const [group, userId] = key.split(':').map(Number)
+      if (group === groupId) members.push({ userId: userId!, role })
+    }
+    return members
   }
 
   async roleIn(groupId: number, userId: number): Promise<GroupRole | null> {

@@ -61,7 +61,7 @@ export class EditEventUseCase {
       // roster is held until commit (ADR-0014), so the reach is the one that
       // stands when the Changes land; edits in the same Group queue on it too.
       // Locks go Group, then Event, always.
-      const reach = await this.directory.lockMemberIds(groupId)
+      const reach = (await this.directory.lockMembers(groupId)).map((m) => m.userId)
       // Re-read under the lock: the Changes start from what the last edit left.
       const event = await this.events.lockById(input.eventId)
       if (!event) throw new AppError('NOT_FOUND')

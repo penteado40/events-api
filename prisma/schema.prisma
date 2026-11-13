@@ -191,14 +191,16 @@ model Event {
   @@map("events")
 }
 
-// One step recorded on an Event (the Change log): written in the same transaction as the change, never edited.
+// One step recorded on an Event or an Event item (the Change log): written in the same transaction as the change, never edited.
 // The Author and the instant of the change are createdById and createdAt (ADR-0013).
 // The reach is who the change reached before and after it, as User ids, kept as it was (ADR-0019):
 // a User who leaves stays in it, so the arrays carry no foreign key.
 model Change {
   id             Int      @id @default(autoincrement())
   eventId        Int
-  attribute      String // name, place, period, state
+  // The Event item that changed; null for a Change of the Event. No foreign key: the Change outlives the item.
+  eventItemId    Int?
+  attribute      String // Event: name, place, period, state; Event item: item (created, deleted), name, date, time, place
   before         Json
   after          Json
   productionOnly Boolean // Only the production sees it in the Change log

@@ -16,6 +16,7 @@ describe('eventChanges', () => {
 
     expect(changes).toEqual([
       {
+        eventItemId: null,
         attribute: 'name',
         before: 'Show em Manaus',
         after: 'Shows em Manaus',

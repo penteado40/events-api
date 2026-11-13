@@ -6,6 +6,7 @@ import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
@@ -17,6 +18,7 @@ describe('CreateEventItemUseCase', () => {
   let directory: FakeGroupDirectory
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
+  let changeLog: InMemoryChangeRepository
   let createItem: CreateEventItemUseCase
   let eventId: number
 
@@ -24,10 +26,12 @@ describe('CreateEventItemUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
+    changeLog = new InMemoryChangeRepository()
     createItem = new CreateEventItemUseCase(
       directory,
       events,
       items,
+      changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),
     )
@@ -64,6 +68,37 @@ describe('CreateEventItemUseCase', () => {
     })
     expect(when).toEqual({ date: '2026-11-14', time: '19:00', timezone: 'America/Manaus' })
     expect(items.ofEvent(eventId)).toHaveLength(1)
+  })
+
+  it('records the creation as a Change of the item, by its Author, reaching the Owners', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER')
+
+    const { item } = await createItem.execute({
+      actor: ANA,
+      eventId,
+      name: 'Passagem de som',
+      date: '2026-11-14',
+      time: '15:00',
+    })
+
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: item.id,
+        attribute: 'item',
+        before: null,
+        after: {
+          name: 'Passagem de som',
+          date: '2026-11-14',
+          time: '15:00',
+          place: null,
+          state: 'PUBLISHED',
+        },
+        reachBefore: [],
+        reachAfter: [ANA.id],
+        by: ANA.id,
+        at: NOW,
+      }),
+    ])
   })
 
   it('keeps the place as written, its zone ruling the when', async () => {
@@ -151,5 +186,6 @@ describe('CreateEventItemUseCase', () => {
       new AppError('EVENT_CANCELLED'),
     )
     expect(items.ofEvent(eventId)).toEqual([])
+    expect(changeLog.ofEvent(eventId)).toEqual([])
   })
 })

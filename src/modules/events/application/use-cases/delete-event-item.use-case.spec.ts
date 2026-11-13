@@ -1,5 +1,6 @@
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
@@ -8,16 +9,19 @@ import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { DeleteEventItemUseCase } from './delete-event-item.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
+const NOW = new Date('2026-11-01T12:00:00.000Z')
 
 describe('DeleteEventItemUseCase', () => {
   let directory: FakeGroupDirectory
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
+  let changeLog: InMemoryChangeRepository
   let deleteItem: DeleteEventItemUseCase
   let eventId: number
   let itemId: number
@@ -26,7 +30,15 @@ describe('DeleteEventItemUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
-    deleteItem = new DeleteEventItemUseCase(directory, events, items, new InMemoryUnitOfWork())
+    changeLog = new InMemoryChangeRepository()
+    deleteItem = new DeleteEventItemUseCase(
+      directory,
+      events,
+      items,
+      changeLog,
+      new InMemoryUnitOfWork(),
+      new FixedClock(NOW),
+    )
     eventId = (
       await events.create(
         {
@@ -57,6 +69,25 @@ describe('DeleteEventItemUseCase', () => {
     await deleteItem.execute({ actor: ANA, eventId, itemId })
 
     expect(items.ofEvent(eventId)).toEqual([])
+  })
+
+  it('records the removal as a Change of the item, by its Author, reaching no one after it', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER')
+
+    await deleteItem.execute({ actor: ANA, eventId, itemId })
+
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: itemId,
+        attribute: 'item',
+        before: { name: 'O que levar', date: null, time: null, place: null, state: 'PUBLISHED' },
+        after: null,
+        reachBefore: [ANA.id],
+        reachAfter: [],
+        by: ANA.id,
+        at: NOW,
+      }),
+    ])
   })
 
   it('lets the Super admin delete an Event item', async () => {
@@ -96,5 +127,6 @@ describe('DeleteEventItemUseCase', () => {
       new AppError('EVENT_CANCELLED'),
     )
     expect(items.ofEvent(eventId)).toHaveLength(1)
+    expect(changeLog.ofEvent(eventId)).toEqual([])
   })
 })

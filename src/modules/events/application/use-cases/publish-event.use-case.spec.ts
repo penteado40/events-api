@@ -66,6 +66,7 @@ describe('PublishEventUseCase', () => {
       {
         id: expect.any(Number),
         eventId,
+        eventItemId: null,
         attribute: 'state',
         before: 'DRAFT',
         after: 'PUBLISHED',

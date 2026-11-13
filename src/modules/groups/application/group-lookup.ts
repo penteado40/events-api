@@ -25,11 +25,11 @@ export class GroupLookup {
   }
 
   /**
-   * The ids of every Group member of the Group (Owners and Viewers), in the
-   * order they joined, holding the Group's lock (the one roster writes take)
+   * Every Group member of the Group (Owners and Viewers), with their role, in
+   * the order they joined, holding the Group's lock (the one roster writes take)
    * until the running UnitOfWork ends (ADR-0014). Only inside a UnitOfWork.
    */
-  async lockMemberIds(groupId: number): Promise<number[]> {
-    return (await this.members.lockByGroup(groupId)).map((m) => m.userId)
+  async lockMembers(groupId: number): Promise<{ userId: number; role: GroupRole }[]> {
+    return (await this.members.lockByGroup(groupId)).map(({ userId, role }) => ({ userId, role }))
   }
 }

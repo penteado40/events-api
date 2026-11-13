@@ -1,6 +1,12 @@
 /** The role of a Group member, as the groups context reports it through the GroupDirectory. */
 export type GroupRole = 'OWNER' | 'VIEWER'
 
+/** A Group member as the groups context reports them: who, and with which role. */
+export interface GroupMemberRole {
+  userId: number
+  role: GroupRole
+}
+
 /** Who acts on the Events of one Group: the Super admin, or a User with their role in that Group (null if none). */
 export interface EventActor {
   isSuperAdmin: boolean

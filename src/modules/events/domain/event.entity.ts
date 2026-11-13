@@ -114,8 +114,7 @@ export class Event {
     this.props.name = name
     this.props.place = place
     this.props.period = period
-    this.props.updatedAt = stamp.at
-    this.props.updatedById = stamp.by
+    this.touch(stamp)
   }
 
   /**
@@ -126,8 +125,7 @@ export class Event {
   publish(stamp: Stamp): void {
     if (this.props.state !== 'DRAFT') throw new AppError('EVENT_NOT_DRAFT')
     this.props.state = 'PUBLISHED'
-    this.props.updatedAt = stamp.at
-    this.props.updatedById = stamp.by
+    this.touch(stamp)
   }
 
   /** The Event as plain data at this moment, with who it reaches, for its Changes. */
@@ -139,5 +137,11 @@ export class Event {
       state: this.props.state,
       reach: [...reach],
     }
+  }
+
+  /** Marks the write's Author and instant as the Event's last (ADR-0013). */
+  private touch(stamp: Stamp): void {
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
   }
 }

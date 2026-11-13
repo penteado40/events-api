@@ -1,3 +1,4 @@
+import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
@@ -27,7 +28,13 @@ describe('EditEventItemUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
-    editItem = new EditEventItemUseCase(directory, events, items, new FixedClock(NOW))
+    editItem = new EditEventItemUseCase(
+      directory,
+      events,
+      items,
+      new InMemoryUnitOfWork(),
+      new FixedClock(NOW),
+    )
     const event = await events.create(
       {
         groupId: 1,

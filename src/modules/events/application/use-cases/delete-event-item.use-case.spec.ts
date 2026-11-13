@@ -1,3 +1,4 @@
+import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
@@ -24,7 +25,7 @@ describe('DeleteEventItemUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     const events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
-    deleteItem = new DeleteEventItemUseCase(directory, events, items)
+    deleteItem = new DeleteEventItemUseCase(directory, events, items, new InMemoryUnitOfWork())
     eventId = (
       await events.create(
         {

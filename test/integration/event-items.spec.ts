@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { PrismaUnitOfWork } from '../../src/shared/infrastructure/prisma-unit-of-work.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
 import {
@@ -248,6 +249,48 @@ describe('Event items and the schedule', () => {
         .auth(ownerToken, { type: 'bearer' })
 
       expect(res.status).toBe(404)
+    })
+
+    // Each write locks the item's row: the ones that come after find it gone.
+    it('answers 404, never 500, to concurrent deletes of the same item', async () => {
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          t.http().delete(itemUrl(itemId)).auth(ownerToken, { type: 'bearer' }),
+        ),
+      )
+
+      expect(results.map((r) => r.status).sort()).toEqual([204, 404, 404, 404, 404])
+      expect(await testPrisma().eventItem.count()).toBe(0)
+    })
+
+    // A delete in progress holds the row: the writes queued on it find it gone, not a 500.
+    it('answers 404 to a delete and an edit that wait on a delete in progress of the same item', async () => {
+      const unitOfWork = t.app.get(PrismaUnitOfWork)
+      let release!: () => void
+      const released = new Promise<void>((resolve) => (release = resolve))
+      let deleted!: () => void
+      const hasDeleted = new Promise<void>((resolve) => (deleted = resolve))
+
+      const deleting = unitOfWork.run(async () => {
+        await unitOfWork.transaction().eventItem.delete({ where: { id: itemId } })
+        deleted()
+        await released
+      })
+      await hasDeleted
+      const queued = Promise.all([
+        t.http().delete(itemUrl(itemId)).auth(ownerToken, { type: 'bearer' }),
+        t.http().patch(itemUrl(itemId)).auth(ownerToken, { type: 'bearer' }).send({ name: 'x' }),
+      ])
+      // Long enough for both to reach the row and wait on its lock.
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      release()
+      await deleting
+      const [deleteRes, patchRes] = await queued
+
+      expect(deleteRes.status).toBe(404)
+      expect(deleteRes.body).toEqual(errorOf('NOT_FOUND'))
+      expect(patchRes.status).toBe(404)
+      expect(patchRes.body).toEqual(errorOf('NOT_FOUND'))
     })
   })
 

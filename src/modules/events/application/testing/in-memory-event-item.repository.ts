@@ -11,6 +11,10 @@ export class InMemoryEventItemRepository extends EventItemRepository {
     return item?.eventId === eventId ? item : null
   }
 
+  async lockInEvent(eventId: number, itemId: number): Promise<EventItem | null> {
+    return this.findInEvent(eventId, itemId)
+  }
+
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
     const item = EventItem.restore({
       id: this.nextId++,

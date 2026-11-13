@@ -22,6 +22,16 @@ export class PrismaEventItemRepository extends EventItemRepository {
     return row ? toDomain(row) : null
   }
 
+  // FOR UPDATE holds the item's row until the transaction ends.
+  async lockInEvent(eventId: number, itemId: number): Promise<EventItem | null> {
+    const tx = this.unitOfWork.transaction()
+    const locked = await tx.$queryRaw<{ id: number }[]>`
+      SELECT id FROM event_items WHERE id = ${itemId} AND "eventId" = ${eventId} FOR UPDATE`
+    if (locked.length === 0) return null
+    const row = await tx.eventItem.findUnique({ where: { id: itemId } })
+    return row ? toDomain(row) : null
+  }
+
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
     const row = await this.unitOfWork.client.eventItem.create({
       data: {

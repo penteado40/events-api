@@ -95,7 +95,7 @@ export abstract class UserRepository {
 }
 ```
 
-**Domain service (serviço de domínio).** Uma regra que não pertence naturalmente a uma entidade só. Exemplo: **AccessPolicy** decide se um ator (um User com a Membership dele, ou o Super admin) pode executar uma ação num Group, num Event ou num Event item. Envolve várias coisas, então vira um serviço de domínio puro, sem Nest nem Prisma.
+**Domain service (serviço de domínio).** Uma regra que não pertence naturalmente a uma entidade só. Exemplo: **AccessPolicy** decide se um ator (um User com a Membership dele, ou o Super admin) pode executar uma ação num Group, num Event ou num Event item. Envolve várias coisas, então vira um serviço de domínio puro, sem Nest nem Prisma. Como o `domain` de um módulo não importa outro módulo, cada contexto tem a sua: `AccessPolicy` em `groups` e `EventAccessPolicy` em `events`, que recebe o papel do ator vindo do `groups` pelo port `GroupDirectory`.
 
 **Port de leitura (query service).** Repositórios servem às escritas e devolvem agregados. As telas de leitura que montam uma visão (o Summary e a Timeline de uma pessoa) usam um port declarado no `application`, implementado com Prisma no `infrastructure`, que devolve dados simples, sem hidratar entidades. A regra de quem vê o quê continua num domain service puro, chamado tanto pela leitura quanto pela escrita (ADR-0019).
 

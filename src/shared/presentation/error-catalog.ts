@@ -32,6 +32,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     message: 'O Group não pode ficar sem Owner: defina outro Owner antes.',
   },
   TEAM_NAME_TAKEN: { status: 409, message: 'Já existe um Team com este nome neste Group.' },
+  EVENT_PERIOD_INVALID: {
+    status: 400,
+    message: 'A data final do Event não pode ser antes da data inicial.',
+  },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

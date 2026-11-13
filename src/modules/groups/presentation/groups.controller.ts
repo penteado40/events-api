@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  ParseIntPipe,
-  Patch,
-  Post,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
 import {
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -18,6 +8,7 @@ import {
 } from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
+import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import type { User } from '../../identity/index.js'
 import { AddOwnerUseCase } from '../application/use-cases/add-owner.use-case.js'
 import { AddViewerUseCase } from '../application/use-cases/add-viewer.use-case.js'
@@ -107,7 +98,7 @@ export class GroupsController {
   @ApiErrors('NOT_FOUND')
   async get(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<GroupResponseDto> {
     const group = await this.getGroupUseCase.execute({ actor, groupId })
     return { data: GroupPresenter.toJson(group) }
@@ -123,7 +114,7 @@ export class GroupsController {
   @ApiErrors('NOT_FOUND')
   async listMembers(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<GroupMemberListResponseDto> {
     const entries = await this.listGroupMembersUseCase.execute({ actor, groupId })
     return { data: GroupPresenter.toMemberListJson(entries) }
@@ -139,7 +130,7 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')
   async rename(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
     @Body() body: RenameGroupDto,
   ): Promise<GroupResponseDto> {
     const group = await this.renameGroupUseCase.execute({ actor, groupId, name: body.name })
@@ -157,7 +148,7 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'ALREADY_A_GROUP_MEMBER', 'SUPER_ADMIN_NOT_A_GROUP_MEMBER')
   async addOwner(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
     @Body() body: AddOwnerDto,
   ): Promise<AddOwnerResponseDto> {
     const { member, user, activationLink } = await this.addOwnerUseCase.execute({
@@ -185,8 +176,8 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async removeOwner(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('userId', ParseIdPipe) userId: number,
   ): Promise<void> {
     await this.removeOwnerUseCase.execute({ actor, groupId, userId })
   }
@@ -202,8 +193,8 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async demoteOwner(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('userId', ParseIdPipe) userId: number,
   ): Promise<GroupRoleResponseDto> {
     const member = await this.demoteOwnerUseCase.execute({ actor, groupId, userId })
     return { data: GroupPresenter.toRoleJson(member) }
@@ -220,8 +211,8 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')
   async promoteToOwner(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('userId', ParseIdPipe) userId: number,
   ): Promise<GroupRoleResponseDto> {
     const member = await this.promoteToOwnerUseCase.execute({ actor, groupId, userId })
     return { data: GroupPresenter.toRoleJson(member) }
@@ -238,7 +229,7 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async leave(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<void> {
     await this.leaveGroupUseCase.execute({ actor, groupId })
   }
@@ -254,7 +245,7 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'LAST_OWNER')
   async demoteSelf(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<GroupRoleResponseDto> {
     const member = await this.demoteSelfUseCase.execute({ actor, groupId })
     return { data: GroupPresenter.toRoleJson(member) }
@@ -271,7 +262,7 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'ALREADY_A_GROUP_MEMBER', 'SUPER_ADMIN_NOT_A_GROUP_MEMBER')
   async addViewer(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
     @Body() body: AddViewerDto,
   ): Promise<AddViewerResponseDto> {
     const { member, user, activationLink } = await this.addViewerUseCase.execute({
@@ -299,8 +290,8 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'USER_ALREADY_ACTIVE')
   async reissueActivationLink(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('userId', ParseIdPipe) userId: number,
   ): Promise<ActivationLinkResponseDto> {
     const { activationLink } = await this.reissueActivationLinkUseCase.execute({
       actor,
@@ -322,8 +313,8 @@ export class GroupsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')
   async removeViewer(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('userId', ParseIdPipe) userId: number,
   ): Promise<void> {
     await this.removeViewerUseCase.execute({ actor, groupId, userId })
   }

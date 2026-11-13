@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Param,
-  ParseIntPipe,
-  Patch,
-  Post,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
 import {
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -18,6 +8,7 @@ import {
 } from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
+import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import type { User } from '../../identity/index.js'
 import { CreateTeamUseCase } from '../application/use-cases/create-team.use-case.js'
 import { DeleteTeamUseCase } from '../application/use-cases/delete-team.use-case.js'
@@ -52,7 +43,7 @@ export class TeamsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'TEAM_NAME_TAKEN')
   async create(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
     @Body() body: CreateTeamDto,
   ): Promise<TeamResponseDto> {
     const team = await this.createTeamUseCase.execute({ actor, groupId, name: body.name })
@@ -69,7 +60,7 @@ export class TeamsController {
   @ApiErrors('NOT_FOUND')
   async list(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
+    @Param('id', ParseIdPipe) groupId: number,
   ): Promise<TeamListResponseDto> {
     const teams = await this.listTeamsUseCase.execute({ actor, groupId })
     return { data: teams.map(TeamPresenter.toJson) }
@@ -85,8 +76,8 @@ export class TeamsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND', 'TEAM_NAME_TAKEN')
   async rename(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('teamId', ParseIntPipe) teamId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('teamId', ParseIdPipe) teamId: number,
     @Body() body: RenameTeamDto,
   ): Promise<TeamResponseDto> {
     const team = await this.renameTeamUseCase.execute({ actor, groupId, teamId, name: body.name })
@@ -104,8 +95,8 @@ export class TeamsController {
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')
   async delete(
     @CurrentUser() actor: User,
-    @Param('id', ParseIntPipe) groupId: number,
-    @Param('teamId', ParseIntPipe) teamId: number,
+    @Param('id', ParseIdPipe) groupId: number,
+    @Param('teamId', ParseIdPipe) teamId: number,
   ): Promise<void> {
     await this.deleteTeamUseCase.execute({ actor, groupId, teamId })
   }

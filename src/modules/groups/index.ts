@@ -5,3 +5,4 @@ export {
   groupMemberRemoved,
 } from './domain/events/group-member-removed.event.js'
 export { GroupsQueriesModule } from './groups-queries.module.js'
+export { GroupLookup } from './application/group-lookup.js'

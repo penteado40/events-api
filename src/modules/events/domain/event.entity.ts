@@ -165,10 +165,9 @@ export class Event {
    * EVENT_NOT_CANCELLED.
    */
   uncancel(stamp: Stamp): void {
+    // Set exactly while Cancelled (and the table's check holds it there).
     const before = this.props.cancelledFrom
-    if (this.props.state !== 'CANCELLED' || before === null) {
-      throw new AppError('EVENT_NOT_CANCELLED')
-    }
+    if (before === null) throw new AppError('EVENT_NOT_CANCELLED')
     this.props.state = before
     this.props.cancelledFrom = null
     this.touch(stamp)
@@ -180,7 +179,7 @@ export class Event {
    * `uncancel()` writes in a Cancelled Event.
    */
   assertWritable(): void {
-    if (this.props.state === 'CANCELLED') throw new AppError('EVENT_CANCELLED')
+    if (this.isCancelled) throw new AppError('EVENT_CANCELLED')
   }
 
   /** The Event as plain data at this moment, with who it reaches, for its Changes. */

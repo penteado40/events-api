@@ -22,6 +22,7 @@ export type UncancelEventOutput = EventView
  */
 export class UncancelEventUseCase {
   private readonly deps: EventStateChangeDeps
+  private readonly clock: Clock
 
   constructor(
     directory: GroupDirectory,
@@ -30,11 +31,13 @@ export class UncancelEventUseCase {
     unitOfWork: UnitOfWork,
     clock: Clock,
   ) {
-    this.deps = { directory, events, changeLog, unitOfWork, clock }
+    this.deps = { directory, events, changeLog, unitOfWork }
+    this.clock = clock
   }
 
   async execute(input: UncancelEventInput): Promise<UncancelEventOutput> {
-    return changeEventState(this.deps, input.actor, input.eventId, (event, stamp) =>
+    const stamp = { by: input.actor.id, at: this.clock.now() }
+    return changeEventState(this.deps, input.actor, input.eventId, stamp, (event) =>
       event.uncancel(stamp),
     )
   }

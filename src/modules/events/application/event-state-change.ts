@@ -1,4 +1,3 @@
-import type { Clock } from '../../../shared/application/clock.js'
 import type { UnitOfWork } from '../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
@@ -16,7 +15,6 @@ export interface EventStateChangeDeps {
   events: EventRepository
   changeLog: ChangeRepository
   unitOfWork: UnitOfWork
-  clock: Clock
 }
 
 /**
@@ -25,20 +23,19 @@ export interface EventStateChangeDeps {
  * the same unit of work as the Event (amendment of ADR-0010), with the reach of
  * every Group member read under the Group's lock, like the edit of the Event.
  * The role is checked before the state: a Viewer is FORBIDDEN, never a 409.
+ * The stamp is the use case's: its Author and the instant of its Clock.
  */
 export async function changeEventState(
   deps: EventStateChangeDeps,
   actor: ActingUser,
   eventId: number,
+  stamp: Stamp,
   move: (event: Event, stamp: Stamp) => void,
 ): Promise<EventView> {
   const found = await deps.events.findById(eventId)
   if (!found) throw new AppError('NOT_FOUND')
   const { groupId } = found
   await requireEventsEditor(actor, groupId, deps.directory)
-
-  const now = deps.clock.now()
-  const stamp = { by: actor.id, at: now }
 
   return deps.unitOfWork.run(async () => {
     // Locks go Group, then Event, always (see EditEventUseCase).
@@ -50,6 +47,6 @@ export async function changeEventState(
     move(event, stamp)
     await deps.events.save(event)
     await deps.changeLog.create(event.id, eventChanges(before, event.snapshot(reach)), stamp)
-    return viewOf(event, now)
+    return viewOf(event, stamp.at)
   })
 }

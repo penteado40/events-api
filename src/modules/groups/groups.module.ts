@@ -1,6 +1,8 @@
-import { Module } from '@nestjs/common'
+import { Module, type OnModuleInit } from '@nestjs/common'
 import { Clock } from '../../shared/application/clock.js'
+import { EventPublisher } from '../../shared/application/ports/event-publisher.js'
 import { UnitOfWork } from '../../shared/application/unit-of-work.js'
+import { InProcessEventPublisher } from '../../shared/infrastructure/in-process-event-publisher.js'
 import { EmailsModule, GroupEmails } from '../emails/index.js'
 import {
   IdentityAccountsModule,
@@ -10,6 +12,7 @@ import {
 } from '../identity/index.js'
 import { GroupMailer } from './application/ports/group-mailer.js'
 import { GroupUserAccounts } from './application/ports/group-user-accounts.js'
+import { OnGroupMemberRemovedHandler } from './application/handlers/on-group-member-removed.handler.js'
 import { GroupUsers } from './application/ports/group-users.js'
 import { AddOwnerUseCase } from './application/use-cases/add-owner.use-case.js'
 import { AddViewerUseCase } from './application/use-cases/add-viewer.use-case.js'
@@ -22,7 +25,9 @@ import { ListGroupMembersUseCase } from './application/use-cases/list-group-memb
 import { ListGroupsUseCase } from './application/use-cases/list-groups.use-case.js'
 import { PromoteToOwnerUseCase } from './application/use-cases/promote-to-owner.use-case.js'
 import { RemoveOwnerUseCase } from './application/use-cases/remove-owner.use-case.js'
+import { RemoveViewerUseCase } from './application/use-cases/remove-viewer.use-case.js'
 import { RenameGroupUseCase } from './application/use-cases/rename-group.use-case.js'
+import type { GroupMemberRemoved } from './domain/events/group-member-removed.event.js'
 import { GroupMemberRepository } from './domain/group-member.repository.js'
 import { GroupRosterRepository } from './domain/group-roster.repository.js'
 import { GroupRepository } from './domain/group.repository.js'
@@ -136,6 +141,23 @@ import { GroupsController } from './presentation/groups.controller.js'
       inject: [GroupRosterRepository, GroupMemberRepository, UnitOfWork],
     },
     {
+      provide: RemoveViewerUseCase,
+      useFactory: (
+        rosters: GroupRosterRepository,
+        members: GroupMemberRepository,
+        events: EventPublisher,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new RemoveViewerUseCase(rosters, members, events, unitOfWork, clock),
+      inject: [GroupRosterRepository, GroupMemberRepository, EventPublisher, UnitOfWork, Clock],
+    },
+    {
+      provide: OnGroupMemberRemovedHandler,
+      useFactory: (members: GroupMemberRepository, accounts: GroupUserAccounts) =>
+        new OnGroupMemberRemovedHandler(members, accounts),
+      inject: [GroupMemberRepository, GroupUserAccounts],
+    },
+    {
       provide: DemoteOwnerUseCase,
       useFactory: (
         rosters: GroupRosterRepository,
@@ -176,4 +198,15 @@ import { GroupsController } from './presentation/groups.controller.js'
     },
   ],
 })
-export class GroupsModule {}
+export class GroupsModule implements OnModuleInit {
+  constructor(
+    private readonly publisher: InProcessEventPublisher,
+    private readonly onMemberRemoved: OnGroupMemberRemovedHandler,
+  ) {}
+
+  onModuleInit(): void {
+    this.publisher.on<GroupMemberRemoved>('GroupMemberRemoved', (event) =>
+      this.onMemberRemoved.handle(event),
+    )
+  }
+}

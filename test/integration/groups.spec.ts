@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { InProcessEventPublisher } from '../../src/shared/infrastructure/in-process-event-publisher.js'
+import type { GroupMemberRemoved } from '../../src/modules/groups/index.js'
 import { GroupRosterRepository } from '../../src/modules/groups/domain/group-roster.repository.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
@@ -805,6 +807,255 @@ describe('Groups', () => {
       expect(user.activationLinks).toEqual([])
       expect(user.groupMembers).toEqual([])
       expect(t.invitations.revoked().at(-1)).toMatch(/^inv_/)
+    })
+  })
+
+  describe('DELETE /api/v1/groups/:id/viewers/:userId', () => {
+    const viewer = (groupId: number, userId: number) =>
+      `/api/v1/groups/${groupId}/viewers/${userId}`
+
+    async function groupWithOwnerAndViewer() {
+      const group = await createGroup({ name: 'Vocal Livre' })
+      const owner = await createUser({ clerkId: `u_owner_${group.id}` })
+      const viewerUser = await createUser({ clerkId: `u_viewer_${group.id}` })
+      await createGroupMember({ groupId: group.id, userId: owner.id, role: 'OWNER' })
+      await createGroupMember({ groupId: group.id, userId: viewerUser.id, role: 'VIEWER' })
+      return { group, owner, viewerUser }
+    }
+
+    it('lets an Owner take a Viewer out; they stop seeing the Group (404) and no email goes out', async () => {
+      const { group, owner, viewerUser } = await groupWithOwnerAndViewer()
+      const sent = t.emails.sent.length
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().groupMember.count({ where: { userId: viewerUser.id } })).toBe(0)
+      const seen = await t
+        .http()
+        .get(`/api/v1/groups/${group.id}`)
+        .auth(sessionTokenFor(viewerUser), { type: 'bearer' })
+      expect(seen.status).toBe(404)
+      expect(t.emails.sent).toHaveLength(sent)
+    })
+
+    it('lets the Super admin take a Viewer out', async () => {
+      const { group, viewerUser } = await groupWithOwnerAndViewer()
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().groupMember.count({ where: { groupId: group.id } })).toBe(1)
+    })
+
+    it('publishes GroupMemberRemoved after the commit, and a failing handler does not undo the removal', async () => {
+      const { group, owner, viewerUser } = await groupWithOwnerAndViewer()
+      const publisher = t.app.get(InProcessEventPublisher)
+      const seen: unknown[] = []
+      const offFailing = publisher.on('GroupMemberRemoved', async () => {
+        throw new Error('handler down')
+      })
+      const offSeen = publisher.on('GroupMemberRemoved', async (event) => void seen.push(event))
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      await t.settle()
+      offFailing()
+      offSeen()
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().groupMember.count({ where: { userId: viewerUser.id } })).toBe(0)
+      expect(seen).toEqual([
+        {
+          type: 'GroupMemberRemoved',
+          groupId: group.id,
+          userId: viewerUser.id,
+          occurredAt: expect.any(Date),
+        },
+      ])
+    })
+
+    it('publishes nothing when the removal is refused', async () => {
+      const { group, viewerUser } = await groupWithOwnerAndViewer()
+      const publisher = t.app.get(InProcessEventPublisher)
+      const seen: unknown[] = []
+      const off = publisher.on('GroupMemberRemoved', async (event) => void seen.push(event))
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(sessionTokenFor(viewerUser), { type: 'bearer' })
+      await t.settle()
+      off()
+
+      expect(res.status).toBe(403)
+      expect(seen).toEqual([])
+    })
+
+    it('revokes the Activation link of a Pending user left with no Group member', async () => {
+      const { group, owner } = await groupWithOwnerAndViewer()
+      const token = sessionTokenFor(owner)
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${group.id}/viewers`)
+        .auth(token, { type: 'bearer' })
+        .send({ email: 'lia.drop@example.com', name: 'Lia', phone: '+55 21 98765-4321' })
+      const liaId: number = added.body.data.member.user.id
+
+      const res = await t.http().delete(viewer(group.id, liaId)).auth(token, { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(204)
+      const lia = await testPrisma().user.findUniqueOrThrow({
+        where: { id: liaId },
+        include: { activationLinks: true },
+      })
+      expect(lia.activationLinks).toEqual([])
+      expect(t.invitations.revoked().at(-1)).toMatch(/^inv_/)
+    })
+
+    it('keeps the Activation link of a Pending user who is still a Group member elsewhere', async () => {
+      const { group, owner } = await groupWithOwnerAndViewer()
+      const other = await createGroup({ name: 'Outro' })
+      await createGroupMember({ groupId: other.id, userId: owner.id, role: 'OWNER' })
+      const token = sessionTokenFor(owner)
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${group.id}/viewers`)
+        .auth(token, { type: 'bearer' })
+        .send({ email: 'lia.keep@example.com', name: 'Lia', phone: '+55 21 98765-4321' })
+      const liaId: number = added.body.data.member.user.id
+      await t
+        .http()
+        .post(`/api/v1/groups/${other.id}/viewers`)
+        .auth(token, { type: 'bearer' })
+        .send({ email: 'lia.keep@example.com', name: 'Lia', phone: '+55 21 98765-4321' })
+
+      const res = await t.http().delete(viewer(group.id, liaId)).auth(token, { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(204)
+      const links = await testPrisma().activationLink.count({ where: { userId: liaId } })
+      expect(links).toBe(1)
+    })
+
+    /** A Pending user, with a link, who is a Viewer of the Group. */
+    async function pendingViewer(groupId: number) {
+      const user = await createUser()
+      await createGroupMember({ groupId, userId: user.id, role: 'VIEWER' })
+      await testPrisma().activationLink.create({
+        data: {
+          userId: user.id,
+          invitationId: `inv_pending_${user.id}`,
+          expiresAt: new Date(Date.now() + 86_400_000),
+        },
+      })
+      return user
+    }
+
+    it('keeps the Activation link of a Pending user who is an Owner of another Group', async () => {
+      const { group, owner } = await groupWithOwnerAndViewer()
+      const other = await createGroup({ name: 'Outro' })
+      const lia = await pendingViewer(group.id)
+      await createGroupMember({ groupId: other.id, userId: lia.id, role: 'OWNER' })
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, lia.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().activationLink.count({ where: { userId: lia.id } })).toBe(1)
+    })
+
+    it('answers 204 and keeps the removal when revoking the Activation link fails', async () => {
+      const { group, owner } = await groupWithOwnerAndViewer()
+      const lia = await pendingViewer(group.id)
+      t.invitations.failNextRevoke()
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, lia.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      await t.settle()
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().groupMember.count({ where: { userId: lia.id } })).toBe(0)
+      const again = await t
+        .http()
+        .delete(viewer(group.id, lia.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      expect(again.status).toBe(404)
+    })
+
+    it('hands GroupMemberRemoved over only after the commit: a handler already sees the member gone', async () => {
+      const { group, owner, viewerUser } = await groupWithOwnerAndViewer()
+      const publisher = t.app.get(InProcessEventPublisher)
+      const countsSeen: number[] = []
+      const off = publisher.on<GroupMemberRemoved>('GroupMemberRemoved', async (event) => {
+        countsSeen.push(
+          await testPrisma().groupMember.count({
+            where: { groupId: event.groupId, userId: event.userId },
+          }),
+        )
+      })
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(sessionTokenFor(owner), { type: 'bearer' })
+      await t.settle()
+      off()
+
+      expect(res.status).toBe(204)
+      expect(countsSeen).toEqual([0])
+    })
+
+    it('refuses a Viewer with 403 FORBIDDEN, removing nobody', async () => {
+      const { group, owner, viewerUser } = await groupWithOwnerAndViewer()
+
+      const res = await t
+        .http()
+        .delete(viewer(group.id, owner.id))
+        .auth(sessionTokenFor(viewerUser), { type: 'bearer' })
+
+      expect(res.status).toBe(403)
+      expect(res.body).toEqual(errorOf('FORBIDDEN'))
+      expect(await testPrisma().groupMember.count({ where: { groupId: group.id } })).toBe(2)
+    })
+
+    it('answers 404 NOT_FOUND to an Owner of another Group, and for an Owner of this one as target', async () => {
+      const { group, owner, viewerUser } = await groupWithOwnerAndViewer()
+      const { owner: stranger } = await groupWithOwnerAndViewer()
+
+      const outsider = await t
+        .http()
+        .delete(viewer(group.id, viewerUser.id))
+        .auth(sessionTokenFor(stranger), { type: 'bearer' })
+      const ownerTarget = await t
+        .http()
+        .delete(viewer(group.id, owner.id))
+        .auth(adminToken, { type: 'bearer' })
+
+      expect(outsider.status).toBe(404)
+      expect(ownerTarget.status).toBe(404)
+      expect(await testPrisma().groupMember.count({ where: { groupId: group.id } })).toBe(2)
+    })
+
+    it('answers 401 without a token', async () => {
+      const res = await t.http().delete(viewer(1, 1))
+
+      expect(res.status).toBe(401)
     })
   })
 

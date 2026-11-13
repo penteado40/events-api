@@ -31,6 +31,7 @@ export class InMemoryEventRepository extends EventRepository {
       place: props.place.value,
       period: props.period,
       state: 'DRAFT',
+      cancelledFrom: null,
       ...createdWith(stamp),
     })
     this.events.set(event.id, event)

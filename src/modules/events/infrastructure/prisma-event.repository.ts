@@ -3,7 +3,12 @@ import type { Event as PrismaEvent } from '../../../generated/prisma/client.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaUnitOfWork } from '../../../shared/infrastructure/prisma-unit-of-work.js'
 import { EventPeriod } from '../domain/event-period.vo.js'
-import { Event, type NewEventProps } from '../domain/event.entity.js'
+import {
+  type CancellableEventState,
+  Event,
+  type EventState,
+  type NewEventProps,
+} from '../domain/event.entity.js'
 import { EventRepository } from '../domain/event.repository.js'
 
 const BY_START_DATE = [{ startDate: 'asc' as const }, { id: 'asc' as const }]
@@ -58,6 +63,7 @@ export class PrismaEventRepository extends EventRepository {
         place: event.place,
         ...periodColumns(event.period),
         state: event.state,
+        cancelledFrom: event.cancelledFrom,
         updatedAt: event.updatedAt,
         updatedById: event.updatedById,
       },
@@ -82,6 +88,12 @@ function calendarDay(column: Date): string {
   return column.toISOString().slice(0, 10)
 }
 
+/** The table's check keeps CANCELLED out of the column; a row that breaks it is a bug. */
+function cancelledFromOf(column: EventState | null): CancellableEventState | null {
+  if (column === 'CANCELLED') throw new Error('An Event cannot be cancelled from CANCELLED')
+  return column
+}
+
 function toDomain(row: PrismaEvent): Event {
   return Event.restore({
     id: row.id,
@@ -94,6 +106,7 @@ function toDomain(row: PrismaEvent): Event {
       timezone: row.timezone,
     }),
     state: row.state,
+    cancelledFrom: cancelledFromOf(row.cancelledFrom),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

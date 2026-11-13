@@ -48,7 +48,7 @@ const EventJsonSchema = z.object({
   }),
   state: z.enum(EVENT_STATES).meta({
     description:
-      'DRAFT: nasce assim, e todo Group member vê onde e quando; PUBLISHED: publicado pela produção; CANCELLED: não vai mais acontecer.',
+      'DRAFT: nasce assim, e todo Group member vê onde e quando; PUBLISHED: publicado pela produção; CANCELLED: não vai mais acontecer; continua visível e congelado até ser descancelado, quando volta ao estado de antes.',
     example: 'DRAFT',
   }),
   isFinished: z.boolean().meta({

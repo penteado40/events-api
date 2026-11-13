@@ -59,6 +59,8 @@ model User {
   updatedGroups          Group[]          @relation("GroupUpdated")
   createdGroupMembers    GroupMember[]    @relation("GroupMemberCreated")
   updatedGroupMembers    GroupMember[]    @relation("GroupMemberUpdated")
+  createdTeams           Team[]           @relation("TeamCreated")
+  updatedTeams           Team[]           @relation("TeamUpdated")
   createdEmailLogs       EmailLog[]       @relation("EmailLogCreated")
   updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
 
@@ -97,6 +99,7 @@ model Group {
   updatedBy   User?    @relation("GroupUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   members GroupMember[]
+  teams   Team[]
 
   @@map("groups")
 }
@@ -120,6 +123,25 @@ model GroupMember {
   @@unique([groupId, userId])
   @@index([userId])
   @@map("group_members")
+}
+
+// A named shortcut of a Group, kept by its Owners (Cantores, Banda). A flat list: the name is unique per Group, ignoring case.
+// The case-insensitive unique index on (groupId, lower(name)) lives only in the migration: Prisma cannot model expression indexes.
+model Team {
+  id          Int      @id @default(autoincrement())
+  groupId     Int
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("TeamCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("TeamUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, name])
+  @@map("teams")
 }
 
 // One attempt to send an email (Email log): internal, for diagnosis, never resent from here.

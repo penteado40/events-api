@@ -61,3 +61,11 @@ export async function createGroupMember(options: {
     data: { groupId: options.groupId, userId: options.userId, role: options.role ?? 'VIEWER' },
   })
 }
+
+/** A Team written straight to the table, to arrange state without the routes. */
+export async function createTeam(options: { groupId: number; name?: string }) {
+  sequence += 1
+  return testPrisma().team.create({
+    data: { groupId: options.groupId, name: options.name ?? `Team ${sequence}` },
+  })
+}

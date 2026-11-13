@@ -48,13 +48,11 @@ export class EditEventUseCase {
     const { groupId } = found
     await requireEventsEditor(input.actor, groupId, this.directory)
 
-    const changes = {
+    const edit = {
       name: input.name === undefined ? undefined : EventName.create(input.name),
       place: input.place === undefined ? undefined : EventPlace.create(input.place),
       period: input.period === undefined ? undefined : EventPeriod.create(input.period),
     }
-    // Where and when are seen by every Group member (Draft included).
-    const reach = await this.directory.memberIds(groupId)
     const now = this.clock.now()
     const stamp = { by: input.actor.id, at: now }
 
@@ -62,12 +60,14 @@ export class EditEventUseCase {
       // Re-read under the lock: the Changes start from what the last edit left.
       const event = await this.events.lockById(input.eventId)
       if (!event) throw new AppError('NOT_FOUND')
+      // Where and when are seen by every Group member (Draft included).
+      const reach = await this.directory.memberIds(groupId)
       const before = event.snapshot(reach)
-      event.edit(changes, stamp)
-      const recorded = eventChanges(before, event.snapshot(reach), stamp)
-      if (recorded.length > 0) {
+      event.edit(edit, stamp)
+      const changes = eventChanges(before, event.snapshot(reach))
+      if (changes.length > 0) {
         await this.events.save(event)
-        await this.changeLog.add(event.id, recorded)
+        await this.changeLog.create(event.id, changes, stamp)
       }
       return viewOf(event, now)
     })

@@ -1,7 +1,6 @@
 import type { Stamp } from '../../../shared/domain/stamp.js'
-import type { EventSnapshot } from './event-changes.js'
 import type { EventName } from './event-name.vo.js'
-import type { EventPeriod } from './event-period.vo.js'
+import type { EventPeriod, EventPeriodValues } from './event-period.vo.js'
 import type { EventPlace } from './event-place.vo.js'
 
 /** The state the production moves an Event through. It is born in Draft; publishing and cancelling come later. */
@@ -29,10 +28,23 @@ export interface NewEventProps {
 }
 
 /** What an edit may change; a field left out stays as it is. */
-export interface EventChanges {
+export interface EventEdit {
   name?: EventName
   place?: EventPlace
   period?: EventPeriod
+}
+
+/**
+ * An Event at one moment, as plain data: its attributes and who it reaches
+ * (the ids of the Users). Taken right before and right after a change, to
+ * find its Changes.
+ */
+export interface EventSnapshot {
+  name: string
+  place: string
+  period: EventPeriodValues
+  state: EventState
+  reach: readonly number[]
 }
 
 /**
@@ -88,10 +100,10 @@ export class Event {
    * Changes the name, the place or the period, a Finished event included. An
    * edit that changes nothing is no write: the Event keeps its last Author.
    */
-  edit(changes: EventChanges, stamp: Stamp): void {
-    const name = changes.name?.value ?? this.props.name
-    const place = changes.place?.value ?? this.props.place
-    const period = changes.period ?? this.props.period
+  edit(edit: EventEdit, stamp: Stamp): void {
+    const name = edit.name?.value ?? this.props.name
+    const place = edit.place?.value ?? this.props.place
+    const period = edit.period ?? this.props.period
     const changed =
       name !== this.props.name || place !== this.props.place || !period.equals(this.props.period)
     if (!changed) return

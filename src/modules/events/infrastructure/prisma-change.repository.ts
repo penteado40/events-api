@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import type { Prisma } from '../../../generated/prisma/client.js'
-import { createdWith } from '../../../shared/domain/stamp.js'
+import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaUnitOfWork } from '../../../shared/infrastructure/prisma-unit-of-work.js'
 import type { NewChange } from '../domain/change.js'
 import { ChangeRepository } from '../domain/change.repository.js'
@@ -11,7 +11,7 @@ export class PrismaChangeRepository extends ChangeRepository {
     super()
   }
 
-  async add(eventId: number, changes: readonly NewChange[]): Promise<void> {
+  async create(eventId: number, changes: readonly NewChange[], stamp: Stamp): Promise<void> {
     if (changes.length === 0) return
     await this.unitOfWork.client.change.createMany({
       data: changes.map((change) => ({
@@ -22,7 +22,7 @@ export class PrismaChangeRepository extends ChangeRepository {
         productionOnly: change.productionOnly,
         reachBefore: change.reachBefore,
         reachAfter: change.reachAfter,
-        ...createdWith({ by: change.by, at: change.at }),
+        ...createdWith(stamp),
       })),
     })
   }

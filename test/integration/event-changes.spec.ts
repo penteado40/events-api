@@ -7,6 +7,7 @@ import { EventRepository } from '../../src/modules/events/domain/event.repositor
 import { Clock } from '../../src/shared/application/clock.js'
 import { FixedClock } from '../../src/shared/application/testing/fixed-clock.js'
 import { UnitOfWork } from '../../src/shared/application/unit-of-work.js'
+import type { Stamp } from '../../src/shared/domain/stamp.js'
 import { PrismaUnitOfWork } from '../../src/shared/infrastructure/prisma-unit-of-work.js'
 import { createTestApp, type TestApp } from './support/app.js'
 import { testPrisma } from './support/database.js'
@@ -130,8 +131,8 @@ describe('Changes of an Event', () => {
     const unitOfWork = t.app.get(PrismaUnitOfWork)
     let writtenInsideTheUnit = 0
     class FailingAfterWrite extends ChangeRepository {
-      async add(id: number, changes: readonly NewChange[]): Promise<void> {
-        await changeLog.add(id, changes)
+      async create(id: number, changes: readonly NewChange[], stamp: Stamp): Promise<void> {
+        await changeLog.create(id, changes, stamp)
         writtenInsideTheUnit = await unitOfWork
           .transaction()
           .change.count({ where: { eventId: id } })

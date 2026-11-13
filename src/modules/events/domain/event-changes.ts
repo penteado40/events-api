@@ -1,19 +1,5 @@
-import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ChangeValue, NewChange } from './change.js'
-import type { EventPeriodValues } from './event-period.vo.js'
-import type { EventState } from './event.entity.js'
-
-/**
- * An Event at one moment, as plain data: its attributes and who it reaches
- * (the ids of the Users). Taken right before and right after a change.
- */
-export interface EventSnapshot {
-  name: string
-  place: string
-  period: EventPeriodValues
-  state: EventState
-  reach: readonly number[]
-}
+import type { EventSnapshot } from './event.entity.js'
 
 /** The attributes of an Event that make Changes, in the order their Changes come. */
 const EVENT_ATTRIBUTES = ['name', 'place', 'period', 'state'] as const
@@ -22,13 +8,10 @@ const EVENT_ATTRIBUTES = ['name', 'place', 'period', 'state'] as const
  * The Changes between two snapshots of an Event: one per attribute that
  * changed, none when nothing did. The period is one attribute (its dates and
  * zone travel together). Where and when are seen by every Group member, so no
- * Change of an Event is only for the production.
+ * Change of an Event is only for the production. Who made them and when is
+ * the Stamp of the change, written with them.
  */
-export function eventChanges(
-  before: EventSnapshot,
-  after: EventSnapshot,
-  stamp: Stamp,
-): NewChange[] {
+export function eventChanges(before: EventSnapshot, after: EventSnapshot): NewChange[] {
   return EVENT_ATTRIBUTES.filter(
     (attribute) => !sameValue(before[attribute], after[attribute]),
   ).map((attribute) => ({
@@ -38,8 +21,6 @@ export function eventChanges(
     productionOnly: false,
     reachBefore: [...before.reach],
     reachAfter: [...after.reach],
-    by: stamp.by,
-    at: stamp.at,
   }))
 }
 

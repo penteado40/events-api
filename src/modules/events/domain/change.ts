@@ -7,7 +7,7 @@ export type ChangeValue =
  * from what to what, whether only the production sees it, and who it reached
  * before and after (ADR-0019). The reach is stored as it was, never rebuilt.
  * A Change is written once, in the same unit as the change it records
- * (amendment of ADR-0010), and never edited.
+ * (amendment of ADR-0010), with the Stamp of that change, and never edited.
  */
 export interface NewChange {
   /** The attribute that changed (`name`, `place`, `period`, `state` on an Event). */
@@ -20,14 +20,14 @@ export interface NewChange {
   reachBefore: number[]
   /** The ids of the Users the change reaches right after it. */
   reachAfter: number[]
+}
+
+/** A Change of an Event, as stored: with its Author and instant, the Stamp of the change. */
+export interface Change extends NewChange {
+  id: number
+  eventId: number
   /** The Author: the User who made the change; null when no User made it. */
   by: number | null
   /** The instant of the change, from the Clock. */
   at: Date
-}
-
-/** A Change of an Event, as stored. */
-export interface Change extends NewChange {
-  id: number
-  eventId: number
 }

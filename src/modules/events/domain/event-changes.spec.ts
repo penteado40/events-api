@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { type EventSnapshot, eventChanges } from './event-changes.js'
-
-const STAMP = { by: 7, at: new Date('2026-11-13T15:00:00.000Z') }
+import { eventChanges } from './event-changes.js'
+import type { EventSnapshot } from './event.entity.js'
 
 const BEFORE: EventSnapshot = {
   name: 'Show em Manaus',
@@ -12,8 +11,8 @@ const BEFORE: EventSnapshot = {
 }
 
 describe('eventChanges', () => {
-  it('gives one Change for an attribute that changed, with its Author, instant, before and after', () => {
-    const changes = eventChanges(BEFORE, { ...BEFORE, name: 'Shows em Manaus' }, STAMP)
+  it('gives one Change for an attribute that changed, with its before, after and reach', () => {
+    const changes = eventChanges(BEFORE, { ...BEFORE, name: 'Shows em Manaus' })
 
     expect(changes).toEqual([
       {
@@ -23,20 +22,18 @@ describe('eventChanges', () => {
         productionOnly: false,
         reachBefore: [2, 3, 7],
         reachAfter: [2, 3, 7],
-        by: 7,
-        at: new Date('2026-11-13T15:00:00.000Z'),
       },
     ])
   })
 
   it('gives no Change when nothing changed', () => {
-    expect(eventChanges(BEFORE, { ...BEFORE, reach: [2, 3, 7] }, STAMP)).toEqual([])
+    expect(eventChanges(BEFORE, { ...BEFORE, reach: [2, 3, 7] })).toEqual([])
   })
 
   it('treats the period as one attribute, changed when only its zone changes', () => {
     const after = { ...BEFORE, period: { ...BEFORE.period, timezone: 'America/Sao_Paulo' } }
 
-    const changes = eventChanges(BEFORE, after, STAMP)
+    const changes = eventChanges(BEFORE, after)
 
     expect(changes).toHaveLength(1)
     expect(changes[0]).toMatchObject({
@@ -54,7 +51,7 @@ describe('eventChanges', () => {
       period: { startDate: '2026-11-12', endDate: '2026-11-16', timezone: 'America/Manaus' },
     }
 
-    const changes = eventChanges(BEFORE, after, STAMP)
+    const changes = eventChanges(BEFORE, after)
 
     expect(changes.map((c) => [c.attribute, c.before, c.after])).toEqual([
       ['name', 'Show em Manaus', 'Turnê Norte'],
@@ -68,14 +65,8 @@ describe('eventChanges', () => {
   })
 
   it('keeps the reach of before and of after apart, as given', () => {
-    const changes = eventChanges(BEFORE, { ...BEFORE, name: 'Turnê', reach: [2, 7] }, STAMP)
+    const changes = eventChanges(BEFORE, { ...BEFORE, name: 'Turnê', reach: [2, 7] })
 
     expect(changes[0]).toMatchObject({ reachBefore: [2, 3, 7], reachAfter: [2, 7] })
-  })
-
-  it('records a write made by no User with a null Author', () => {
-    const changes = eventChanges(BEFORE, { ...BEFORE, name: 'Turnê' }, { ...STAMP, by: null })
-
-    expect(changes[0]?.by).toBeNull()
   })
 })

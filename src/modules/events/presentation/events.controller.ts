@@ -8,6 +8,7 @@ import { CreateEventUseCase } from '../application/use-cases/create-event.use-ca
 import { EditEventUseCase } from '../application/use-cases/edit-event.use-case.js'
 import { GetEventUseCase } from '../application/use-cases/get-event.use-case.js'
 import { ListEventsUseCase } from '../application/use-cases/list-events.use-case.js'
+import { PublishEventUseCase } from '../application/use-cases/publish-event.use-case.js'
 import {
   CreateEventDto,
   EditEventDto,
@@ -24,6 +25,7 @@ export class EventsController {
     private readonly listEventsUseCase: ListEventsUseCase,
     private readonly getEventUseCase: GetEventUseCase,
     private readonly editEventUseCase: EditEventUseCase,
+    private readonly publishEventUseCase: PublishEventUseCase,
   ) {}
 
   @Post('groups/:id/events')
@@ -90,6 +92,23 @@ export class EventsController {
     @Body() body: EditEventDto,
   ): Promise<EventResponseDto> {
     const view = await this.editEventUseCase.execute({ actor, eventId, ...body })
+    return { data: EventPresenter.toJson(view) }
+  }
+
+  @Post('events/:id/publish')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Publicar um Event',
+    description:
+      'O Super admin ou um Owner do Group do Event publica um Event em Draft: os Event items publicados passam a aparecer para quem eles alcançam. A mudança de estado vira uma Change no Change log, gravada junto com a publicação. Um Event já publicado ou Cancelled: 409 EVENT_NOT_DRAFT. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+  })
+  @ApiOkResponse({ type: EventResponseDto })
+  @ApiErrors('EVENT_NOT_DRAFT', 'FORBIDDEN', 'NOT_FOUND')
+  async publish(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+  ): Promise<EventResponseDto> {
+    const view = await this.publishEventUseCase.execute({ actor, eventId })
     return { data: EventPresenter.toJson(view) }
   }
 }

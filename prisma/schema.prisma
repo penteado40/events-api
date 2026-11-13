@@ -22,6 +22,8 @@ enum GroupRole {
 
 enum EventState {
   DRAFT
+  PUBLISHED
+  CANCELLED
 }
 
 enum EmailKind {

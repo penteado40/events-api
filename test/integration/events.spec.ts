@@ -376,6 +376,114 @@ describe('Events', () => {
     })
   })
 
+  describe('POST /api/v1/events/:id/publish', () => {
+    const publish = (id: number, token: string) =>
+      t
+        .http()
+        .post(`${eventUrl(id)}/publish`)
+        .auth(token, { type: 'bearer' })
+
+    it('lets an Owner publish an Event in Draft, as its Author, with the Change of state', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', ...MANAUS_PERIOD })
+
+      const res = await publish(event.id, ownerToken)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({
+        id: event.id,
+        state: 'PUBLISHED',
+        updatedAt: LAST_DAY_IN_MANAUS.toISOString(),
+      })
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row).toMatchObject({ state: 'PUBLISHED', updatedById: ownerId })
+      expect(await testPrisma().change.findMany({ where: { eventId: event.id } })).toEqual([
+        expect.objectContaining({
+          attribute: 'state',
+          before: 'DRAFT',
+          after: 'PUBLISHED',
+          productionOnly: false,
+          createdById: ownerId,
+          createdAt: LAST_DAY_IN_MANAUS,
+        }),
+      ])
+    })
+
+    it('shows the state in GET /events/:id and in the list of the Group', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', ...MANAUS_PERIOD })
+      await createEvent({ groupId, name: 'Ensaio', startDate: '2026-11-20' })
+
+      await publish(event.id, ownerToken)
+      const one = await t.http().get(eventUrl(event.id)).auth(viewerToken, { type: 'bearer' })
+      const list = await t.http().get(groupEventsUrl()).auth(viewerToken, { type: 'bearer' })
+
+      expect(one.body.data.state).toBe('PUBLISHED')
+      expect(list.body.data.map((e: { name: string; state: string }) => [e.name, e.state])).toEqual(
+        [
+          ['Shows em Manaus', 'PUBLISHED'],
+          ['Ensaio', 'DRAFT'],
+        ],
+      )
+    })
+
+    it('publishes once when two publishes race: the other answers 409, with one Change', async () => {
+      const event = await createEvent({ groupId })
+
+      const results = await Promise.all([
+        publish(event.id, ownerToken),
+        publish(event.id, adminToken),
+      ])
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(1)
+    })
+
+    it('lets the Super admin publish an Event of any Group', async () => {
+      const event = await createEvent({ groupId })
+
+      const res = await publish(event.id, adminToken)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.state).toBe('PUBLISHED')
+    })
+
+    it.each(['PUBLISHED', 'CANCELLED'] as const)(
+      'answers 409 EVENT_NOT_DRAFT to an Event %s, recording no Change',
+      async (state) => {
+        const event = await createEvent({ groupId, state })
+
+        const res = await publish(event.id, ownerToken)
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('EVENT_NOT_DRAFT'))
+        const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+        expect(row.state).toBe(state)
+        expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(0)
+      },
+    )
+
+    it('answers 403 FORBIDDEN to a Viewer and 404 to who is not a Group member of its Group', async () => {
+      const event = await createEvent({ groupId })
+
+      const asViewer = await publish(event.id, viewerToken)
+      const asOutsider = await publish(event.id, outsiderToken)
+      const missing = await publish(event.id + 1000, adminToken)
+
+      expect(asViewer.status).toBe(403)
+      expect(asViewer.body).toEqual(errorOf('FORBIDDEN'))
+      expect(asOutsider.status).toBe(404)
+      expect(asOutsider.body).toEqual(errorOf('NOT_FOUND'))
+      expect(missing.status).toBe(404)
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row.state).toBe('DRAFT')
+    })
+
+    it('answers 401 without a token', async () => {
+      const event = await createEvent({ groupId })
+
+      expect((await t.http().post(`${eventUrl(event.id)}/publish`)).status).toBe(401)
+    })
+  })
+
   describe('an id out of the range of ids', () => {
     // Above int4: the database would refuse it with an error of its own.
     const HUGE_ID = '99999999999'
@@ -395,6 +503,7 @@ describe('Events', () => {
         'PATCH /events/:id',
         () => t.http().patch(`/api/v1/events/${HUGE_ID}`).send({ name: 'Outro' }),
       ],
+      ['POST /events/:id/publish', () => t.http().post(`/api/v1/events/${HUGE_ID}/publish`)],
     ])('answers 400 VALIDATION_ERROR on %s', async (_, request) => {
       const res = await request().auth(adminToken, { type: 'bearer' })
 

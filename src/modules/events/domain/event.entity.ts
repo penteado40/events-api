@@ -1,10 +1,14 @@
+import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { EventName } from './event-name.vo.js'
 import type { EventPeriod, EventPeriodValues } from './event-period.vo.js'
 import type { EventPlace } from './event-place.vo.js'
 
-/** The state the production moves an Event through. It is born in Draft; publishing and cancelling come later. */
-export const EVENT_STATES = ['DRAFT'] as const
+/**
+ * The state the production moves an Event through. It is born in Draft and is
+ * published by `publish()`; cancelling and going back to Draft come later.
+ */
+export const EVENT_STATES = ['DRAFT', 'PUBLISHED', 'CANCELLED'] as const
 export type EventState = (typeof EVENT_STATES)[number]
 
 export interface EventProps {
@@ -110,6 +114,18 @@ export class Event {
     this.props.name = name
     this.props.place = place
     this.props.period = period
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
+  }
+
+  /**
+   * Releases an Event in Draft: its published Event items start to reach whom
+   * they reach. Only a Draft is published; a published or Cancelled Event is
+   * EVENT_NOT_DRAFT.
+   */
+  publish(stamp: Stamp): void {
+    if (this.props.state !== 'DRAFT') throw new AppError('EVENT_NOT_DRAFT')
+    this.props.state = 'PUBLISHED'
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
   }

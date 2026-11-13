@@ -7,6 +7,7 @@ import { CreateEventUseCase } from './application/use-cases/create-event.use-cas
 import { EditEventUseCase } from './application/use-cases/edit-event.use-case.js'
 import { GetEventUseCase } from './application/use-cases/get-event.use-case.js'
 import { ListEventsUseCase } from './application/use-cases/list-events.use-case.js'
+import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
 import { ChangeRepository } from './domain/change.repository.js'
 import { EventRepository } from './domain/event.repository.js'
 import { InProcessGroupDirectory } from './infrastructure/in-process-group-directory.js'
@@ -14,7 +15,7 @@ import { PrismaChangeRepository } from './infrastructure/prisma-change.repositor
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
 import { EventsController } from './presentation/events.controller.js'
 
-/** Composition root of the events context: Events, with where and when, and their Changes. Roles come from groups. */
+/** Composition root of the events context: Events, with where and when, their publication and their Changes. Roles come from groups. */
 @Module({
   imports: [GroupsQueriesModule],
   controllers: [EventsController],
@@ -53,6 +54,17 @@ import { EventsController } from './presentation/events.controller.js'
         unitOfWork: UnitOfWork,
         clock: Clock,
       ) => new EditEventUseCase(directory, events, changeLog, unitOfWork, clock),
+      inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: PublishEventUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new PublishEventUseCase(directory, events, changeLog, unitOfWork, clock),
       inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
     },
   ],

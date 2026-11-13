@@ -69,6 +69,8 @@ model User {
   updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
   createdEvents          Event[]          @relation("EventCreated")
   updatedEvents          Event[]          @relation("EventUpdated")
+  createdChanges         Change[]         @relation("ChangeCreated")
+  updatedChanges         Change[]         @relation("ChangeUpdated")
 
   groupMembers GroupMember[] @relation("GroupMemberUser")
 
@@ -171,10 +173,38 @@ model Event {
   createdBy   User?      @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy   User?      @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  changes Change[]
 
   @@index([groupId, startDate])
   @@map("events")
+}
+
+// One step recorded on an Event (the Change log): written in the same transaction as the change, never edited.
+// The Author and the instant of the change are createdById and createdAt (ADR-0013).
+// The reach is who the change reached before and after it, as User ids, kept as it was (ADR-0019):
+// a User who leaves stays in it, so the arrays carry no foreign key.
+model Change {
+  id             Int      @id @default(autoincrement())
+  eventId        Int
+  attribute      String // name, place, period, state
+  before         Json
+  after          Json
+  productionOnly Boolean // Only the production sees it in the Change log
+  reachBefore    Int[]
+  reachAfter     Int[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    Int? // Author (ADR-0013)
+  updatedById    Int?
+  createdBy      User?    @relation("ChangeCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?    @relation("ChangeUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  // Kept while the Event exists (amendment of ADR-0013).
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+  @@map("changes")
 }
 
 // One attempt to send an email (Email log): internal, for diagnosis, never resent from here.

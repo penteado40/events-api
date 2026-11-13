@@ -14,6 +14,11 @@ export class InMemoryGroupMemberRepository extends GroupMemberRepository {
     return this.ofGroup(groupId)
   }
 
+  /** The in-memory unit of work already runs one unit at a time: no lock to take. */
+  async lockByGroup(groupId: number): Promise<GroupMember[]> {
+    return this.ofGroup(groupId)
+  }
+
   /**
    * The Group members of the Group, in the order they were added. Synchronous
    * helper for test assertions; findByGroup is the port contract.

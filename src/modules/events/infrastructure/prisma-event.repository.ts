@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { Event as PrismaEvent } from '../../../generated/prisma/client.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
-import { PrismaService } from '../../../shared/infrastructure/prisma.service.js'
+import { PrismaUnitOfWork } from '../../../shared/infrastructure/prisma-unit-of-work.js'
 import { EventPeriod } from '../domain/event-period.vo.js'
 import { Event, type NewEventProps } from '../domain/event.entity.js'
 import { EventRepository } from '../domain/event.repository.js'
@@ -10,22 +10,35 @@ const BY_START_DATE = [{ startDate: 'asc' as const }, { id: 'asc' as const }]
 
 @Injectable()
 export class PrismaEventRepository extends EventRepository {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly unitOfWork: PrismaUnitOfWork) {
     super()
   }
 
   async findById(id: number): Promise<Event | null> {
-    const row = await this.prisma.event.findUnique({ where: { id } })
+    const row = await this.unitOfWork.client.event.findUnique({ where: { id } })
+    return row ? toDomain(row) : null
+  }
+
+  // FOR UPDATE holds the Event's row until the transaction ends.
+  async lockById(id: number): Promise<Event | null> {
+    const tx = this.unitOfWork.transaction()
+    const locked = await tx.$queryRaw<{ id: number }[]>`
+      SELECT id FROM events WHERE id = ${id} FOR UPDATE`
+    if (locked.length === 0) return null
+    const row = await tx.event.findUnique({ where: { id } })
     return row ? toDomain(row) : null
   }
 
   async findByGroup(groupId: number): Promise<Event[]> {
-    const rows = await this.prisma.event.findMany({ where: { groupId }, orderBy: BY_START_DATE })
+    const rows = await this.unitOfWork.client.event.findMany({
+      where: { groupId },
+      orderBy: BY_START_DATE,
+    })
     return rows.map(toDomain)
   }
 
   async create(props: NewEventProps, stamp: Stamp): Promise<Event> {
-    const row = await this.prisma.event.create({
+    const row = await this.unitOfWork.client.event.create({
       data: {
         groupId: props.groupId,
         name: props.name.value,
@@ -38,7 +51,7 @@ export class PrismaEventRepository extends EventRepository {
   }
 
   async save(event: Event): Promise<void> {
-    await this.prisma.event.update({
+    await this.unitOfWork.client.event.update({
       where: { id: event.id },
       data: {
         name: event.name,

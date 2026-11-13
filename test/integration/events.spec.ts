@@ -376,6 +376,290 @@ describe('Events', () => {
     })
   })
 
+  describe('POST /api/v1/events/:id/publish', () => {
+    const publish = (id: number, token: string) =>
+      t
+        .http()
+        .post(`${eventUrl(id)}/publish`)
+        .auth(token, { type: 'bearer' })
+
+    it('lets an Owner publish an Event in Draft, as its Author, with the Change of state', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', ...MANAUS_PERIOD })
+
+      const res = await publish(event.id, ownerToken)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({
+        id: event.id,
+        state: 'PUBLISHED',
+        updatedAt: LAST_DAY_IN_MANAUS.toISOString(),
+      })
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row).toMatchObject({ state: 'PUBLISHED', updatedById: ownerId })
+      expect(await testPrisma().change.findMany({ where: { eventId: event.id } })).toEqual([
+        expect.objectContaining({
+          attribute: 'state',
+          before: 'DRAFT',
+          after: 'PUBLISHED',
+          productionOnly: false,
+          createdById: ownerId,
+          createdAt: LAST_DAY_IN_MANAUS,
+        }),
+      ])
+    })
+
+    it('shows the state in GET /events/:id and in the list of the Group', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', ...MANAUS_PERIOD })
+      await createEvent({ groupId, name: 'Ensaio', startDate: '2026-11-20' })
+
+      await publish(event.id, ownerToken)
+      const one = await t.http().get(eventUrl(event.id)).auth(viewerToken, { type: 'bearer' })
+      const list = await t.http().get(groupEventsUrl()).auth(viewerToken, { type: 'bearer' })
+
+      expect(one.body.data.state).toBe('PUBLISHED')
+      expect(list.body.data.map((e: { name: string; state: string }) => [e.name, e.state])).toEqual(
+        [
+          ['Shows em Manaus', 'PUBLISHED'],
+          ['Ensaio', 'DRAFT'],
+        ],
+      )
+    })
+
+    it('publishes once when two publishes race: the other answers 409, with one Change', async () => {
+      const event = await createEvent({ groupId })
+
+      const results = await Promise.all([
+        publish(event.id, ownerToken),
+        publish(event.id, adminToken),
+      ])
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(1)
+    })
+
+    it('lets the Super admin publish an Event of any Group', async () => {
+      const event = await createEvent({ groupId })
+
+      const res = await publish(event.id, adminToken)
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.state).toBe('PUBLISHED')
+    })
+
+    it.each([
+      ['PUBLISHED', 'EVENT_NOT_DRAFT'],
+      ['CANCELLED', 'EVENT_CANCELLED'],
+    ] as const)('answers 409 to an Event %s with %s, recording no Change', async (state, code) => {
+      const event = await createEvent({ groupId, state })
+
+      const res = await publish(event.id, ownerToken)
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf(code))
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row.state).toBe(state)
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(0)
+    })
+
+    it('answers 403 FORBIDDEN to a Viewer and 404 to who is not a Group member of its Group', async () => {
+      const event = await createEvent({ groupId })
+
+      const asViewer = await publish(event.id, viewerToken)
+      const asOutsider = await publish(event.id, outsiderToken)
+      const missing = await publish(event.id + 1000, adminToken)
+
+      expect(asViewer.status).toBe(403)
+      expect(asViewer.body).toEqual(errorOf('FORBIDDEN'))
+      expect(asOutsider.status).toBe(404)
+      expect(asOutsider.body).toEqual(errorOf('NOT_FOUND'))
+      expect(missing.status).toBe(404)
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row.state).toBe('DRAFT')
+    })
+
+    it('answers 401 without a token', async () => {
+      const event = await createEvent({ groupId })
+
+      expect((await t.http().post(`${eventUrl(event.id)}/publish`)).status).toBe(401)
+    })
+  })
+
+  describe('POST /api/v1/events/:id/cancel and /uncancel', () => {
+    const cancel = (id: number, token: string) =>
+      t
+        .http()
+        .post(`${eventUrl(id)}/cancel`)
+        .auth(token, { type: 'bearer' })
+    const uncancel = (id: number, token: string) =>
+      t
+        .http()
+        .post(`${eventUrl(id)}/uncancel`)
+        .auth(token, { type: 'bearer' })
+    const stateChanges = async (eventId: number) =>
+      (
+        await testPrisma().change.findMany({
+          where: { eventId, attribute: 'state' },
+          orderBy: { id: 'asc' },
+        })
+      ).map((c) => [c.before, c.after])
+
+    it.each(['DRAFT', 'PUBLISHED'] as const)(
+      'lets an Owner cancel an Event in %s and uncancel it back, each a Change of state',
+      async (state) => {
+        const event = await createEvent({ groupId, state, ...MANAUS_PERIOD })
+
+        const cancelled = await cancel(event.id, ownerToken)
+
+        expect(cancelled.status).toBe(200)
+        expect(cancelled.body.data).toMatchObject({
+          id: event.id,
+          state: 'CANCELLED',
+          updatedAt: LAST_DAY_IN_MANAUS.toISOString(),
+        })
+        expect(
+          await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } }),
+        ).toMatchObject({ state: 'CANCELLED', cancelledFrom: state, updatedById: ownerId })
+
+        const uncancelled = await uncancel(event.id, ownerToken)
+
+        expect(uncancelled.status).toBe(200)
+        expect(uncancelled.body.data.state).toBe(state)
+        expect(
+          await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } }),
+        ).toMatchObject({ state, cancelledFrom: null })
+        expect(await stateChanges(event.id)).toEqual([
+          [state, 'CANCELLED'],
+          ['CANCELLED', state],
+        ])
+        expect(await testPrisma().change.findMany({ where: { eventId: event.id } })).toEqual([
+          expect.objectContaining({ productionOnly: false, createdById: ownerId }),
+          expect.objectContaining({ productionOnly: false, createdById: ownerId }),
+        ])
+      },
+    )
+
+    it('keeps a Cancelled Event in GET /events/:id and in the list of the Group, as CANCELLED', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', ...MANAUS_PERIOD })
+      await createEvent({ groupId, name: 'Ensaio', startDate: '2026-11-20' })
+
+      await cancel(event.id, ownerToken)
+      const one = await t.http().get(eventUrl(event.id)).auth(viewerToken, { type: 'bearer' })
+      const list = await t.http().get(groupEventsUrl()).auth(viewerToken, { type: 'bearer' })
+
+      expect(one.status).toBe(200)
+      expect(one.body.data.state).toBe('CANCELLED')
+      expect(list.body.data.map((e: { name: string; state: string }) => [e.name, e.state])).toEqual(
+        [
+          ['Shows em Manaus', 'CANCELLED'],
+          ['Ensaio', 'DRAFT'],
+        ],
+      )
+    })
+
+    it('freezes a Cancelled Event: an edit answers 409 EVENT_CANCELLED, changing nothing', async () => {
+      const event = await createEvent({ groupId, name: 'Shows em Manaus', state: 'CANCELLED' })
+
+      const res = await t
+        .http()
+        .patch(eventUrl(event.id))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Turnê' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('EVENT_CANCELLED'))
+      const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+      expect(row).toMatchObject({ name: 'Shows em Manaus', state: 'CANCELLED' })
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(0)
+    })
+
+    it('takes edits again once uncancelled', async () => {
+      const event = await createEvent({ groupId, state: 'CANCELLED', cancelledFrom: 'PUBLISHED' })
+
+      await uncancel(event.id, ownerToken)
+      const res = await t
+        .http()
+        .patch(eventUrl(event.id))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Turnê' })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({ name: 'Turnê', state: 'PUBLISHED' })
+    })
+
+    it('answers 409 EVENT_CANCELLED to cancelling a Cancelled Event, recording no Change', async () => {
+      const event = await createEvent({ groupId, state: 'CANCELLED' })
+
+      const res = await cancel(event.id, ownerToken)
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('EVENT_CANCELLED'))
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(0)
+    })
+
+    it.each(['DRAFT', 'PUBLISHED'] as const)(
+      'answers 409 EVENT_NOT_CANCELLED to uncancelling an Event in %s, recording no Change',
+      async (state) => {
+        const event = await createEvent({ groupId, state })
+
+        const res = await uncancel(event.id, ownerToken)
+
+        expect(res.status).toBe(409)
+        expect(res.body).toEqual(errorOf('EVENT_NOT_CANCELLED'))
+        const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+        expect(row.state).toBe(state)
+        expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(0)
+      },
+    )
+
+    it('cancels once when two cancels race: the other answers 409, with one Change', async () => {
+      const event = await createEvent({ groupId })
+
+      const results = await Promise.all([
+        cancel(event.id, ownerToken),
+        cancel(event.id, adminToken),
+      ])
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+      expect(await testPrisma().change.count({ where: { eventId: event.id } })).toBe(1)
+    })
+
+    it('lets the Super admin cancel and uncancel an Event of any Group', async () => {
+      const event = await createEvent({ groupId })
+
+      expect((await cancel(event.id, adminToken)).body.data.state).toBe('CANCELLED')
+      expect((await uncancel(event.id, adminToken)).body.data.state).toBe('DRAFT')
+    })
+
+    it.each([
+      ['cancel', 'DRAFT'],
+      ['uncancel', 'CANCELLED'],
+    ] as const)(
+      '%s answers 403 FORBIDDEN to a Viewer and 404 to who is not a Group member of its Group',
+      async (action, state) => {
+        const event = await createEvent({ groupId, state })
+        const request = action === 'cancel' ? cancel : uncancel
+
+        const asViewer = await request(event.id, viewerToken)
+        const asOutsider = await request(event.id, outsiderToken)
+        const missing = await request(event.id + 1000, adminToken)
+
+        expect(asViewer.status).toBe(403)
+        expect(asViewer.body).toEqual(errorOf('FORBIDDEN'))
+        expect(asOutsider.status).toBe(404)
+        expect(asOutsider.body).toEqual(errorOf('NOT_FOUND'))
+        expect(missing.status).toBe(404)
+        const row = await testPrisma().event.findUniqueOrThrow({ where: { id: event.id } })
+        expect(row.state).toBe(state)
+      },
+    )
+
+    it.each(['cancel', 'uncancel'])('%s answers 401 without a token', async (action) => {
+      const event = await createEvent({ groupId })
+
+      expect((await t.http().post(`${eventUrl(event.id)}/${action}`)).status).toBe(401)
+    })
+  })
+
   describe('an id out of the range of ids', () => {
     // Above int4: the database would refuse it with an error of its own.
     const HUGE_ID = '99999999999'
@@ -395,6 +679,9 @@ describe('Events', () => {
         'PATCH /events/:id',
         () => t.http().patch(`/api/v1/events/${HUGE_ID}`).send({ name: 'Outro' }),
       ],
+      ['POST /events/:id/publish', () => t.http().post(`/api/v1/events/${HUGE_ID}/publish`)],
+      ['POST /events/:id/cancel', () => t.http().post(`/api/v1/events/${HUGE_ID}/cancel`)],
+      ['POST /events/:id/uncancel', () => t.http().post(`/api/v1/events/${HUGE_ID}/uncancel`)],
     ])('answers 400 VALIDATION_ERROR on %s', async (_, request) => {
       const res = await request().auth(adminToken, { type: 'bearer' })
 

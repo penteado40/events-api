@@ -40,6 +40,12 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 400,
     message: 'O Event item só pode ter hora se tiver data.',
   },
+  EVENT_NOT_DRAFT: { status: 409, message: 'Só um Event em Draft pode ser publicado.' },
+  EVENT_CANCELLED: {
+    status: 409,
+    message: 'O Event está cancelado: nada nele muda até ser descancelado.',
+  },
+  EVENT_NOT_CANCELLED: { status: 409, message: 'O Event não está cancelado.' },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

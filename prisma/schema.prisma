@@ -22,6 +22,8 @@ enum GroupRole {
 
 enum EventState {
   DRAFT
+  PUBLISHED
+  CANCELLED
 }
 
 enum EventItemState {
@@ -164,20 +166,22 @@ model Team {
 // A Finished event is derived (endDate before today in `timezone`), never stored.
 // The CHECK that endDate is not before startDate lives only in the migration.
 model Event {
-  id          Int        @id @default(autoincrement())
-  groupId     Int
-  name        String
-  place       String // Free text: a city or a venue
-  startDate   DateTime   @db.Date
-  endDate     DateTime   @db.Date
-  timezone    String // IANA zone of the place (America/Manaus)
-  state       EventState @default(DRAFT)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  createdById Int? // Author (ADR-0013)
-  updatedById Int?
-  createdBy   User?      @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy   User?      @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  id            Int         @id @default(autoincrement())
+  groupId       Int
+  name          String
+  place         String // Free text: a city or a venue
+  startDate     DateTime    @db.Date
+  endDate       DateTime    @db.Date
+  timezone      String // IANA zone of the place (America/Manaus)
+  state         EventState  @default(DRAFT)
+  // The state before the cancel (DRAFT or PUBLISHED) while CANCELLED, null otherwise
+  cancelledFrom EventState?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  createdById   Int? // Author (ADR-0013)
+  updatedById   Int?
+  createdBy     User?       @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy     User?       @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
   group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
   changes Change[]

@@ -5,6 +5,7 @@ import { GroupLookup, GroupsQueriesModule } from '../groups/index.js'
 import { EventScheduleReader } from './application/ports/event-schedule-reader.js'
 import { GroupDirectory } from './application/ports/group-directory.js'
 import { CreateEventItemUseCase } from './application/use-cases/create-event-item.use-case.js'
+import { CancelEventUseCase } from './application/use-cases/cancel-event.use-case.js'
 import { CreateEventUseCase } from './application/use-cases/create-event.use-case.js'
 import { DeleteEventItemUseCase } from './application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from './application/use-cases/edit-event-item.use-case.js'
@@ -12,6 +13,8 @@ import { EditEventUseCase } from './application/use-cases/edit-event.use-case.js
 import { GetEventUseCase } from './application/use-cases/get-event.use-case.js'
 import { GetScheduleUseCase } from './application/use-cases/get-schedule.use-case.js'
 import { ListEventsUseCase } from './application/use-cases/list-events.use-case.js'
+import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
+import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use-case.js'
 import { ChangeRepository } from './domain/change.repository.js'
 import { EventItemRepository } from './domain/event-item.repository.js'
 import { EventRepository } from './domain/event.repository.js'
@@ -23,7 +26,7 @@ import { PrismaEventRepository } from './infrastructure/prisma-event.repository.
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
 
-/** Composition root of the events context: Events, with where and when, their Changes and their Event items. Roles come from groups. */
+/** Composition root of the events context: Events, with where and when, their publication, cancel, their Changes and their Event items. Roles come from groups. */
 @Module({
   imports: [GroupsQueriesModule],
   controllers: [EventsController, EventItemsController],
@@ -64,6 +67,39 @@ import { EventsController } from './presentation/events.controller.js'
         unitOfWork: UnitOfWork,
         clock: Clock,
       ) => new EditEventUseCase(directory, events, changeLog, unitOfWork, clock),
+      inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: PublishEventUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new PublishEventUseCase(directory, events, changeLog, unitOfWork, clock),
+      inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: CancelEventUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new CancelEventUseCase(directory, events, changeLog, unitOfWork, clock),
+      inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
+    },
+    {
+      provide: UncancelEventUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new UncancelEventUseCase(directory, events, changeLog, unitOfWork, clock),
       inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
     },
     {

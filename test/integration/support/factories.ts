@@ -1,5 +1,9 @@
 import { FakeAuthVerifier } from '../../../src/modules/identity/application/testing/fake-auth-verifier.js'
 import type { Role } from '../../../src/modules/identity/index.js'
+import type {
+  CancellableEventState,
+  EventState,
+} from '../../../src/modules/events/domain/event.entity.js'
 import { testPrisma } from './database.js'
 
 let sequence = 0
@@ -70,9 +74,15 @@ export async function createTeam(options: { groupId: number; name?: string }) {
   })
 }
 
-/** An Event written straight to the table, to arrange state without the routes. Born in Draft. */
+/**
+ * An Event written straight to the table, to arrange state without the routes.
+ * Born in Draft unless a state is given; a Cancelled one was cancelled from
+ * Draft unless `cancelledFrom` says otherwise.
+ */
 export async function createEvent(options: {
   groupId: number
+  state?: EventState
+  cancelledFrom?: CancellableEventState
   name?: string
   place?: string
   startDate?: string
@@ -89,6 +99,8 @@ export async function createEvent(options: {
       startDate: new Date(`${startDate}T00:00:00.000Z`),
       endDate: new Date(`${options.endDate ?? startDate}T00:00:00.000Z`),
       timezone: options.timezone ?? 'America/Manaus',
+      state: options.state,
+      cancelledFrom: options.state === 'CANCELLED' ? (options.cancelledFrom ?? 'DRAFT') : null,
     },
   })
 }

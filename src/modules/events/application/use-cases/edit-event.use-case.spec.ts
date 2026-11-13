@@ -189,6 +189,18 @@ describe('EditEventUseCase', () => {
     expect((await events.findById(eventId))?.name).toBe('Show em Manaus')
   })
 
+  it('refuses a Cancelled Event with EVENT_CANCELLED, recording no Change', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    const event = await events.findById(eventId)
+    event?.cancel({ by: null, at: CREATED_AT })
+
+    await expect(editEvent.execute({ actor: ANA, eventId, name: 'Turnê' })).rejects.toEqual(
+      new AppError('EVENT_CANCELLED'),
+    )
+    expect((await events.findById(eventId))?.name).toBe('Show em Manaus')
+    expect(changes.ofEvent(eventId)).toEqual([])
+  })
+
   it('refuses a Viewer with FORBIDDEN', async () => {
     directory.addMember(1, ANA.id, 'VIEWER')
 

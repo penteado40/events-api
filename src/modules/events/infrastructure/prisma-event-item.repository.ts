@@ -40,17 +40,11 @@ export class PrismaEventItemRepository extends EventItemRepository {
     return rows.map(toDomain)
   }
 
-  // The caller holds the Event's lock, so no other creation reads the same last position.
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
-    const client = this.unitOfWork.client
-    const { _max } = await client.eventItem.aggregate({
-      where: { eventId: props.eventId },
-      _max: { position: true },
-    })
-    const row = await client.eventItem.create({
+    const row = await this.unitOfWork.client.eventItem.create({
       data: {
         eventId: props.eventId,
-        position: (_max.position ?? 0) + 1,
+        position: props.position,
         name: props.name.value,
         ...startColumns(props.start),
         ...placeColumns(props.place),

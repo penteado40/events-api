@@ -3,6 +3,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
+import { positionAfter } from '../../domain/event-item-order.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
@@ -36,6 +37,7 @@ describe('ReorderEventItemsUseCase', () => {
         name: EventItemName.create(name),
         start: EventItemStart.create({ date: start.date ?? null, time: start.time ?? null }),
         place: null,
+        position: positionAfter(items.ofEvent(eventId)),
       },
       { by: null, at: CREATED_AT },
     )

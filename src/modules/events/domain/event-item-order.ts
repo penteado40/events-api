@@ -8,6 +8,15 @@ export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapsho
   return a.position - b.position || a.id - b.id
 }
 
+/**
+ * The position of a new Event item: after every item of the Event, so last in
+ * its tie group, whatever order the Owners gave. Read under the Event's lock,
+ * so two creations never take the same one.
+ */
+export function positionAfter(items: readonly { position: number }[]): number {
+  return Math.max(0, ...items.map((item) => item.position)) + 1
+}
+
 /** An Event item's new manual position. */
 export interface EventItemPosition {
   id: number

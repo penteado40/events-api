@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import { reorderEventItems } from './event-item-order.js'
+import { positionAfter, reorderEventItems } from './event-item-order.js'
 
 function item(id: number, name: string, over: Partial<EventItemSnapshot> = {}): EventItemSnapshot {
   return {
@@ -115,9 +115,23 @@ describe('reorderEventItems', () => {
     expect(() => reorderEventItems(ITEMS, [2, 99], MEMBERS)).toThrow(new AppError('NOT_FOUND'))
   })
 
+  it('refuses an empty order: VALIDATION_ERROR', () => {
+    expect(() => reorderEventItems(ITEMS, [], MEMBERS)).toThrow(new AppError('VALIDATION_ERROR'))
+  })
+
   it('refuses an item given twice: VALIDATION_ERROR', () => {
     expect(() => reorderEventItems(ITEMS, [2, 3, 2], MEMBERS)).toThrow(
       new AppError('VALIDATION_ERROR'),
     )
+  })
+})
+
+describe('positionAfter', () => {
+  it('puts a new item after every item of the Event, so last in its tie group', () => {
+    expect(positionAfter([item(1, 'O que levar', { position: 7 }), item(2, 'Show')])).toBe(8)
+  })
+
+  it('starts the order at 1 in an Event with no items', () => {
+    expect(positionAfter([])).toBe(1)
   })
 })

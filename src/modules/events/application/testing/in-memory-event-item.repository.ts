@@ -20,7 +20,6 @@ export class InMemoryEventItemRepository extends EventItemRepository {
   }
 
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
-    const last = Math.max(0, ...this.ofEvent(props.eventId).map((i) => i.position))
     const item = EventItem.restore({
       id: this.nextId++,
       eventId: props.eventId,
@@ -28,7 +27,7 @@ export class InMemoryEventItemRepository extends EventItemRepository {
       start: props.start,
       place: props.place,
       state: 'PUBLISHED',
-      position: last + 1,
+      position: props.position,
       ...createdWith(stamp),
     })
     this.items.set(item.id, item)

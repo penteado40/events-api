@@ -15,11 +15,7 @@ export abstract class EventItemRepository {
    * every other write of the Event's items waits on.
    */
   abstract findAllInEvent(eventId: number): Promise<EventItem[]>
-  /**
-   * In an Event in Draft, a new Event item is born published, last in the
-   * order of the production: after every item of the Event, so last in its
-   * tie group. Called under the Event's lock, so two creations never share it.
-   */
+  /** In an Event in Draft, a new Event item is born published, at the position it is given. */
   abstract create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem>
   abstract save(item: EventItem): Promise<void>
   abstract delete(itemId: number): Promise<void>

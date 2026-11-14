@@ -32,6 +32,8 @@ export interface NewEventItemProps {
   name: EventItemName
   start: EventItemStart
   place: EventItemPlace | null
+  /** Its place in the order of the production (positionAfter). */
+  position: number
 }
 
 /** What an edit may change; a field left out stays as it is, null clears it. */

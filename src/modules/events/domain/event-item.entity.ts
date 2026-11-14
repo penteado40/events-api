@@ -133,11 +133,15 @@ export class EventItem {
   }
 
   /**
-   * Takes a new place in the order of the production (reorderEventItems). It
-   * is a Change of the Event, not of the item, so the item keeps its Author.
+   * Takes a new place in the order of the production (reorderEventItems). A
+   * write on the row like any other, so its Author is who reordered (ADR-0013);
+   * the Change it makes is the Event's.
    */
-  moveTo(position: number): void {
+  moveTo(position: number, stamp: Stamp): void {
+    if (position === this.props.position) return
     this.props.position = position
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
   }
 
   /** The Event item as plain data at this moment. */

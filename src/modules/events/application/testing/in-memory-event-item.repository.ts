@@ -1,6 +1,5 @@
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
 import { EventItem, type NewEventItemProps } from '../../domain/event-item.entity.js'
-import type { EventItemPosition } from '../../domain/event-item-order.js'
 import { EventItemRepository } from '../../domain/event-item.repository.js'
 
 export class InMemoryEventItemRepository extends EventItemRepository {
@@ -38,12 +37,6 @@ export class InMemoryEventItemRepository extends EventItemRepository {
 
   async save(item: EventItem): Promise<void> {
     this.items.set(item.id, item)
-  }
-
-  async reposition(positions: readonly EventItemPosition[]): Promise<void> {
-    for (const { id, position } of positions) {
-      this.items.get(id)?.moveTo(position)
-    }
   }
 
   async delete(itemId: number): Promise<void> {

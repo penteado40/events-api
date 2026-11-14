@@ -1,5 +1,6 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
+import { byOrderOfTheProduction } from './event-item-order.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -80,11 +81,6 @@ export function assembleSchedule(source: ScheduleSource): Schedule {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, items]) => ({ date, items: items.sort(byTimeUntimedFirst) }))
   return { generalInfo, timeline }
-}
-
-/** The manual position, then the order of creation. */
-export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapshot): number {
-  return a.position - b.position || a.id - b.id
 }
 
 /** Items with no time first; then by time. Ties keep the order of the production (the sort is stable). */

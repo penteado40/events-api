@@ -2,7 +2,11 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import type { NewChange } from './change.js'
 import type { GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import { byOrderOfTheProduction } from './schedule.js'
+
+/** The order of the production: the manual position, then the order of creation. */
+export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapshot): number {
+  return a.position - b.position || a.id - b.id
+}
 
 /** An Event item's new manual position. */
 export interface EventItemPosition {

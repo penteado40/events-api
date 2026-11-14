@@ -54,13 +54,12 @@ export class EventItemsController {
   }
 
   @Put('items/order')
-  @HttpCode(204)
   @ApiOperation({
     summary: 'Reordenar os Event items onde a hora não decide',
     description:
-      'O Super admin ou um Owner do Group do Event dá a nova ordem da produção de um grupo de Event items onde a hora não decide: todos sem data (a General info), todos do mesmo dia sem hora ou todos do mesmo dia e hora. A ordem nunca passa por cima da hora. Vêm todos os itens do grupo, como ele está agora: itens de grupos diferentes, 400 EVENT_ITEM_ORDER_MIXED; faltando algum, 409 EVENT_ITEM_ORDER_INCOMPLETE. Item de outro Event: 404. Reordenar é uma Change do Event que só a produção vê; a mesma ordem não grava nada. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+      'O Super admin ou um Owner do Group do Event dá a nova ordem da produção de Event items empatados, onde a hora não decide: todos sem data (a General info), todos do mesmo dia sem hora ou todos do mesmo dia e hora. A ordem nunca passa por cima da hora. Vêm todos os itens empatados, como estão agora: itens que a hora já ordena, 400 EVENT_ITEM_ORDER_MIXED; faltando algum, 409 EVENT_ITEM_ORDER_INCOMPLETE (também quando outra escrita mudou o empate antes). Responde a programação inteira, na nova ordem. Item de outro Event: 404. Reordenar é uma Change do Event que só a produção vê; a mesma ordem não grava nada. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
-  @ApiNoContentResponse()
+  @ApiOkResponse({ type: ScheduleResponseDto })
   @ApiErrors(
     'EVENT_ITEM_ORDER_MIXED',
     'EVENT_ITEM_ORDER_INCOMPLETE',
@@ -72,8 +71,13 @@ export class EventItemsController {
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
     @Body() body: ReorderEventItemsDto,
-  ): Promise<void> {
-    await this.reorderEventItemsUseCase.execute({ actor, eventId, itemIds: body.itemIds })
+  ): Promise<ScheduleResponseDto> {
+    const schedule = await this.reorderEventItemsUseCase.execute({
+      actor,
+      eventId,
+      itemIds: body.itemIds,
+    })
+    return { data: EventItemPresenter.scheduleToJson(schedule) }
   }
 
   @Patch('items/:itemId')

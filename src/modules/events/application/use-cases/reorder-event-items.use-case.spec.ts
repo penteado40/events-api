@@ -93,15 +93,35 @@ describe('ReorderEventItemsUseCase', () => {
     ])
   })
 
-  it('reorders two items at the same time, never before an earlier time', async () => {
+  it('reorders two items at the same time, never before an earlier time, answering the schedule', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
 
-    await reorder.execute({ actor: ANA, eventId, itemIds: [ids['Van 2']!, ids['Van 1']!] })
+    const answered = await reorder.execute({
+      actor: ANA,
+      eventId,
+      itemIds: [ids['Van 2']!, ids['Van 1']!],
+    })
 
     expect((await schedule()).timeline[0]?.items.map((i) => i.name)).toEqual([
       'Café',
       'Van 2',
       'Van 1',
+    ])
+    expect(answered).toEqual(await schedule())
+  })
+
+  it('makes who reordered the Author of the items that moved', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+
+    await reorder.execute({ actor: ANA, eventId, itemIds: [ids['Van 2']!, ids['Van 1']!] })
+
+    const authors = items.ofEvent(eventId).map((i) => [i.name, i.updatedById, i.updatedAt])
+    expect(authors).toEqual([
+      ['O que levar', null, CREATED_AT],
+      ['Van 1', ANA.id, NOW],
+      ['Contatos da produção', null, CREATED_AT],
+      ['Van 2', ANA.id, NOW],
+      ['Café', null, CREATED_AT],
     ])
   })
 

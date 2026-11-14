@@ -9,7 +9,6 @@ import {
   type EventItemSnapshot,
   type NewEventItemProps,
 } from '../domain/event-item.entity.js'
-import type { EventItemPosition } from '../domain/event-item-order.js'
 import { EventItemRepository } from '../domain/event-item.repository.js'
 
 @Injectable()
@@ -68,17 +67,11 @@ export class PrismaEventItemRepository extends EventItemRepository {
         name: item.name,
         ...startColumns(item.start),
         ...placeColumns(item.place),
+        position: item.position,
         updatedAt: item.updatedAt,
         updatedById: item.updatedById,
       },
     })
-  }
-
-  async reposition(positions: readonly EventItemPosition[]): Promise<void> {
-    const client = this.unitOfWork.client
-    for (const { id, position } of positions) {
-      await client.eventItem.update({ where: { id }, data: { position } })
-    }
   }
 
   async delete(itemId: number): Promise<void> {

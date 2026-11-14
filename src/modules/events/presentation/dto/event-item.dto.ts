@@ -150,7 +150,7 @@ export class ReorderEventItemsDto extends createZodDto(
       .refine((ids) => new Set(ids).size === ids.length, { message: 'Um Event item repetido.' })
       .meta({
         description:
-          'Os ids de todos os Event items de um grupo onde a hora não decide (todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora), na nova ordem.',
+          'Os ids de todos os Event items empatados, onde a hora não decide (todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora), na nova ordem.',
         example: [12, 10, 11],
       }),
   }),

@@ -47,7 +47,7 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
   },
   EVENT_ITEM_ORDER_INCOMPLETE: {
     status: 409,
-    message: 'A nova ordem precisa trazer todos os Event items do grupo, como ele está agora.',
+    message: 'A nova ordem precisa trazer todos os Event items empatados, como estão agora.',
   },
   EVENT_NOT_DRAFT: { status: 409, message: 'Só um Event em Draft pode ser publicado.' },
   EVENT_CANCELLED: {

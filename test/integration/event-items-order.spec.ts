@@ -92,7 +92,7 @@ describe('PUT /api/v1/events/:id/items/order', () => {
 
     const res = await reorder([voltage, whatToBring, contacts])
 
-    expect(res.status).toBe(204)
+    expect(res.status).toBe(200)
     expect((await schedule()).generalInfo.map((i) => i.name)).toEqual([
       'Voltagem',
       'O que levar',
@@ -107,8 +107,8 @@ describe('PUT /api/v1/events/:id/items/order', () => {
     const van2 = await createItem({ name: 'Van 2', date: '2026-11-14', time: '10:00' })
     const dayOff = await createItem({ name: 'Folga da Banda', date: '2026-11-14' })
 
-    expect((await reorder([dayOff, lunch])).status).toBe(204)
-    expect((await reorder([van2, van1])).status).toBe(204)
+    expect((await reorder([dayOff, lunch])).status).toBe(200)
+    expect((await reorder([van2, van1])).status).toBe(200)
 
     expect((await schedule()).timeline).toEqual([
       {
@@ -158,11 +158,33 @@ describe('PUT /api/v1/events/:id/items/order', () => {
     ])
   })
 
+  it('makes who reordered the Author of each item that moved, and only of those', async () => {
+    const reorderer = await createUser()
+    const groupId = (await testPrisma().event.findUniqueOrThrow({ where: { id: eventId } })).groupId
+    await createGroupMember({ groupId, userId: reorderer.id, role: 'OWNER' })
+    const van1 = await createItem({ name: 'Van 1', date: '2026-11-14', time: '10:00' })
+    const van2 = await createItem({ name: 'Van 2', date: '2026-11-14', time: '10:00' })
+    const lunch = await createItem({ name: 'Almoço', date: '2026-11-14' })
+
+    await reorder([van2, van1], sessionTokenFor(reorderer))
+
+    const authors = await testPrisma().eventItem.findMany({
+      where: { id: { in: [van1, van2, lunch] } },
+      select: { id: true, updatedById: true },
+      orderBy: { id: 'asc' },
+    })
+    expect(authors).toEqual([
+      { id: van1, updatedById: reorderer.id },
+      { id: van2, updatedById: reorderer.id },
+      { id: lunch, updatedById: ownerId },
+    ])
+  })
+
   it('writes nothing when the order is the same', async () => {
     const van1 = await createItem({ name: 'Van 1', date: '2026-11-14', time: '10:00' })
     const van2 = await createItem({ name: 'Van 2', date: '2026-11-14', time: '10:00' })
 
-    expect((await reorder([van1, van2])).status).toBe(204)
+    expect((await reorder([van1, van2])).status).toBe(200)
 
     expect((await changeRows()).map((c) => c.attribute)).toEqual(['item', 'item'])
   })

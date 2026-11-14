@@ -1,6 +1,5 @@
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { EventItem, NewEventItemProps } from './event-item.entity.js'
-import type { EventItemPosition } from './event-item-order.js'
 
 /** The Event items, for the writes. The schedule is read through its own port (ADR-0019). */
 export abstract class EventItemRepository {
@@ -22,8 +21,6 @@ export abstract class EventItemRepository {
    * tie group. Called under the Event's lock, so two creations never share it.
    */
   abstract create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem>
-  /** Writes the new manual positions of a reorder; the items keep their Author (the Change has it). */
-  abstract reposition(positions: readonly EventItemPosition[]): Promise<void>
   abstract save(item: EventItem): Promise<void>
   abstract delete(itemId: number): Promise<void>
 }

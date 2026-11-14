@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 import { EVENT_ITEM_STATES } from '../../domain/event-item.entity.js'
 import { EVENT_ITEM_NAME_MAX_LENGTH } from '../../domain/event-item-name.vo.js'
+import { isEventItemOrder } from '../../domain/event-item-order.js'
 import {
   EVENT_ITEM_PLACE_ADDRESS_MAX_LENGTH,
   EVENT_ITEM_PLACE_NAME_MAX_LENGTH,
@@ -146,8 +147,7 @@ export class ReorderEventItemsDto extends createZodDto(
   z.strictObject({
     itemIds: z
       .array(z.number().int().positive())
-      .min(1)
-      .refine((ids) => new Set(ids).size === ids.length, { message: 'Um Event item repetido.' })
+      .refine(isEventItemOrder, { message: 'Ao menos um Event item, cada um uma vez.' })
       .meta({
         description:
           'Os ids de todos os Event items empatados, onde a hora não decide (todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora), na nova ordem.',

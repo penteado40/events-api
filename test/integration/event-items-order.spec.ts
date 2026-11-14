@@ -214,11 +214,19 @@ describe('PUT /api/v1/events/:id/items/order', () => {
     expect(res.body).toEqual(errorOf('EVENT_ITEM_ORDER_INCOMPLETE'))
   })
 
-  it('answers 400 for an item given twice or an empty order', async () => {
+  it('answers 400 VALIDATION_ERROR for an item given twice or an empty order, before the access', async () => {
     const van1 = await createItem({ name: 'Van 1', date: '2026-11-14', time: '10:00' })
 
-    expect((await reorder([van1, van1])).body.error.code).toBe('VALIDATION_ERROR')
-    expect((await reorder([])).body.error.code).toBe('VALIDATION_ERROR')
+    for (const [itemIds, token] of [
+      [[van1, van1], ownerToken],
+      [[], ownerToken],
+      [[van1, van1], outsiderToken],
+      [['1'], ownerToken],
+    ] as const) {
+      const res = await reorder(itemIds, token)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+    }
   })
 
   it('answers 409 EVENT_CANCELLED in a Cancelled Event', async () => {

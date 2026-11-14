@@ -3,6 +3,7 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { ChangeRepository } from '../domain/change.repository.js'
 import { eventChanges } from '../domain/event-changes.js'
+import { eventReach } from '../domain/event-reach.js'
 import type { Event } from '../domain/event.entity.js'
 import type { EventRepository } from '../domain/event.repository.js'
 import type { ActingUser } from './actor.js'
@@ -39,7 +40,7 @@ export async function changeEventState(
 
   return deps.unitOfWork.run(async () => {
     // Locks go Group, then Event, always (see EditEventUseCase).
-    const reach = (await deps.directory.lockMembers(groupId)).map((m) => m.userId)
+    const reach = eventReach(await deps.directory.lockMembers(groupId))
     // Re-read under the lock: of two moves that race, the second sees the first's state.
     const event = await deps.events.lockById(eventId)
     if (!event) throw new AppError('NOT_FOUND')

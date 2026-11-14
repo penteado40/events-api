@@ -2,6 +2,7 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import type { NewChange } from './change.js'
 import type { GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
+import { eventReach } from './event-reach.js'
 
 /** The order of the production: the manual position, then the order of creation. */
 export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapshot): number {
@@ -93,7 +94,7 @@ export function reorderEventItems(
   const positions = ordered
     .map((item, i) => ({ id: item.id, position: slots[i] as number }))
     .filter(({ id, position }) => byId.get(id)?.position !== position)
-  const reach = members.map((m) => m.userId)
+  const reach = eventReach(members)
   return {
     positions,
     changes: [

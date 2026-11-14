@@ -29,7 +29,7 @@ export interface Schedule {
   timeline: TimelineDay[]
 }
 
-/** What the schedule is assembled from: the Event's default zone and its items, in the order of the production. */
+/** What the schedule is assembled from: the Event's default zone and its items, in any order. */
 export interface ScheduleSource {
   timezone: string
   items: readonly EventItemSnapshot[]
@@ -49,13 +49,17 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  * date, in the order of the production) and the Timeline (only the days with
  * items, in date order, those outside the period included; on each day, first
  * the items with no time, in the order of the production, then the others by
- * time). The day of an item is its calendar date, with no exception: the 00:40
- * transfer after Saturday's show is Sunday's. Pure (ADR-0019).
+ * time and, at the same time, in the order of the production). The order of
+ * the production is the items' manual position, and the order of creation
+ * where two share one; it only breaks ties, never passes over the time. The
+ * day of an item is its calendar date, with no exception: the 00:40 transfer
+ * after Saturday's show is Sunday's. Pure (ADR-0019).
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
   const generalInfo: ScheduleItem[] = []
   const days = new Map<string, ScheduleItem[]>()
-  for (const item of source.items) {
+  // In the order of the production first: the stable sorts below keep it in every tie.
+  for (const item of [...source.items].sort(byOrderOfTheProduction)) {
     const shown: ScheduleItem = {
       id: item.id,
       name: item.name,
@@ -76,6 +80,11 @@ export function assembleSchedule(source: ScheduleSource): Schedule {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, items]) => ({ date, items: items.sort(byTimeUntimedFirst) }))
   return { generalInfo, timeline }
+}
+
+/** The manual position, then the order of creation. */
+export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapshot): number {
+  return a.position - b.position || a.id - b.id
 }
 
 /** Items with no time first; then by time. Ties keep the order of the production (the sort is stable). */

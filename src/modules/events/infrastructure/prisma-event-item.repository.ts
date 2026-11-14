@@ -9,6 +9,7 @@ import {
   type EventItemSnapshot,
   type NewEventItemProps,
 } from '../domain/event-item.entity.js'
+import type { EventItemPosition } from '../domain/event-item-order.js'
 import { EventItemRepository } from '../domain/event-item.repository.js'
 
 @Injectable()
@@ -32,10 +33,25 @@ export class PrismaEventItemRepository extends EventItemRepository {
     return row ? toDomain(row) : null
   }
 
+  async findAllInEvent(eventId: number): Promise<EventItem[]> {
+    const rows = await this.unitOfWork.client.eventItem.findMany({
+      where: { eventId },
+      orderBy: { id: 'asc' },
+    })
+    return rows.map(toDomain)
+  }
+
+  // The caller holds the Event's lock, so no other creation reads the same last position.
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
-    const row = await this.unitOfWork.client.eventItem.create({
+    const client = this.unitOfWork.client
+    const { _max } = await client.eventItem.aggregate({
+      where: { eventId: props.eventId },
+      _max: { position: true },
+    })
+    const row = await client.eventItem.create({
       data: {
         eventId: props.eventId,
+        position: (_max.position ?? 0) + 1,
         name: props.name.value,
         ...startColumns(props.start),
         ...placeColumns(props.place),
@@ -56,6 +72,13 @@ export class PrismaEventItemRepository extends EventItemRepository {
         updatedById: item.updatedById,
       },
     })
+  }
+
+  async reposition(positions: readonly EventItemPosition[]): Promise<void> {
+    const client = this.unitOfWork.client
+    for (const { id, position } of positions) {
+      await client.eventItem.update({ where: { id }, data: { position } })
+    }
   }
 
   async delete(itemId: number): Promise<void> {
@@ -96,6 +119,7 @@ export function snapshotOf(row: PrismaEventItem): EventItemSnapshot {
       ? { name: row.placeName, address: row.placeAddress, timezone: row.placeTimezone }
       : null,
     state: row.state,
+    position: row.position,
   }
 }
 
@@ -108,6 +132,7 @@ function toDomain(row: PrismaEventItem): EventItem {
     start: EventItemStart.create({ date: snapshot.date, time: snapshot.time }),
     place: snapshot.place === null ? null : EventItemPlace.create(snapshot.place),
     state: row.state,
+    position: row.position,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

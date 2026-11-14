@@ -20,8 +20,8 @@ export class PrismaEventScheduleReader extends EventScheduleReader {
         id: true,
         groupId: true,
         timezone: true,
-        // The order of the production is, for now, the order of creation.
-        items: { orderBy: { id: 'asc' } },
+        // In the order of the production; the assembly sorts again, so this is only for a stable read.
+        items: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
       },
     })
     if (!row) return null

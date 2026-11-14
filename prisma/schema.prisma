@@ -250,6 +250,7 @@ model EventItem {
   placeAddress  String?
   placeTimezone String? // IANA zone of the place; null: the Event's applies
   state         EventItemState @default(PUBLISHED)
+  position      Int // Order of the production; only breaks the ties of the time. Last on create
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   createdById   Int? // Author (ADR-0013)

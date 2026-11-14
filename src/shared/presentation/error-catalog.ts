@@ -40,6 +40,15 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 400,
     message: 'O Event item só pode ter hora se tiver data.',
   },
+  EVENT_ITEM_ORDER_MIXED: {
+    status: 400,
+    message:
+      'Só se ordenam Event items onde a hora não decide: todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora.',
+  },
+  EVENT_ITEM_ORDER_INCOMPLETE: {
+    status: 409,
+    message: 'A nova ordem precisa trazer todos os Event items do grupo, como ele está agora.',
+  },
   EVENT_NOT_DRAFT: { status: 409, message: 'Só um Event em Draft pode ser publicado.' },
   EVENT_CANCELLED: {
     status: 409,

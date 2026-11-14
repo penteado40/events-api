@@ -101,7 +101,7 @@ export type EventItemJson = z.infer<typeof eventItemJsonSchema>
 
 const scheduleJsonSchema = z.object({
   generalInfo: z.array(scheduleItemJsonSchema).meta({
-    description: 'Os Event items sem data, na ordem da produção (por ora, a de criação).',
+    description: 'Os Event items sem data, na ordem da produção.',
   }),
   timeline: z
     .array(
@@ -112,7 +112,7 @@ const scheduleJsonSchema = z.object({
     )
     .meta({
       description:
-        'Só os dias com Event items, em ordem de data, mesmo fora do período. Em cada dia, primeiro os sem hora, depois os com hora, pela hora.',
+        'Só os dias com Event items, em ordem de data, mesmo fora do período. Em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção.',
     }),
 })
 
@@ -140,6 +140,20 @@ export class EditEventItemDto extends createZodDto(
       }),
     })
     .refine((body) => Object.keys(body).length > 0, { message: 'Envie ao menos um campo.' }),
+) {}
+
+export class ReorderEventItemsDto extends createZodDto(
+  z.strictObject({
+    itemIds: z
+      .array(z.number().int().positive())
+      .min(1)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Um Event item repetido.' })
+      .meta({
+        description:
+          'Os ids de todos os Event items de um grupo onde a hora não decide (todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora), na nova ordem.',
+        example: [12, 10, 11],
+      }),
+  }),
 ) {}
 
 export class EventItemResponseDto extends createZodDto(z.object({ data: eventItemJsonSchema })) {}

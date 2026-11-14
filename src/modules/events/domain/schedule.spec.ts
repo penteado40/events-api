@@ -2,9 +2,22 @@ import { describe, expect, it } from 'vitest'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { assembleSchedule } from './schedule.js'
 
-/** A published Event item with no date and no place, to be overridden. */
+/**
+ * A published Event item with no date and no place, to be overridden. Its
+ * position is its id unless given: the order of creation, the default order
+ * of the production.
+ */
 function item(id: number, name: string, over: Partial<EventItemSnapshot> = {}): EventItemSnapshot {
-  return { id, name, date: null, time: null, place: null, state: 'PUBLISHED', ...over }
+  return {
+    id,
+    name,
+    date: null,
+    time: null,
+    place: null,
+    state: 'PUBLISHED',
+    position: id,
+    ...over,
+  }
 }
 
 // The Manaus trip, 2026-11-13 to 2026-11-16 in America/Manaus, items in the
@@ -80,23 +93,72 @@ describe('assembleSchedule', () => {
     })
   })
 
-  it('keeps the order of the production between items of the same day and the same time', () => {
+  it('puts the General info in the order of the production, its manual position', () => {
+    const { generalInfo } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [
+        item(1, 'O que levar', { position: 3 }),
+        item(2, 'Contatos da produção', { position: 1 }),
+        item(3, 'Voltagem', { position: 2 }),
+      ],
+    })
+
+    expect(generalInfo.map((i) => i.name)).toEqual([
+      'Contatos da produção',
+      'Voltagem',
+      'O que levar',
+    ])
+  })
+
+  it('puts the items of a day with no time in the order of the production', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
       items: [
-        item(9, 'Van 2', { date: '2026-11-13', time: '10:00' }),
-        item(3, 'Van 1', { date: '2026-11-13', time: '10:00' }),
-        item(5, 'Sem hora B', { date: '2026-11-13' }),
-        item(4, 'Sem hora A', { date: '2026-11-13' }),
+        item(1, 'Almoço', { date: '2026-11-14', position: 2 }),
+        item(2, 'Show', { date: '2026-11-14', time: '19:00', position: 0 }),
+        item(3, 'Dia de folga da Banda', { date: '2026-11-14', position: 1 }),
       ],
     })
 
     expect(timeline[0]?.items.map((i) => i.name)).toEqual([
-      'Sem hora B',
-      'Sem hora A',
-      'Van 2',
-      'Van 1',
+      'Dia de folga da Banda',
+      'Almoço',
+      'Show',
     ])
+  })
+
+  it('puts two items at the same time in the order of the production', () => {
+    const { timeline } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [
+        item(1, 'Van 1', { date: '2026-11-13', time: '10:00', position: 5 }),
+        item(2, 'Van 2', { date: '2026-11-13', time: '10:00', position: 4 }),
+        item(3, 'Café', { date: '2026-11-13', time: '09:00', position: 9 }),
+      ],
+    })
+
+    expect(timeline[0]?.items.map((i) => i.name)).toEqual(['Café', 'Van 2', 'Van 1'])
+  })
+
+  it('never lets the order of the production pass over the time: 9h comes before 10h', () => {
+    const { timeline } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [
+        item(1, 'Passagem de som', { date: '2026-11-14', time: '10:00', position: 1 }),
+        item(2, 'Café da manhã', { date: '2026-11-14', time: '09:00', position: 2 }),
+      ],
+    })
+
+    expect(timeline[0]?.items.map((i) => i.name)).toEqual(['Café da manhã', 'Passagem de som'])
+  })
+
+  it('breaks a tie of the same position by the order of creation', () => {
+    const { generalInfo } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [item(7, 'Contatos', { position: 1 }), item(4, 'O que levar', { position: 1 })],
+    })
+
+    expect(generalInfo.map((i) => i.name)).toEqual(['O que levar', 'Contatos'])
   })
 
   it('gives an empty General info and Timeline for an Event with no items', () => {

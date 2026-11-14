@@ -1,5 +1,6 @@
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
 import { EventItem, type NewEventItemProps } from '../../domain/event-item.entity.js'
+import type { EventItemPosition } from '../../domain/event-item-order.js'
 import { EventItemRepository } from '../../domain/event-item.repository.js'
 
 export class InMemoryEventItemRepository extends EventItemRepository {
@@ -15,7 +16,12 @@ export class InMemoryEventItemRepository extends EventItemRepository {
     return this.findInEvent(eventId, itemId)
   }
 
+  async findAllInEvent(eventId: number): Promise<EventItem[]> {
+    return this.ofEvent(eventId)
+  }
+
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
+    const last = Math.max(0, ...this.ofEvent(props.eventId).map((i) => i.position))
     const item = EventItem.restore({
       id: this.nextId++,
       eventId: props.eventId,
@@ -23,6 +29,7 @@ export class InMemoryEventItemRepository extends EventItemRepository {
       start: props.start,
       place: props.place,
       state: 'PUBLISHED',
+      position: last + 1,
       ...createdWith(stamp),
     })
     this.items.set(item.id, item)
@@ -31,6 +38,12 @@ export class InMemoryEventItemRepository extends EventItemRepository {
 
   async save(item: EventItem): Promise<void> {
     this.items.set(item.id, item)
+  }
+
+  async reposition(positions: readonly EventItemPosition[]): Promise<void> {
+    for (const { id, position } of positions) {
+      this.items.get(id)?.moveTo(position)
+    }
   }
 
   async delete(itemId: number): Promise<void> {

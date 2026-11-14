@@ -19,6 +19,8 @@ export interface EventItemProps {
   start: EventItemStart
   place: EventItemPlace | null
   state: EventItemState
+  /** Its place in the order of the production, which only breaks the ties of the time (CONTEXT.md, Event item). */
+  position: number
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -54,6 +56,8 @@ export interface EventItemSnapshot {
   /** The place as written; its zone null when the Event's applies. */
   place: EventItemPlaceValues | null
   state: EventItemState
+  /** The manual position in the order of the production; ties go by id, the order of creation. */
+  position: number
 }
 
 /**
@@ -85,6 +89,9 @@ export class EventItem {
   }
   get state(): EventItemState {
     return this.props.state
+  }
+  get position(): number {
+    return this.props.position
   }
   get createdAt(): Date {
     return this.props.createdAt
@@ -125,6 +132,14 @@ export class EventItem {
     this.props.updatedById = stamp.by
   }
 
+  /**
+   * Takes a new place in the order of the production (reorderEventItems). It
+   * is a Change of the Event, not of the item, so the item keeps its Author.
+   */
+  moveTo(position: number): void {
+    this.props.position = position
+  }
+
   /** The Event item as plain data at this moment. */
   snapshot(): EventItemSnapshot {
     return {
@@ -134,6 +149,7 @@ export class EventItem {
       time: this.props.start.time?.value ?? null,
       place: this.props.place?.toValues() ?? null,
       state: this.props.state,
+      position: this.props.position,
     }
   }
 }

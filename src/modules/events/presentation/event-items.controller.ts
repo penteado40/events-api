@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common'
 import {
   ApiCreatedResponse,
   ApiNoContentResponse,
@@ -14,10 +14,12 @@ import { CreateEventItemUseCase } from '../application/use-cases/create-event-it
 import { DeleteEventItemUseCase } from '../application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from '../application/use-cases/edit-event-item.use-case.js'
 import { GetScheduleUseCase } from '../application/use-cases/get-schedule.use-case.js'
+import { ReorderEventItemsUseCase } from '../application/use-cases/reorder-event-items.use-case.js'
 import {
   CreateEventItemDto,
   EditEventItemDto,
   EventItemResponseDto,
+  ReorderEventItemsDto,
   ScheduleResponseDto,
 } from './dto/event-item.dto.js'
 import { EventItemPresenter } from './event-item.presenter.js'
@@ -30,6 +32,7 @@ export class EventItemsController {
     private readonly editEventItemUseCase: EditEventItemUseCase,
     private readonly deleteEventItemUseCase: DeleteEventItemUseCase,
     private readonly getScheduleUseCase: GetScheduleUseCase,
+    private readonly reorderEventItemsUseCase: ReorderEventItemsUseCase,
   ) {}
 
   @Post('items')
@@ -48,6 +51,29 @@ export class EventItemsController {
   ): Promise<EventItemResponseDto> {
     const view = await this.createEventItemUseCase.execute({ actor, eventId, ...body })
     return { data: EventItemPresenter.toJson(view) }
+  }
+
+  @Put('items/order')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Reordenar os Event items onde a hora não decide',
+    description:
+      'O Super admin ou um Owner do Group do Event dá a nova ordem da produção de um grupo de Event items onde a hora não decide: todos sem data (a General info), todos do mesmo dia sem hora ou todos do mesmo dia e hora. A ordem nunca passa por cima da hora. Vêm todos os itens do grupo, como ele está agora: itens de grupos diferentes, 400 EVENT_ITEM_ORDER_MIXED; faltando algum, 409 EVENT_ITEM_ORDER_INCOMPLETE. Item de outro Event: 404. Reordenar é uma Change do Event que só a produção vê; a mesma ordem não grava nada. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors(
+    'EVENT_ITEM_ORDER_MIXED',
+    'EVENT_ITEM_ORDER_INCOMPLETE',
+    'EVENT_CANCELLED',
+    'FORBIDDEN',
+    'NOT_FOUND',
+  )
+  async reorder(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+    @Body() body: ReorderEventItemsDto,
+  ): Promise<void> {
+    await this.reorderEventItemsUseCase.execute({ actor, eventId, itemIds: body.itemIds })
   }
 
   @Patch('items/:itemId')
@@ -89,7 +115,7 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Ler a programação do Event',
     description:
-      'O Super admin ou um Owner do Group do Event lê a programação inteira: a General info (itens sem data, na ordem de criação) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, depois os com hora, pela hora). O dia de um item é a data dele no calendário. Quem não é Group member do Group recebe 404; um Viewer, 403 por enquanto.',
+      'O Super admin ou um Owner do Group do Event lê a programação inteira: a General info (itens sem data, na ordem da produção) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção). O dia de um item é a data dele no calendário. Quem não é Group member do Group recebe 404; um Viewer, 403 por enquanto.',
   })
   @ApiOkResponse({ type: ScheduleResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')

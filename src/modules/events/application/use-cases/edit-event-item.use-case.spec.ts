@@ -198,4 +198,17 @@ describe('EditEventItemUseCase', () => {
     ).rejects.toEqual(new AppError('EVENT_CANCELLED'))
     expect(items.ofEvent(eventId)[0]?.name).toBe('Passagem de som')
   })
+
+  it('refuses editing a Cancelled item with EVENT_ITEM_CANCELLED, writing nothing', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    const item = (await items.lockInEvent(eventId, itemId))!
+    item.cancel({ by: null, at: CREATED_AT })
+    await items.save(item)
+
+    await expect(
+      editItem.execute({ actor: ANA, eventId, itemId, name: 'Outro nome' }),
+    ).rejects.toEqual(new AppError('EVENT_ITEM_CANCELLED'))
+    expect(items.ofEvent(eventId)[0]?.name).toBe('Passagem de som')
+    expect(changeLog.ofEvent(eventId)).toEqual([])
+  })
 })

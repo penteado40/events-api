@@ -125,6 +125,31 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(codesOf('409')).toEqual(['EVENT_ITEM_NOT_DRAFT', 'EVENT_CANCELLED'])
     })
 
+    it('documents the errors the cancel and the uncancel of an Event item answer', () => {
+      const codesOf = (action: string, status: string) => {
+        const operation = (
+          doc.paths[`/api/v1/events/{id}/items/{itemId}/${action}`] as Record<
+            string,
+            OperationObject
+          >
+        ).post!
+        return Object.keys(
+          (operation.responses[status] as ResponseObject).content!['application/json']!.examples!,
+        )
+      }
+
+      expect(codesOf('cancel', '403')).toEqual(['FORBIDDEN'])
+      expect(codesOf('cancel', '404')).toEqual(['NOT_FOUND'])
+      expect(codesOf('cancel', '409')).toEqual([
+        'EVENT_ITEM_NOT_PUBLISHED',
+        'EVENT_ITEM_CANCELLED',
+        'EVENT_CANCELLED',
+      ])
+      expect(codesOf('uncancel', '403')).toEqual(['FORBIDDEN'])
+      expect(codesOf('uncancel', '404')).toEqual(['NOT_FOUND'])
+      expect(codesOf('uncancel', '409')).toEqual(['EVENT_ITEM_NOT_CANCELLED', 'EVENT_CANCELLED'])
+    })
+
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
         const body = operation.requestBody as RequestBodyObject | undefined

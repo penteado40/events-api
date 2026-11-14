@@ -4,6 +4,7 @@ import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { GroupLookup, GroupsQueriesModule } from '../groups/index.js'
 import { EventScheduleReader } from './application/ports/event-schedule-reader.js'
 import { GroupDirectory } from './application/ports/group-directory.js'
+import { CancelEventItemUseCase } from './application/use-cases/cancel-event-item.use-case.js'
 import { CreateEventItemUseCase } from './application/use-cases/create-event-item.use-case.js'
 import { CancelEventUseCase } from './application/use-cases/cancel-event.use-case.js'
 import { CreateEventUseCase } from './application/use-cases/create-event.use-case.js'
@@ -16,6 +17,7 @@ import { ListEventsUseCase } from './application/use-cases/list-events.use-case.
 import { PublishEventItemUseCase } from './application/use-cases/publish-event-item.use-case.js'
 import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
 import { ReorderEventItemsUseCase } from './application/use-cases/reorder-event-items.use-case.js'
+import { UncancelEventItemUseCase } from './application/use-cases/uncancel-event-item.use-case.js'
 import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use-case.js'
 import { ChangeRepository } from './domain/change.repository.js'
 import { EventItemRepository } from './domain/event-item.repository.js'
@@ -28,7 +30,7 @@ import { PrismaEventRepository } from './infrastructure/prisma-event.repository.
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
 
-/** Composition root of the events context: Events, with where and when, their publication, cancel, their Changes and their Event items, with their Draft and the order of the production. Roles come from groups. */
+/** Composition root of the events context: Events, with where and when, their publication, cancel, their Changes and their Event items, with their Draft, their cancel and the order of the production. Roles come from groups. */
 @Module({
   imports: [GroupsQueriesModule],
   controllers: [EventsController, EventItemsController],
@@ -152,6 +154,44 @@ import { EventsController } from './presentation/events.controller.js'
         unitOfWork: UnitOfWork,
         clock: Clock,
       ) => new PublishEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
+      inject: [
+        GroupDirectory,
+        EventRepository,
+        EventItemRepository,
+        ChangeRepository,
+        UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: CancelEventItemUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        items: EventItemRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new CancelEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
+      inject: [
+        GroupDirectory,
+        EventRepository,
+        EventItemRepository,
+        ChangeRepository,
+        UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: UncancelEventItemUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        items: EventItemRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new UncancelEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
       inject: [
         GroupDirectory,
         EventRepository,

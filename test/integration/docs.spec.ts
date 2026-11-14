@@ -93,6 +93,24 @@ describe('docs with DOCS_ENABLED=true', () => {
       }
     })
 
+    // The reorder answers its own codes and the 400 of the body; the 400 and
+    // the 401s come on their own, so the route lists only its business errors.
+    it('documents every error the reorder of the Event items answers', () => {
+      const operation = (
+        doc.paths['/api/v1/events/{id}/items/order'] as Record<string, OperationObject>
+      ).put!
+      const codesOf = (status: string) =>
+        Object.keys(
+          (operation.responses[status] as ResponseObject).content!['application/json']!.examples!,
+        )
+
+      expect(codesOf('400')).toEqual(['VALIDATION_ERROR', 'EVENT_ITEM_ORDER_MIXED'])
+      expect(codesOf('401')).toEqual(['UNAUTHENTICATED', 'USER_NOT_INVITED', 'USER_DEACTIVATED'])
+      expect(codesOf('403')).toEqual(['FORBIDDEN'])
+      expect(codesOf('404')).toEqual(['NOT_FOUND'])
+      expect(codesOf('409')).toEqual(['EVENT_ITEM_ORDER_INCOMPLETE', 'EVENT_CANCELLED'])
+    })
+
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
         const body = operation.requestBody as RequestBodyObject | undefined

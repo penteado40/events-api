@@ -10,7 +10,12 @@ export abstract class EventItemRepository {
    * write that waited on another finds the item as that one left it, or gone.
    */
   abstract lockInEvent(eventId: number, itemId: number): Promise<EventItem | null>
-  /** In an Event in Draft, a new Event item is born published. */
+  /**
+   * Every Event item of the Event. Read under the Event's lock, it is the set
+   * every other write of the Event's items waits on.
+   */
+  abstract findAllInEvent(eventId: number): Promise<EventItem[]>
+  /** In an Event in Draft, a new Event item is born published, at the position it is given. */
   abstract create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem>
   abstract save(item: EventItem): Promise<void>
   abstract delete(itemId: number): Promise<void>

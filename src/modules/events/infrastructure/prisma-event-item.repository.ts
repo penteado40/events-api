@@ -32,10 +32,19 @@ export class PrismaEventItemRepository extends EventItemRepository {
     return row ? toDomain(row) : null
   }
 
+  async findAllInEvent(eventId: number): Promise<EventItem[]> {
+    const rows = await this.unitOfWork.client.eventItem.findMany({
+      where: { eventId },
+      orderBy: { id: 'asc' },
+    })
+    return rows.map(toDomain)
+  }
+
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
     const row = await this.unitOfWork.client.eventItem.create({
       data: {
         eventId: props.eventId,
+        position: props.position,
         name: props.name.value,
         ...startColumns(props.start),
         ...placeColumns(props.place),
@@ -52,6 +61,7 @@ export class PrismaEventItemRepository extends EventItemRepository {
         name: item.name,
         ...startColumns(item.start),
         ...placeColumns(item.place),
+        position: item.position,
         updatedAt: item.updatedAt,
         updatedById: item.updatedById,
       },
@@ -96,6 +106,7 @@ export function snapshotOf(row: PrismaEventItem): EventItemSnapshot {
       ? { name: row.placeName, address: row.placeAddress, timezone: row.placeTimezone }
       : null,
     state: row.state,
+    position: row.position,
   }
 }
 
@@ -108,6 +119,7 @@ function toDomain(row: PrismaEventItem): EventItem {
     start: EventItemStart.create({ date: snapshot.date, time: snapshot.time }),
     place: snapshot.place === null ? null : EventItemPlace.create(snapshot.place),
     state: row.state,
+    position: row.position,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

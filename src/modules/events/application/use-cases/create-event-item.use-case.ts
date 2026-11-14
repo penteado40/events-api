@@ -3,6 +3,7 @@ import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import type { ChangeRepository } from '../../domain/change.repository.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
+import { positionAfter } from '../../domain/event-item-order.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
@@ -70,7 +71,9 @@ export class CreateEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const item = await this.items.create(props, stamp)
+      // Last in the order of the production; the lock keeps two creations off the same position.
+      const position = positionAfter(await this.items.findAllInEvent(event.id))
+      const item = await this.items.create({ ...props, position }, stamp)
       await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), members), stamp)
       return itemViewOf(item, event.period.timezone.value)
     })

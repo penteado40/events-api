@@ -6,6 +6,7 @@ import { eventChanges } from '../../domain/event-changes.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod, type EventPeriodValues } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
+import { eventReach } from '../../domain/event-reach.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
@@ -61,7 +62,7 @@ export class EditEventUseCase {
       // roster is held until commit (ADR-0014), so the reach is the one that
       // stands when the Changes land; edits in the same Group queue on it too.
       // Locks go Group, then Event, always.
-      const reach = (await this.directory.lockMembers(groupId)).map((m) => m.userId)
+      const reach = eventReach(await this.directory.lockMembers(groupId))
       // Re-read under the lock: the Changes start from what the last edit left.
       const event = await this.events.lockById(input.eventId)
       if (!event) throw new AppError('NOT_FOUND')

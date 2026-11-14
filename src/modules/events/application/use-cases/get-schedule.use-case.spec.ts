@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
+import { positionAfter } from '../../domain/event-item-order.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
@@ -45,6 +46,7 @@ describe('GetScheduleUseCase', () => {
           name: EventItemName.create(name),
           start: EventItemStart.create({ date, time }),
           place: null,
+          position: positionAfter(items.ofEvent(eventId)),
         },
         { by: null, at: AT },
       )

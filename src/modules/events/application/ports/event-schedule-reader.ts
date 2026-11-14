@@ -6,7 +6,7 @@ export interface EventScheduleData {
   groupId: number
   /** The Event's default zone, for the items whose place has none. */
   timezone: string
-  /** Every Event item of the Event, in the order of the production (for now, of creation). */
+  /** Every Event item of the Event, with its manual position; the assembly orders them. */
   items: EventItemSnapshot[]
 }
 

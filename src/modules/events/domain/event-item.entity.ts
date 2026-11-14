@@ -19,6 +19,8 @@ export interface EventItemProps {
   start: EventItemStart
   place: EventItemPlace | null
   state: EventItemState
+  /** Its place in the order of the production, which only breaks the ties of the time (CONTEXT.md, Event item). */
+  position: number
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -30,6 +32,8 @@ export interface NewEventItemProps {
   name: EventItemName
   start: EventItemStart
   place: EventItemPlace | null
+  /** Its place in the order of the production (positionAfter). */
+  position: number
 }
 
 /** What an edit may change; a field left out stays as it is, null clears it. */
@@ -54,6 +58,8 @@ export interface EventItemSnapshot {
   /** The place as written; its zone null when the Event's applies. */
   place: EventItemPlaceValues | null
   state: EventItemState
+  /** The manual position in the order of the production; ties go by id, the order of creation. */
+  position: number
 }
 
 /**
@@ -85,6 +91,9 @@ export class EventItem {
   }
   get state(): EventItemState {
     return this.props.state
+  }
+  get position(): number {
+    return this.props.position
   }
   get createdAt(): Date {
     return this.props.createdAt
@@ -125,6 +134,18 @@ export class EventItem {
     this.props.updatedById = stamp.by
   }
 
+  /**
+   * Takes a new place in the order of the production (reorderEventItems). A
+   * write on the row like any other, so its Author is who reordered (ADR-0013);
+   * the Change it makes is the Event's.
+   */
+  moveTo(position: number, stamp: Stamp): void {
+    if (position === this.props.position) return
+    this.props.position = position
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
+  }
+
   /** The Event item as plain data at this moment. */
   snapshot(): EventItemSnapshot {
     return {
@@ -134,6 +155,7 @@ export class EventItem {
       time: this.props.start.time?.value ?? null,
       place: this.props.place?.toValues() ?? null,
       state: this.props.state,
+      position: this.props.position,
     }
   }
 }

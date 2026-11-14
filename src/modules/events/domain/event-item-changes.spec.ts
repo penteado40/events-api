@@ -10,6 +10,7 @@ const SOUNDCHECK: EventItemSnapshot = {
   time: '15:00',
   place: null,
   state: 'PUBLISHED',
+  position: 9,
 }
 
 const MEMBERS: GroupMemberRole[] = [

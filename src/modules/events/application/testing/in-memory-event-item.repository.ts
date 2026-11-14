@@ -15,6 +15,10 @@ export class InMemoryEventItemRepository extends EventItemRepository {
     return this.findInEvent(eventId, itemId)
   }
 
+  async findAllInEvent(eventId: number): Promise<EventItem[]> {
+    return this.ofEvent(eventId)
+  }
+
   async create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem> {
     const item = EventItem.restore({
       id: this.nextId++,
@@ -23,6 +27,7 @@ export class InMemoryEventItemRepository extends EventItemRepository {
       start: props.start,
       place: props.place,
       state: 'PUBLISHED',
+      position: props.position,
       ...createdWith(stamp),
     })
     this.items.set(item.id, item)

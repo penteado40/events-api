@@ -2,6 +2,7 @@ import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 import { EVENT_ITEM_STATES } from '../../domain/event-item.entity.js'
 import { EVENT_ITEM_NAME_MAX_LENGTH } from '../../domain/event-item-name.vo.js'
+import { namesEachItemOnce } from '../../domain/event-item-order.js'
 import {
   EVENT_ITEM_PLACE_ADDRESS_MAX_LENGTH,
   EVENT_ITEM_PLACE_NAME_MAX_LENGTH,
@@ -101,7 +102,7 @@ export type EventItemJson = z.infer<typeof eventItemJsonSchema>
 
 const scheduleJsonSchema = z.object({
   generalInfo: z.array(scheduleItemJsonSchema).meta({
-    description: 'Os Event items sem data, na ordem da produção (por ora, a de criação).',
+    description: 'Os Event items sem data, na ordem da produção.',
   }),
   timeline: z
     .array(
@@ -112,7 +113,7 @@ const scheduleJsonSchema = z.object({
     )
     .meta({
       description:
-        'Só os dias com Event items, em ordem de data, mesmo fora do período. Em cada dia, primeiro os sem hora, depois os com hora, pela hora.',
+        'Só os dias com Event items, em ordem de data, mesmo fora do período. Em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção.',
     }),
 })
 
@@ -140,6 +141,20 @@ export class EditEventItemDto extends createZodDto(
       }),
     })
     .refine((body) => Object.keys(body).length > 0, { message: 'Envie ao menos um campo.' }),
+) {}
+
+export class ReorderEventItemsDto extends createZodDto(
+  z.strictObject({
+    itemIds: z
+      .array(z.number().int().positive())
+      .min(1)
+      .refine(namesEachItemOnce, { message: 'Um Event item repetido.' })
+      .meta({
+        description:
+          'Os ids de todos os Event items empatados, onde a hora não decide (todos sem data, todos do mesmo dia sem hora ou todos do mesmo dia e hora), na nova ordem.',
+        example: [12, 10, 11],
+      }),
+  }),
 ) {}
 
 export class EventItemResponseDto extends createZodDto(z.object({ data: eventItemJsonSchema })) {}

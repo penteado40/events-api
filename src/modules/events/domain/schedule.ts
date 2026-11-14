@@ -1,5 +1,6 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
+import { byOrderOfTheProduction } from './event-item-order.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -29,7 +30,7 @@ export interface Schedule {
   timeline: TimelineDay[]
 }
 
-/** What the schedule is assembled from: the Event's default zone and its items, in the order of the production. */
+/** What the schedule is assembled from: the Event's default zone and its items, in any order. */
 export interface ScheduleSource {
   timezone: string
   items: readonly EventItemSnapshot[]
@@ -49,13 +50,17 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  * date, in the order of the production) and the Timeline (only the days with
  * items, in date order, those outside the period included; on each day, first
  * the items with no time, in the order of the production, then the others by
- * time). The day of an item is its calendar date, with no exception: the 00:40
- * transfer after Saturday's show is Sunday's. Pure (ADR-0019).
+ * time and, at the same time, in the order of the production). The order of
+ * the production is the items' manual position, and the order of creation
+ * where two share one; it only breaks ties, never passes over the time. The
+ * day of an item is its calendar date, with no exception: the 00:40 transfer
+ * after Saturday's show is Sunday's. Pure (ADR-0019).
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
   const generalInfo: ScheduleItem[] = []
   const days = new Map<string, ScheduleItem[]>()
-  for (const item of source.items) {
+  // In the order of the production first: the stable sorts below keep it in every tie.
+  for (const item of [...source.items].sort(byOrderOfTheProduction)) {
     const shown: ScheduleItem = {
       id: item.id,
       name: item.name,

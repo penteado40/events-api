@@ -3,6 +3,7 @@ import { GroupDirectory } from '../../src/modules/events/application/ports/group
 import { CreateEventItemUseCase } from '../../src/modules/events/application/use-cases/create-event-item.use-case.js'
 import { DeleteEventItemUseCase } from '../../src/modules/events/application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from '../../src/modules/events/application/use-cases/edit-event-item.use-case.js'
+import { ReorderEventItemsUseCase } from '../../src/modules/events/application/use-cases/reorder-event-items.use-case.js'
 import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
 import { EventItemRepository } from '../../src/modules/events/domain/event-item.repository.js'
@@ -235,6 +236,27 @@ describe('Changes of an Event item', () => {
       expect(writtenInsideTheUnit).toBe(2)
       expect(await changeRows()).toHaveLength(1)
       expect(await testPrisma().eventItem.findUnique({ where: { id: itemId } })).not.toBeNull()
+    })
+
+    it('undoes the new order and its Change together', async () => {
+      const first = (await createItem({ name: 'O que levar' })).body.data.id as number
+      const second = (await createItem({ name: 'Contatos da produção' })).body.data.id as number
+
+      await expect(
+        new ReorderEventItemsUseCase(...deps()).execute({
+          actor: actor(),
+          eventId,
+          itemIds: [second, first],
+        }),
+      ).rejects.toThrow('forced failure after writing the Changes')
+
+      expect(writtenInsideTheUnit).toBe(3)
+      expect((await changeRows()).map((c) => c.attribute)).toEqual(['item', 'item'])
+      const rows = await testPrisma().eventItem.findMany({
+        where: { eventId },
+        orderBy: { position: 'asc' },
+      })
+      expect(rows.map((r) => r.id)).toEqual([first, second])
     })
   })
 })

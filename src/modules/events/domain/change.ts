@@ -17,8 +17,10 @@ export interface NewChange {
   eventItemId: number | null
   /**
    * The attribute that changed: `name`, `place`, `period`, `state` on an
-   * Event; `name`, `date`, `time`, `place` on an Event item, or `item` for its
-   * creation (before null) and its removal (after null).
+   * Event, or `itemOrder` for a new order of the production (the ids of the
+   * tied items, before and after; only the production sees it); `name`,
+   * `date`, `time`, `place` on an Event item, or `item` for its creation
+   * (before null) and its removal (after null).
    */
   attribute: string
   before: ChangeValue

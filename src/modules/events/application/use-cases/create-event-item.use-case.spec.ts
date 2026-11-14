@@ -70,6 +70,29 @@ describe('CreateEventItemUseCase', () => {
     expect(items.ofEvent(eventId)).toHaveLength(1)
   })
 
+  it('puts the new item last in the order of the production, after every item of the Event', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    await createItem.execute({ actor: ANA, eventId, name: 'O que levar' })
+    await createItem.execute({
+      actor: ANA,
+      eventId,
+      name: 'Show',
+      date: '2026-11-14',
+      time: '19:00',
+    })
+    const moved = items.ofEvent(eventId)[0]!
+    moved.moveTo(10, { by: ANA.id, at: NOW })
+    await items.save(moved)
+
+    await createItem.execute({ actor: ANA, eventId, name: 'Contatos' })
+
+    expect(items.ofEvent(eventId).map((i) => [i.id, i.position])).toEqual([
+      [1, 10],
+      [2, 2],
+      [3, 11],
+    ])
+  })
+
   it('records the creation as a Change of the item, by its Author, reaching the Owners', async () => {
     directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER')
 

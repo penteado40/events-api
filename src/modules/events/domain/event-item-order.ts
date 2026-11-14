@@ -19,12 +19,12 @@ export function positionAfter(items: readonly { position: number }[]): number {
 }
 
 /**
- * The shape of a new order: the ids of at least one Event item, each given
- * once. The one rule, checked by reorderEventItems and, for the 400 before
- * the access and the docs, by the request body.
+ * A new order names each Event item once. The one rule, checked by
+ * reorderEventItems and, for the 400 before the access and the docs, by the
+ * request body.
  */
-export function isEventItemOrder(ids: readonly number[]): boolean {
-  return ids.length > 0 && new Set(ids).size === ids.length
+export function namesEachItemOnce(ids: readonly number[]): boolean {
+  return new Set(ids).size === ids.length
 }
 
 /** An Event item's new manual position. */
@@ -54,9 +54,8 @@ function sameTie(a: EventItemSnapshot, b: EventItemSnapshot): boolean {
  * An Owner puts a tie group in a new order (CONTEXT.md, Event item): the ids
  * given are the whole group, as it stands, in the new order. The group keeps
  * the positions it had, dealt again in the new order, so no other item moves
- * and the order never passes over the time. An order not of that shape
- * (isEventItemOrder: none, or an id given twice) is VALIDATION_ERROR, an id
- * not of the Event is NOT_FOUND, items of more than one group are
+ * and the order never passes over the time. An empty order, or an id given
+ * twice (namesEachItemOnce), is VALIDATION_ERROR, an id not of the Event is NOT_FOUND, items of more than one group are
  * EVENT_ITEM_ORDER_MIXED, and an item of the group left out is
  * EVENT_ITEM_ORDER_INCOMPLETE: the order is of the whole group, never half of
  * it, so a creation that came first is never ordered blind.
@@ -70,14 +69,15 @@ export function reorderEventItems(
   orderedIds: readonly number[],
   members: readonly GroupMemberRole[],
 ): EventItemReorder {
-  if (!isEventItemOrder(orderedIds)) throw new AppError('VALIDATION_ERROR')
+  if (!namesEachItemOnce(orderedIds)) throw new AppError('VALIDATION_ERROR')
   const byId = new Map(items.map((item) => [item.id, item]))
   const ordered = orderedIds.map((id) => {
     const item = byId.get(id)
     if (!item) throw new AppError('NOT_FOUND')
     return item
   })
-  const first = ordered[0] as EventItemSnapshot // never empty: isEventItemOrder
+  const [first] = ordered
+  if (!first) throw new AppError('VALIDATION_ERROR')
   if (ordered.some((item) => !sameTie(item, first))) throw new AppError('EVENT_ITEM_ORDER_MIXED')
   const group = items.filter((item) => sameTie(item, first)).sort(byOrderOfTheProduction)
   if (group.length !== ordered.length) throw new AppError('EVENT_ITEM_ORDER_INCOMPLETE')

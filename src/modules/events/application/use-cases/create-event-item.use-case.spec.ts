@@ -72,7 +72,7 @@ describe('CreateEventItemUseCase', () => {
 
   it('puts the new item last in the order of the production, after every item of the Event', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
-    const { item: first } = await createItem.execute({ actor: ANA, eventId, name: 'O que levar' })
+    await createItem.execute({ actor: ANA, eventId, name: 'O que levar' })
     await createItem.execute({
       actor: ANA,
       eventId,
@@ -80,16 +80,16 @@ describe('CreateEventItemUseCase', () => {
       date: '2026-11-14',
       time: '19:00',
     })
-    const moved = items.ofEvent(eventId).find((i) => i.id === first.id)!
+    const moved = items.ofEvent(eventId)[0]!
     moved.moveTo(10, { by: ANA.id, at: NOW })
     await items.save(moved)
 
-    const { item } = await createItem.execute({ actor: ANA, eventId, name: 'Contatos' })
+    await createItem.execute({ actor: ANA, eventId, name: 'Contatos' })
 
     expect(items.ofEvent(eventId).map((i) => [i.id, i.position])).toEqual([
-      [first.id, 10],
-      [first.id + 1, 2],
-      [item.id, 11],
+      [1, 10],
+      [2, 2],
+      [3, 11],
     ])
   })
 

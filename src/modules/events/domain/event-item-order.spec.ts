@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import { isEventItemOrder, positionAfter, reorderEventItems } from './event-item-order.js'
+import { namesEachItemOnce, positionAfter, reorderEventItems } from './event-item-order.js'
 
 function item(id: number, name: string, over: Partial<EventItemSnapshot> = {}): EventItemSnapshot {
   return {
@@ -136,10 +136,9 @@ describe('positionAfter', () => {
   })
 })
 
-describe('isEventItemOrder', () => {
-  it('takes ids each given once, at least one', () => {
-    expect(isEventItemOrder([3, 1, 2])).toBe(true)
-    expect(isEventItemOrder([3, 1, 3])).toBe(false)
-    expect(isEventItemOrder([])).toBe(false)
+describe('namesEachItemOnce', () => {
+  it('takes ids each given once, refusing one given twice', () => {
+    expect(namesEachItemOnce([3, 1, 2])).toBe(true)
+    expect(namesEachItemOnce([3, 1, 3])).toBe(false)
   })
 })

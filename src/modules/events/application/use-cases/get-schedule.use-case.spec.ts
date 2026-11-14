@@ -47,6 +47,7 @@ describe('GetScheduleUseCase', () => {
           start: EventItemStart.create({ date, time }),
           place: null,
           position: positionAfter(items.ofEvent(eventId)),
+          state: 'PUBLISHED',
         },
         { by: null, at: AT },
       )

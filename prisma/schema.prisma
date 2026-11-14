@@ -27,6 +27,7 @@ enum EventState {
 }
 
 enum EventItemState {
+  DRAFT
   PUBLISHED
 }
 
@@ -200,7 +201,7 @@ model Change {
   eventId        Int
   // The Event item that changed; null for a Change of the Event. No foreign key: the Change outlives the item.
   eventItemId    Int?
-  attribute      String // Event: name, place, period, state; Event item: item (created, deleted), name, date, time, place
+  attribute      String // Event: name, place, period, state; Event item: item (created, deleted), name, date, time, place, state
   before         Json
   after          Json
   productionOnly Boolean // Only the production sees it in the Change log

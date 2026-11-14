@@ -338,6 +338,158 @@ describe('Event items and the schedule', () => {
     })
   })
 
+  describe('the Draft of the Event item', () => {
+    const publishUrl = (itemId: number, id = eventId) => `${itemUrl(itemId, id)}/publish`
+
+    async function publishEvent(): Promise<void> {
+      await t
+        .http()
+        .post(`/api/v1/events/${eventId}/publish`)
+        .auth(ownerToken, { type: 'bearer' })
+        .expect(200)
+    }
+
+    async function draftItem(name = 'Bis'): Promise<number> {
+      const res = await createItem({ name, date: '2026-11-14', time: '22:00' })
+      expect(res.status).toBe(201)
+      return res.body.data.id as number
+    }
+
+    it('creates the item published in an Event in Draft, and in Draft in a published Event', async () => {
+      const published = await createItem({ name: 'Passagem de som' })
+      await publishEvent()
+      const draft = await createItem({ name: 'Bis' })
+
+      expect(published.body.data.state).toBe('PUBLISHED')
+      expect(draft.status).toBe(201)
+      expect(draft.body.data.state).toBe('DRAFT')
+      const row = await testPrisma().eventItem.findUniqueOrThrow({
+        where: { id: draft.body.data.id },
+      })
+      expect(row.state).toBe('DRAFT')
+    })
+
+    it('lets an Owner publish an item in Draft, as its Author, with the Change of the state', async () => {
+      await publishEvent()
+      const itemId = await draftItem()
+
+      const res = await t.http().post(publishUrl(itemId)).auth(ownerToken, { type: 'bearer' })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({
+        id: itemId,
+        eventId,
+        name: 'Bis',
+        when: { date: '2026-11-14', time: '22:00', timezone: 'America/Manaus' },
+        state: 'PUBLISHED',
+      })
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row).toMatchObject({ state: 'PUBLISHED', updatedById: ownerId })
+      const changes = await testPrisma().change.findMany({
+        where: { eventItemId: itemId, attribute: 'state' },
+      })
+      expect(changes).toEqual([
+        expect.objectContaining({
+          before: 'DRAFT',
+          after: 'PUBLISHED',
+          productionOnly: false,
+          reachBefore: [ownerId],
+          reachAfter: [ownerId],
+          createdById: ownerId,
+        }),
+      ])
+    })
+
+    it('answers 409 EVENT_ITEM_NOT_DRAFT to publishing a published item, writing nothing', async () => {
+      const itemId = await draftItem()
+      const changesBefore = await testPrisma().change.count()
+
+      const res = await t.http().post(publishUrl(itemId)).auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('EVENT_ITEM_NOT_DRAFT'))
+      expect(await testPrisma().change.count()).toBe(changesBefore)
+    })
+
+    it('answers 403 to a Viewer, 404 for an item of another Event or to who is not a Group member, 401 with no token', async () => {
+      await publishEvent()
+      const itemId = await draftItem()
+
+      const viewer = await t.http().post(publishUrl(itemId)).auth(viewerToken, { type: 'bearer' })
+      expect(viewer.status).toBe(403)
+      expect(viewer.body).toEqual(errorOf('FORBIDDEN'))
+      expect(
+        (await t.http().post(publishUrl(itemId, otherEventId)).auth(ownerToken, { type: 'bearer' }))
+          .status,
+      ).toBe(404)
+      expect(
+        (await t.http().post(publishUrl(itemId)).auth(outsiderToken, { type: 'bearer' })).status,
+      ).toBe(404)
+      expect((await t.http().post(publishUrl(itemId))).status).toBe(401)
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row.state).toBe('DRAFT')
+    })
+
+    it('answers 409 EVENT_CANCELLED to publishing an item of a Cancelled Event', async () => {
+      await publishEvent()
+      const itemId = await draftItem()
+      await t
+        .http()
+        .post(`/api/v1/events/${eventId}/cancel`)
+        .auth(ownerToken, { type: 'bearer' })
+        .expect(200)
+
+      const res = await t.http().post(publishUrl(itemId)).auth(ownerToken, { type: 'bearer' })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('EVENT_CANCELLED'))
+    })
+
+    // Each publish locks the item's row: the ones that come after find it published.
+    it('publishes once, answering 409 to the others, under concurrent publishes of the same item', async () => {
+      await publishEvent()
+      const itemId = await draftItem()
+
+      const results = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          t.http().post(publishUrl(itemId)).auth(ownerToken, { type: 'bearer' }),
+        ),
+      )
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409])
+      expect(
+        await testPrisma().change.count({ where: { eventItemId: itemId, attribute: 'state' } }),
+      ).toBe(1)
+    })
+
+    it('deletes an item in Draft', async () => {
+      await publishEvent()
+      const itemId = await draftItem()
+
+      const res = await t.http().delete(itemUrl(itemId)).auth(ownerToken, { type: 'bearer' })
+
+      expect(res.status).toBe(204)
+      expect(await testPrisma().eventItem.count({ where: { id: itemId } })).toBe(0)
+    })
+
+    it('shows the Owner the state of each item in the schedule', async () => {
+      const publishedId = (await createItem({ name: 'Passagem de som', date: '2026-11-14' })).body
+        .data.id
+      await publishEvent()
+      const draftId = await draftItem()
+
+      const res = await t.http().get(scheduleUrl()).auth(ownerToken, { type: 'bearer' })
+
+      expect(res.status).toBe(200)
+      expect(
+        res.body.data.timeline[0].items.map((i: { id: number; state: string }) => [i.id, i.state]),
+      ).toEqual([
+        [publishedId, 'PUBLISHED'],
+        [draftId, 'DRAFT'],
+      ])
+    })
+  })
+
   describe('GET /api/v1/events/:id/schedule', () => {
     beforeEach(async () => {
       // Created out of order, as the production would.

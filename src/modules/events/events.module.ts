@@ -13,6 +13,7 @@ import { EditEventUseCase } from './application/use-cases/edit-event.use-case.js
 import { GetEventUseCase } from './application/use-cases/get-event.use-case.js'
 import { GetScheduleUseCase } from './application/use-cases/get-schedule.use-case.js'
 import { ListEventsUseCase } from './application/use-cases/list-events.use-case.js'
+import { PublishEventItemUseCase } from './application/use-cases/publish-event-item.use-case.js'
 import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
 import { ReorderEventItemsUseCase } from './application/use-cases/reorder-event-items.use-case.js'
 import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use-case.js'
@@ -27,7 +28,7 @@ import { PrismaEventRepository } from './infrastructure/prisma-event.repository.
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
 
-/** Composition root of the events context: Events, with where and when, their publication, cancel, their Changes and their Event items, with the order of the production. Roles come from groups. */
+/** Composition root of the events context: Events, with where and when, their publication, cancel, their Changes and their Event items, with their Draft and the order of the production. Roles come from groups. */
 @Module({
   imports: [GroupsQueriesModule],
   controllers: [EventsController, EventItemsController],
@@ -132,6 +133,25 @@ import { EventsController } from './presentation/events.controller.js'
         unitOfWork: UnitOfWork,
         clock: Clock,
       ) => new EditEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
+      inject: [
+        GroupDirectory,
+        EventRepository,
+        EventItemRepository,
+        ChangeRepository,
+        UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: PublishEventItemUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        items: EventItemRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new PublishEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
       inject: [
         GroupDirectory,
         EventRepository,

@@ -26,7 +26,7 @@ export class InMemoryEventItemRepository extends EventItemRepository {
       name: props.name.value,
       start: props.start,
       place: props.place,
-      state: 'PUBLISHED',
+      state: props.state,
       position: props.position,
       ...createdWith(stamp),
     })

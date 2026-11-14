@@ -1,15 +1,18 @@
 import type { LocalDate } from '../../../shared/domain/local-date.vo.js'
 import type { LocalTime } from '../../../shared/domain/local-time.vo.js'
+import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import type { EventItemName } from './event-item-name.vo.js'
 import type { EventItemPlace, EventItemPlaceValues } from './event-item-place.vo.js'
 import { EventItemStart } from './event-item-start.vo.js'
+import type { EventState } from './event.entity.js'
 
 /**
- * The state the production moves an Event item through. In an Event in Draft
- * it is born published; Draft and Cancelled come later.
+ * The state the production moves an Event item through (CONTEXT.md, Draft).
+ * In an Event in Draft it is born published; in a published Event, in Draft,
+ * and `publish()` releases it. Back to Draft and Cancelled come later.
  */
-export const EVENT_ITEM_STATES = ['PUBLISHED'] as const
+export const EVENT_ITEM_STATES = ['DRAFT', 'PUBLISHED'] as const
 export type EventItemState = (typeof EVENT_ITEM_STATES)[number]
 
 export interface EventItemProps {
@@ -32,6 +35,8 @@ export interface NewEventItemProps {
   name: EventItemName
   start: EventItemStart
   place: EventItemPlace | null
+  /** The state it is born in (EventItem.bornIn). */
+  state: EventItemState
   /** Its place in the order of the production (positionAfter). */
   position: number
 }
@@ -72,6 +77,17 @@ export class EventItem {
 
   static restore(props: EventItemProps): EventItem {
     return new EventItem({ ...props })
+  }
+
+  /**
+   * The state a new Event item is born in, by the state of its Event: in an
+   * Event in Draft, nothing of it shows yet, so the item is born published;
+   * once the Event is published, it is born in Draft, for the production to
+   * add it without showing it before its time. A Cancelled Event takes no
+   * items (assertWritable), and would get them in Draft, showing nothing.
+   */
+  static bornIn(eventState: EventState): EventItemState {
+    return eventState === 'DRAFT' ? 'PUBLISHED' : 'DRAFT'
   }
 
   get id(): number {
@@ -142,6 +158,18 @@ export class EventItem {
   moveTo(position: number, stamp: Stamp): void {
     if (position === this.props.position) return
     this.props.position = position
+    this.props.updatedAt = stamp.at
+    this.props.updatedById = stamp.by
+  }
+
+  /**
+   * Releases an Event item in Draft: it starts to reach whom it reaches. Only
+   * a Draft is published: a published item is EVENT_ITEM_NOT_DRAFT, and
+   * nothing changes.
+   */
+  publish(stamp: Stamp): void {
+    if (this.props.state !== 'DRAFT') throw new AppError('EVENT_ITEM_NOT_DRAFT')
+    this.props.state = 'PUBLISHED'
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
   }

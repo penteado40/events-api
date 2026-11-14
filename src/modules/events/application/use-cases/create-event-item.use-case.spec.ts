@@ -124,6 +124,28 @@ describe('CreateEventItemUseCase', () => {
     ])
   })
 
+  it('creates the item in Draft in a published Event, its creation a Change reaching only the Owners', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER')
+    const event = await events.findById(eventId)
+    event!.publish({ by: null, at: NOW })
+    await events.save(event!)
+
+    const { item } = await createItem.execute({ actor: ANA, eventId, name: 'Bis' })
+
+    expect(item.state).toBe('DRAFT')
+    expect(items.ofEvent(eventId)[0]!.state).toBe('DRAFT')
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: item.id,
+        attribute: 'item',
+        before: null,
+        after: expect.objectContaining({ name: 'Bis', state: 'DRAFT' }),
+        reachBefore: [],
+        reachAfter: [ANA.id],
+      }),
+    ])
+  })
+
   it('keeps the place as written, its zone ruling the when', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
 

@@ -86,7 +86,11 @@ const scheduleItemJsonSchema = z.object({
   name: z.string().meta({ example: 'Passagem de som' }),
   when: whenJsonSchema,
   place: placeJsonSchema,
-  state: z.enum(EVENT_ITEM_STATES).meta({ example: 'PUBLISHED' }),
+  state: z.enum(EVENT_ITEM_STATES).meta({
+    description:
+      'DRAFT: a produção ainda não o liberou, só os Owners o veem (nasce assim num Event publicado); PUBLISHED: liberado (nasce assim num Event em Draft).',
+    example: 'PUBLISHED',
+  }),
 })
 
 export type ScheduleItemJson = z.infer<typeof scheduleItemJsonSchema>

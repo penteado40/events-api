@@ -45,6 +45,7 @@ export class PrismaEventItemRepository extends EventItemRepository {
       data: {
         eventId: props.eventId,
         position: props.position,
+        state: props.state,
         name: props.name.value,
         ...startColumns(props.start),
         ...placeColumns(props.place),
@@ -61,6 +62,7 @@ export class PrismaEventItemRepository extends EventItemRepository {
         name: item.name,
         ...startColumns(item.start),
         ...placeColumns(item.place),
+        state: item.state,
         position: item.position,
         updatedAt: item.updatedAt,
         updatedById: item.updatedById,

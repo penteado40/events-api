@@ -16,8 +16,9 @@ export interface DeleteEventItemInput {
 }
 
 /**
- * An Owner of its Group, or the Super admin, deletes an Event item of the Event.
- * A Cancelled Event is frozen: EVENT_CANCELLED.
+ * An Owner of its Group, or the Super admin, deletes an Event item of the Event,
+ * in Draft or published. A Cancelled Event is frozen: EVENT_CANCELLED; and so
+ * is a Cancelled item: EVENT_ITEM_CANCELLED.
  *
  * The removal is a Change of the item, written in the same unit of work
  * (amendment of ADR-0010), with what the item was and whom it reached right
@@ -49,6 +50,8 @@ export class DeleteEventItemUseCase {
       // Under the lock, a delete or an edit that came first leaves it gone: NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')
+      // A Cancelled item is frozen until uncancelled: EVENT_ITEM_CANCELLED.
+      item.assertWritable()
       await this.items.delete(item.id)
       await this.changeLog.create(event.id, eventItemChanges(item.snapshot(), null, members), stamp)
     })

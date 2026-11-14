@@ -490,6 +490,155 @@ describe('Event items and the schedule', () => {
     })
   })
 
+  describe('the cancel of the Event item', () => {
+    const actionUrl = (action: 'cancel' | 'uncancel' | 'publish', itemId: number, id = eventId) =>
+      `${itemUrl(itemId, id)}/${action}`
+
+    async function post(url: string, token = ownerToken) {
+      return t.http().post(url).auth(token, { type: 'bearer' })
+    }
+
+    async function publishedItem(name = 'Bis'): Promise<number> {
+      const res = await createItem({ name, date: '2026-11-14', time: '22:00' })
+      expect(res.body.data.state).toBe('PUBLISHED')
+      return res.body.data.id as number
+    }
+
+    it('lets an Owner cancel a published item, which stays in the schedule as CANCELLED, with the Change of the state', async () => {
+      const itemId = await publishedItem()
+
+      const res = await post(actionUrl('cancel', itemId))
+
+      expect(res.status).toBe(200)
+      expect(res.body.data).toMatchObject({ id: itemId, eventId, name: 'Bis', state: 'CANCELLED' })
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row).toMatchObject({ state: 'CANCELLED', updatedById: ownerId })
+      expect(
+        await testPrisma().change.findMany({ where: { eventItemId: itemId, attribute: 'state' } }),
+      ).toEqual([
+        expect.objectContaining({
+          before: 'PUBLISHED',
+          after: 'CANCELLED',
+          productionOnly: false,
+          reachBefore: [ownerId],
+          reachAfter: [ownerId],
+          createdById: ownerId,
+        }),
+      ])
+      const schedule = await t.http().get(scheduleUrl()).auth(ownerToken, { type: 'bearer' })
+      expect(
+        schedule.body.data.timeline[0].items.map((i: { id: number; state: string }) => [
+          i.id,
+          i.state,
+        ]),
+      ).toEqual([[itemId, 'CANCELLED']])
+    })
+
+    it('freezes editing and deleting a Cancelled item with 409 EVENT_ITEM_CANCELLED, until it is uncancelled back to published', async () => {
+      const itemId = await publishedItem()
+      await post(actionUrl('cancel', itemId)).then((r) => expect(r.status).toBe(200))
+
+      const edit = await t
+        .http()
+        .patch(itemUrl(itemId))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Outro nome' })
+      expect(edit.status).toBe(409)
+      expect(edit.body).toEqual(errorOf('EVENT_ITEM_CANCELLED'))
+      const remove = await t.http().delete(itemUrl(itemId)).auth(adminToken, { type: 'bearer' })
+      expect(remove.status).toBe(409)
+      expect(remove.body).toEqual(errorOf('EVENT_ITEM_CANCELLED'))
+
+      const uncancel = await post(actionUrl('uncancel', itemId), adminToken)
+      expect(uncancel.status).toBe(200)
+      expect(uncancel.body.data.state).toBe('PUBLISHED')
+      const changes = await testPrisma().change.findMany({
+        where: { eventItemId: itemId, attribute: 'state' },
+        orderBy: { id: 'asc' },
+      })
+      expect(changes.map((c) => [c.before, c.after])).toEqual([
+        ['PUBLISHED', 'CANCELLED'],
+        ['CANCELLED', 'PUBLISHED'],
+      ])
+      await t
+        .http()
+        .patch(itemUrl(itemId))
+        .auth(ownerToken, { type: 'bearer' })
+        .send({ name: 'Outro nome' })
+        .expect(200)
+    })
+
+    it('answers 409 EVENT_ITEM_NOT_PUBLISHED to cancelling an item in Draft, writing nothing', async () => {
+      await post(`/api/v1/events/${eventId}/publish`).then((r) => expect(r.status).toBe(200))
+      const draftId = (await createItem({ name: 'Bis' })).body.data.id as number
+      const changesBefore = await testPrisma().change.count()
+
+      const res = await post(actionUrl('cancel', draftId))
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('EVENT_ITEM_NOT_PUBLISHED'))
+      expect(await testPrisma().change.count()).toBe(changesBefore)
+    })
+
+    it('answers 409 EVENT_ITEM_CANCELLED to cancelling twice, EVENT_ITEM_NOT_CANCELLED to uncancelling an item not Cancelled, EVENT_ITEM_NOT_DRAFT to publishing a Cancelled one', async () => {
+      const itemId = await publishedItem()
+
+      const uncancel = await post(actionUrl('uncancel', itemId))
+      expect(uncancel.status).toBe(409)
+      expect(uncancel.body).toEqual(errorOf('EVENT_ITEM_NOT_CANCELLED'))
+      await post(actionUrl('cancel', itemId)).then((r) => expect(r.status).toBe(200))
+      const again = await post(actionUrl('cancel', itemId))
+      expect(again.status).toBe(409)
+      expect(again.body).toEqual(errorOf('EVENT_ITEM_CANCELLED'))
+      const publish = await post(actionUrl('publish', itemId))
+      expect(publish.status).toBe(409)
+      expect(publish.body).toEqual(errorOf('EVENT_ITEM_NOT_DRAFT'))
+    })
+
+    it('answers 403 to a Viewer, 404 for an item of another Event or to who is not a Group member, 401 with no token', async () => {
+      const itemId = await publishedItem()
+
+      for (const action of ['cancel', 'uncancel'] as const) {
+        const viewer = await post(actionUrl(action, itemId), viewerToken)
+        expect(viewer.status).toBe(403)
+        expect(viewer.body).toEqual(errorOf('FORBIDDEN'))
+        expect((await post(actionUrl(action, itemId, otherEventId))).status).toBe(404)
+        expect((await post(actionUrl(action, itemId), outsiderToken)).status).toBe(404)
+        expect((await t.http().post(actionUrl(action, itemId))).status).toBe(401)
+      }
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row.state).toBe('PUBLISHED')
+    })
+
+    it('answers 409 EVENT_CANCELLED to cancelling or uncancelling an item of a Cancelled Event', async () => {
+      const publishedId = await publishedItem()
+      const cancelledId = await publishedItem('Passagem de som')
+      await post(actionUrl('cancel', cancelledId)).then((r) => expect(r.status).toBe(200))
+      await post(`/api/v1/events/${eventId}/cancel`).then((r) => expect(r.status).toBe(200))
+
+      const cancel = await post(actionUrl('cancel', publishedId))
+      expect(cancel.status).toBe(409)
+      expect(cancel.body).toEqual(errorOf('EVENT_CANCELLED'))
+      const uncancel = await post(actionUrl('uncancel', cancelledId))
+      expect(uncancel.status).toBe(409)
+      expect(uncancel.body).toEqual(errorOf('EVENT_CANCELLED'))
+    })
+
+    // Each cancel locks the item's row: the ones that come after find it Cancelled.
+    it('cancels once, answering 409 to the others, under concurrent cancels of the same item', async () => {
+      const itemId = await publishedItem()
+
+      const results = await Promise.all(
+        Array.from({ length: 3 }, () => post(actionUrl('cancel', itemId))),
+      )
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 409, 409])
+      expect(
+        await testPrisma().change.count({ where: { eventItemId: itemId, attribute: 'state' } }),
+      ).toBe(1)
+    })
+  })
+
   describe('GET /api/v1/events/:id/schedule', () => {
     beforeEach(async () => {
       // Created out of order, as the production would.

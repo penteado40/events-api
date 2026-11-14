@@ -33,7 +33,8 @@ export type EditEventItemOutput = EventItemView
  * An Owner of its Group, or the Super admin, edits the name, the date, the
  * time or the place of an Event item. A field left out stays as it is, null
  * clears it; what is left must keep the time only with a date. A Cancelled
- * Event is frozen: EVENT_CANCELLED.
+ * Event is frozen: EVENT_CANCELLED; and so is a Cancelled item:
+ * EVENT_ITEM_CANCELLED (EventItem.edit).
  *
  * Each attribute that changed becomes a Change, written in the same unit of
  * work as the item (amendment of ADR-0010); an edit that changes nothing

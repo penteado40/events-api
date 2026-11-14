@@ -29,6 +29,7 @@ enum EventState {
 enum EventItemState {
   DRAFT
   PUBLISHED
+  CANCELLED
 }
 
 enum EmailKind {

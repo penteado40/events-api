@@ -8,11 +8,13 @@ import { EventItemStart } from './event-item-start.vo.js'
 import type { EventState } from './event.entity.js'
 
 /**
- * The state the production moves an Event item through (CONTEXT.md, Draft).
- * In an Event in Draft it is born published; in a published Event, in Draft,
- * and `publish()` releases it. Back to Draft and Cancelled come later.
+ * The state the production moves an Event item through (CONTEXT.md, Draft,
+ * Cancelled). In an Event in Draft it is born published; in a published Event,
+ * in Draft, and `publish()` releases it. A published item is cancelled by
+ * `cancel()`, frozen until `uncancel()` gives it back to published. Back to
+ * Draft comes later.
  */
-export const EVENT_ITEM_STATES = ['DRAFT', 'PUBLISHED'] as const
+export const EVENT_ITEM_STATES = ['DRAFT', 'PUBLISHED', 'CANCELLED'] as const
 export type EventItemState = (typeof EVENT_ITEM_STATES)[number]
 
 export interface EventItemProps {
@@ -127,9 +129,11 @@ export class EventItem {
    * Changes the name, the date, the time or the place. The time stays only
    * with a date: what is left after the edit must hold that, or it is
    * EVENT_ITEM_TIME_WITHOUT_DATE and nothing changes. An edit that changes
-   * nothing keeps the last Author.
+   * nothing keeps the last Author. A Cancelled item is EVENT_ITEM_CANCELLED,
+   * even for an edit that changes nothing.
    */
   edit(edit: EventItemEdit, stamp: Stamp): void {
+    this.assertWritable()
     const start = EventItemStart.of(
       edit.date === undefined ? this.props.start.date : edit.date,
       edit.time === undefined ? this.props.start.time : edit.time,
@@ -151,7 +155,8 @@ export class EventItem {
   /**
    * Takes a new place in the order of the production (reorderEventItems). A
    * write on the row like any other, so its Author is who reordered (ADR-0013);
-   * the Change it makes is the Event's.
+   * the Change it makes is the Event's. A Cancelled item still moves: the
+   * order is the Event's, and freezing it would lock the tie it sits in.
    */
   moveTo(position: number, stamp: Stamp): void {
     if (position === this.props.position) return
@@ -168,6 +173,37 @@ export class EventItem {
     if (this.props.state !== 'DRAFT') throw new AppError('EVENT_ITEM_NOT_DRAFT')
     this.props.state = 'PUBLISHED'
     this.touch(stamp)
+  }
+
+  /**
+   * Cancels a published Event item: it stays in the schedule, Cancelled, and
+   * frozen until uncancelled. A Draft is not cancelled, it is deleted:
+   * EVENT_ITEM_NOT_PUBLISHED; one already Cancelled is EVENT_ITEM_CANCELLED.
+   */
+  cancel(stamp: Stamp): void {
+    this.assertWritable()
+    if (this.props.state !== 'PUBLISHED') throw new AppError('EVENT_ITEM_NOT_PUBLISHED')
+    this.props.state = 'CANCELLED'
+    this.touch(stamp)
+  }
+
+  /**
+   * Gives a Cancelled Event item back to published, the only state it is
+   * cancelled from, and it takes writes again. One that is not Cancelled is
+   * EVENT_ITEM_NOT_CANCELLED.
+   */
+  uncancel(stamp: Stamp): void {
+    if (this.props.state !== 'CANCELLED') throw new AppError('EVENT_ITEM_NOT_CANCELLED')
+    this.props.state = 'PUBLISHED'
+    this.touch(stamp)
+  }
+
+  /**
+   * Refuses any write in a Cancelled Event item (EVENT_ITEM_CANCELLED): it is
+   * frozen until uncancelled. Only `uncancel()` writes in a Cancelled item.
+   */
+  assertWritable(): void {
+    if (this.props.state === 'CANCELLED') throw new AppError('EVENT_ITEM_CANCELLED')
   }
 
   /** Marks a write on the row: its Author and when (ADR-0013). */

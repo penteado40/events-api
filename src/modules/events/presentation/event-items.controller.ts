@@ -10,12 +10,14 @@ import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import type { User } from '../../identity/index.js'
+import { CancelEventItemUseCase } from '../application/use-cases/cancel-event-item.use-case.js'
 import { CreateEventItemUseCase } from '../application/use-cases/create-event-item.use-case.js'
 import { DeleteEventItemUseCase } from '../application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from '../application/use-cases/edit-event-item.use-case.js'
 import { GetScheduleUseCase } from '../application/use-cases/get-schedule.use-case.js'
 import { PublishEventItemUseCase } from '../application/use-cases/publish-event-item.use-case.js'
 import { ReorderEventItemsUseCase } from '../application/use-cases/reorder-event-items.use-case.js'
+import { UncancelEventItemUseCase } from '../application/use-cases/uncancel-event-item.use-case.js'
 import {
   CreateEventItemDto,
   EditEventItemDto,
@@ -33,6 +35,8 @@ export class EventItemsController {
     private readonly editEventItemUseCase: EditEventItemUseCase,
     private readonly deleteEventItemUseCase: DeleteEventItemUseCase,
     private readonly publishEventItemUseCase: PublishEventItemUseCase,
+    private readonly cancelEventItemUseCase: CancelEventItemUseCase,
+    private readonly uncancelEventItemUseCase: UncancelEventItemUseCase,
     private readonly getScheduleUseCase: GetScheduleUseCase,
     private readonly reorderEventItemsUseCase: ReorderEventItemsUseCase,
   ) {}
@@ -86,10 +90,16 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Editar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar vai inteiro. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar vai inteiro. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. Um item Cancelled está congelado até ser descancelado: 409 EVENT_ITEM_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiOkResponse({ type: EventItemResponseDto })
-  @ApiErrors('EVENT_ITEM_TIME_WITHOUT_DATE', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors(
+    'EVENT_ITEM_TIME_WITHOUT_DATE',
+    'EVENT_ITEM_CANCELLED',
+    'EVENT_CANCELLED',
+    'FORBIDDEN',
+    'NOT_FOUND',
+  )
   async edit(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
@@ -105,7 +115,7 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Publicar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event publica um Event item em Draft: ele passa a aparecer para quem ele alcança. A mudança de estado vira uma Change no Change log, gravada junto com a publicação. Um item já publicado: 409 EVENT_ITEM_NOT_DRAFT. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+      'O Super admin ou um Owner do Group do Event publica um Event item em Draft: ele passa a aparecer para quem ele alcança. A mudança de estado vira uma Change no Change log, gravada junto com a publicação. Um item que não está em Draft (publicado ou Cancelled): 409 EVENT_ITEM_NOT_DRAFT. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiOkResponse({ type: EventItemResponseDto })
   @ApiErrors('EVENT_ITEM_NOT_DRAFT', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
@@ -118,15 +128,57 @@ export class EventItemsController {
     return { data: EventItemPresenter.toJson(view) }
   }
 
+  @Post('items/:itemId/cancel')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Cancelar um Event item',
+    description:
+      'O Super admin ou um Owner do Group do Event cancela um Event item publicado: ele continua na programação com o estado CANCELLED e fica congelado (sem edição nem remoção) até ser descancelado. A mudança de estado vira uma Change no Change log, gravada junto com o cancelamento. Um item em Draft não é cancelado, é apagado: 409 EVENT_ITEM_NOT_PUBLISHED; um já Cancelled: 409 EVENT_ITEM_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+  })
+  @ApiOkResponse({ type: EventItemResponseDto })
+  @ApiErrors(
+    'EVENT_ITEM_NOT_PUBLISHED',
+    'EVENT_ITEM_CANCELLED',
+    'EVENT_CANCELLED',
+    'FORBIDDEN',
+    'NOT_FOUND',
+  )
+  async cancel(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+    @Param('itemId', ParseIdPipe) itemId: number,
+  ): Promise<EventItemResponseDto> {
+    const view = await this.cancelEventItemUseCase.execute({ actor, eventId, itemId })
+    return { data: EventItemPresenter.toJson(view) }
+  }
+
+  @Post('items/:itemId/uncancel')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Descancelar um Event item',
+    description:
+      'O Super admin ou um Owner do Group do Event descancela um Event item Cancelled: ele volta a publicado e aceita escritas de novo. A mudança de estado vira uma Change no Change log, gravada junto com o descancelamento. Um item que não está Cancelled: 409 EVENT_ITEM_NOT_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+  })
+  @ApiOkResponse({ type: EventItemResponseDto })
+  @ApiErrors('EVENT_ITEM_NOT_CANCELLED', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
+  async uncancel(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+    @Param('itemId', ParseIdPipe) itemId: number,
+  ): Promise<EventItemResponseDto> {
+    const view = await this.uncancelEventItemUseCase.execute({ actor, eventId, itemId })
+    return { data: EventItemPresenter.toJson(view) }
+  }
+
   @Delete('items/:itemId')
   @HttpCode(204)
   @ApiOperation({
     summary: 'Apagar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event apaga o item, em Draft ou publicado. A remoção vira uma Change no Change log. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+      'O Super admin ou um Owner do Group do Event apaga o item, em Draft ou publicado. A remoção vira uma Change no Change log. Um item Cancelled está congelado até ser descancelado: 409 EVENT_ITEM_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiNoContentResponse()
-  @ApiErrors('EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors('EVENT_ITEM_CANCELLED', 'EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
   async delete(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
@@ -139,7 +191,7 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Ler a programação do Event',
     description:
-      'O Super admin ou um Owner do Group do Event lê a programação inteira: a General info (itens sem data, na ordem da produção) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção). O dia de um item é a data dele no calendário. Cada item traz o estado: DRAFT (só os Owners o veem) ou PUBLISHED. Quem não é Group member do Group recebe 404; um Viewer, 403 por enquanto.',
+      'O Super admin ou um Owner do Group do Event lê a programação inteira: a General info (itens sem data, na ordem da produção) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção). O dia de um item é a data dele no calendário. Cada item traz o estado: DRAFT (só os Owners o veem), PUBLISHED ou CANCELLED (continua na programação, com o selo de cancelado). Quem não é Group member do Group recebe 404; um Viewer, 403 por enquanto.',
   })
   @ApiOkResponse({ type: ScheduleResponseDto })
   @ApiErrors('FORBIDDEN', 'NOT_FOUND')

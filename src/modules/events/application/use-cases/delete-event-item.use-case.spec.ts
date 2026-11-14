@@ -159,4 +159,17 @@ describe('DeleteEventItemUseCase', () => {
     expect(items.ofEvent(eventId)).toHaveLength(1)
     expect(changeLog.ofEvent(eventId)).toEqual([])
   })
+
+  it('refuses deleting a Cancelled item with EVENT_ITEM_CANCELLED, keeping it', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    const item = (await items.lockInEvent(eventId, itemId))!
+    item.cancel({ by: null, at: AT })
+    await items.save(item)
+
+    await expect(deleteItem.execute({ actor: ANA, eventId, itemId })).rejects.toEqual(
+      new AppError('EVENT_ITEM_CANCELLED'),
+    )
+    expect(items.ofEvent(eventId)).toHaveLength(1)
+    expect(changeLog.ofEvent(eventId)).toEqual([])
+  })
 })

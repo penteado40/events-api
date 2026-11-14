@@ -155,7 +155,8 @@ export class EventItem {
   /**
    * Takes a new place in the order of the production (reorderEventItems). A
    * write on the row like any other, so its Author is who reordered (ADR-0013);
-   * the Change it makes is the Event's.
+   * the Change it makes is the Event's. A Cancelled item still moves: the
+   * order is the Event's, and freezing it would lock the tie it sits in.
    */
   moveTo(position: number, stamp: Stamp): void {
     if (position === this.props.position) return

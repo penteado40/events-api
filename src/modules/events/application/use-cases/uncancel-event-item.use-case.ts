@@ -41,8 +41,12 @@ export class UncancelEventItemUseCase {
 
   async execute(input: UncancelEventItemInput): Promise<UncancelEventItemOutput> {
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return changeEventItemState(this.deps, input.actor, input, stamp, (item) =>
-      item.uncancel(stamp),
+    return changeEventItemState(
+      this.deps,
+      input.actor,
+      { eventId: input.eventId, itemId: input.itemId },
+      stamp,
+      (item) => item.uncancel(stamp),
     )
   }
 }

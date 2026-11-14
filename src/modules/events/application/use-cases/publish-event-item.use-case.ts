@@ -41,6 +41,12 @@ export class PublishEventItemUseCase {
 
   async execute(input: PublishEventItemInput): Promise<PublishEventItemOutput> {
     const stamp = { by: input.actor.id, at: this.clock.now() }
-    return changeEventItemState(this.deps, input.actor, input, stamp, (item) => item.publish(stamp))
+    return changeEventItemState(
+      this.deps,
+      input.actor,
+      { eventId: input.eventId, itemId: input.itemId },
+      stamp,
+      (item) => item.publish(stamp),
+    )
   }
 }

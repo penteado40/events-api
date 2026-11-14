@@ -3,8 +3,8 @@ import type { EventItemSnapshot } from './event-item.entity.js'
 import type { GroupMemberRole } from './event-access-policy.js'
 import { eventItemReach } from './event-item-reach.js'
 
-/** The attributes of an Event item that make Changes on an edit, in the order their Changes come. */
-const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place'] as const
+/** The attributes of an Event item that make Changes on an edit or a move of state, in the order their Changes come. */
+const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as const
 
 /**
  * The Changes between two snapshots of an Event item, null for an item that
@@ -12,7 +12,8 @@ const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place'] as const
  * Change of the attribute `item`, with the item's attributes on the side where
  * it exists; an edit is one Change per attribute that changed, none when
  * nothing did. The date and the time are apart: moving the Passagem de som
- * from 15h to 16h changes only the time. The reach of before and of after
+ * from 15h to 16h changes only the time; publishing a Draft is a Change of
+ * the state. The reach of before and of after
  * come from the reach rule (eventItemReach) over the Group members given.
  * Who made them and when is the Stamp of the change, written with them.
  */

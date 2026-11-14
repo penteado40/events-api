@@ -111,6 +111,20 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(codesOf('409')).toEqual(['EVENT_ITEM_ORDER_INCOMPLETE', 'EVENT_CANCELLED'])
     })
 
+    it('documents the errors the publication of an Event item answers', () => {
+      const operation = (
+        doc.paths['/api/v1/events/{id}/items/{itemId}/publish'] as Record<string, OperationObject>
+      ).post!
+      const codesOf = (status: string) =>
+        Object.keys(
+          (operation.responses[status] as ResponseObject).content!['application/json']!.examples!,
+        )
+
+      expect(codesOf('403')).toEqual(['FORBIDDEN'])
+      expect(codesOf('404')).toEqual(['NOT_FOUND'])
+      expect(codesOf('409')).toEqual(['EVENT_ITEM_NOT_DRAFT', 'EVENT_CANCELLED'])
+    })
+
     it('gives every field of a request body an example', () => {
       const missing = operationsOf(doc).flatMap(({ key, operation }) => {
         const body = operation.requestBody as RequestBodyObject | undefined

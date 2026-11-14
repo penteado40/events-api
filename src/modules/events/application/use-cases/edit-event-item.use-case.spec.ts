@@ -57,6 +57,7 @@ describe('EditEventItemUseCase', () => {
         start: EventItemStart.create({ date: '2026-11-14', time: '15:00' }),
         place: null,
         position: positionAfter(items.ofEvent(eventId)),
+        state: 'PUBLISHED',
       },
       { by: null, at: CREATED_AT },
     )

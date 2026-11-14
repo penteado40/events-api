@@ -5,7 +5,8 @@ import type { EventItemSnapshot } from './event-item.entity.js'
  * Who an Event item reaches (ADR-0019, the one reach rule): the ids of the
  * Users, in the order of the members given. An item that does not exist (not
  * yet created, or already deleted) reaches no one. Until the rule covers the
- * Viewers (Draft, Audience, Participants), an item reaches only the Owners.
+ * Viewers (Audience, Participants), an item reaches only the Owners, in Draft
+ * or published alike.
  * Pure: it never reads, so the reach of before and of after come from it alike.
  */
 export function eventItemReach(

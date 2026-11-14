@@ -7,6 +7,7 @@ import { positionAfter } from '../../domain/event-item-order.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
+import { EventItem } from '../../domain/event-item.entity.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
@@ -28,11 +29,12 @@ export interface CreateEventItemInput {
 export type CreateEventItemOutput = EventItemView
 
 /**
- * An Owner of its Group, or the Super admin, creates an Event item in an Event
- * in Draft, where it is born published. Date and time are local and optional,
- * the time only with a date (else EVENT_ITEM_TIME_WITHOUT_DATE); the place is
- * optional, and without its own zone the Event's applies. A Cancelled Event is
- * frozen: EVENT_CANCELLED.
+ * An Owner of its Group, or the Super admin, creates an Event item: in an
+ * Event in Draft it is born published, in a published Event in Draft
+ * (EventItem.bornIn), by the state the Event has under its lock. Date and
+ * time are local and optional, the time only with a date (else
+ * EVENT_ITEM_TIME_WITHOUT_DATE); the place is optional, and without its own
+ * zone the Event's applies. A Cancelled Event is frozen: EVENT_CANCELLED.
  *
  * The creation is a Change of the item, written in the same unit of work
  * (amendment of ADR-0010), reaching whom the reach rule says, over the Group
@@ -53,8 +55,6 @@ export class CreateEventItemUseCase {
     if (!event) throw new AppError('NOT_FOUND')
     await requireEventsEditor(input.actor, event.groupId, this.directory)
 
-    // Every Event is in Draft for now, so the item is born published. With
-    // publishing the Event (PROJ-185, PROJ-194), it is born in Draft there.
     const props = {
       eventId: event.id,
       name: EventItemName.create(input.name),
@@ -73,7 +73,9 @@ export class CreateEventItemUseCase {
       frozen.assertWritable()
       // Last in the order of the production; the lock keeps two creations off the same position.
       const position = positionAfter(await this.items.findAllInEvent(event.id))
-      const item = await this.items.create({ ...props, position }, stamp)
+      // Under the lock: a publish of the Event that came first makes it born in Draft.
+      const state = EventItem.bornIn(frozen.state)
+      const item = await this.items.create({ ...props, state, position }, stamp)
       await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), members), stamp)
       return itemViewOf(item, event.period.timezone.value)
     })

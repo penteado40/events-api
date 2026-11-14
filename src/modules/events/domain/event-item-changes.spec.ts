@@ -103,6 +103,22 @@ describe('eventItemChanges', () => {
     ])
   })
 
+  it('gives one Change of the state when a Draft is published, reaching the Owners before and after', () => {
+    const draft: EventItemSnapshot = { ...SOUNDCHECK, state: 'DRAFT' }
+
+    expect(eventItemChanges(draft, SOUNDCHECK, MEMBERS)).toEqual([
+      {
+        eventItemId: 9,
+        attribute: 'state',
+        before: 'DRAFT',
+        after: 'PUBLISHED',
+        productionOnly: false,
+        reachBefore: [2, 7],
+        reachAfter: [2, 7],
+      },
+    ])
+  })
+
   it('treats the place as one attribute, changed when only its zone changes', () => {
     const place = { name: 'Teatro Amazonas', address: null, timezone: null }
     const before = { ...SOUNDCHECK, place }

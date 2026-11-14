@@ -38,6 +38,7 @@ describe('ReorderEventItemsUseCase', () => {
         start: EventItemStart.create({ date: start.date ?? null, time: start.time ?? null }),
         place: null,
         position: positionAfter(items.ofEvent(eventId)),
+        state: 'PUBLISHED',
       },
       { by: null, at: CREATED_AT },
     )

@@ -59,6 +59,7 @@ describe('DeleteEventItemUseCase', () => {
           start: EventItemStart.create({ date: null, time: null }),
           place: null,
           position: positionAfter(items.ofEvent(eventId)),
+          state: 'PUBLISHED',
         },
         { by: null, at: AT },
       )
@@ -88,6 +89,33 @@ describe('DeleteEventItemUseCase', () => {
         reachAfter: [],
         by: ANA.id,
         at: NOW,
+      }),
+    ])
+  })
+
+  it('deletes an Event item in Draft, its removal keeping the state it had', async () => {
+    directory.addMember(1, ANA.id, 'OWNER')
+    const draft = await items.create(
+      {
+        eventId,
+        name: EventItemName.create('Bis'),
+        start: EventItemStart.create({ date: null, time: null }),
+        place: null,
+        position: positionAfter(items.ofEvent(eventId)),
+        state: 'DRAFT',
+      },
+      { by: null, at: AT },
+    )
+
+    await deleteItem.execute({ actor: ANA, eventId, itemId: draft.id })
+
+    expect(items.ofEvent(eventId).map((i) => i.id)).toEqual([itemId])
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: draft.id,
+        attribute: 'item',
+        before: expect.objectContaining({ name: 'Bis', state: 'DRAFT' }),
+        after: null,
       }),
     ])
   })

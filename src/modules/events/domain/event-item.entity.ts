@@ -83,8 +83,7 @@ export class EventItem {
    * The state a new Event item is born in, by the state of its Event: in an
    * Event in Draft, nothing of it shows yet, so the item is born published;
    * once the Event is published, it is born in Draft, for the production to
-   * add it without showing it before its time. A Cancelled Event takes no
-   * items (assertWritable), and would get them in Draft, showing nothing.
+   * add it without showing it before its time.
    */
   static bornIn(eventState: EventState): EventItemState {
     return eventState === 'DRAFT' ? 'PUBLISHED' : 'DRAFT'
@@ -146,8 +145,7 @@ export class EventItem {
     this.props.name = name
     this.props.start = start
     this.props.place = place
-    this.props.updatedAt = stamp.at
-    this.props.updatedById = stamp.by
+    this.touch(stamp)
   }
 
   /**
@@ -158,8 +156,7 @@ export class EventItem {
   moveTo(position: number, stamp: Stamp): void {
     if (position === this.props.position) return
     this.props.position = position
-    this.props.updatedAt = stamp.at
-    this.props.updatedById = stamp.by
+    this.touch(stamp)
   }
 
   /**
@@ -170,6 +167,11 @@ export class EventItem {
   publish(stamp: Stamp): void {
     if (this.props.state !== 'DRAFT') throw new AppError('EVENT_ITEM_NOT_DRAFT')
     this.props.state = 'PUBLISHED'
+    this.touch(stamp)
+  }
+
+  /** Marks a write on the row: its Author and when (ADR-0013). */
+  private touch(stamp: Stamp): void {
     this.props.updatedAt = stamp.at
     this.props.updatedById = stamp.by
   }

@@ -31,10 +31,10 @@ export type CreateEventItemOutput = EventItemView
 /**
  * An Owner of its Group, or the Super admin, creates an Event item: in an
  * Event in Draft it is born published, in a published Event in Draft
- * (EventItem.bornIn), by the state the Event has under its lock. Date and time are local and optional,
- * the time only with a date (else EVENT_ITEM_TIME_WITHOUT_DATE); the place is
- * optional, and without its own zone the Event's applies. A Cancelled Event is
- * frozen: EVENT_CANCELLED.
+ * (EventItem.bornIn), by the state the Event has under its lock. Date and
+ * time are local and optional, the time only with a date (else
+ * EVENT_ITEM_TIME_WITHOUT_DATE); the place is optional, and without its own
+ * zone the Event's applies. A Cancelled Event is frozen: EVENT_CANCELLED.
  *
  * The creation is a Change of the item, written in the same unit of work
  * (amendment of ADR-0010), reaching whom the reach rule says, over the Group

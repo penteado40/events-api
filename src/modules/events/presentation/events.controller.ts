@@ -9,13 +9,16 @@ import { CreateEventUseCase } from '../application/use-cases/create-event.use-ca
 import { EditEventUseCase } from '../application/use-cases/edit-event.use-case.js'
 import { GetEventUseCase } from '../application/use-cases/get-event.use-case.js'
 import { ListEventsUseCase } from '../application/use-cases/list-events.use-case.js'
+import { ListParticipantsUseCase } from '../application/use-cases/list-participants.use-case.js'
 import { PublishEventUseCase } from '../application/use-cases/publish-event.use-case.js'
 import { UncancelEventUseCase } from '../application/use-cases/uncancel-event.use-case.js'
 import {
   CreateEventDto,
   EditEventDto,
+  EventDetailResponseDto,
   EventListResponseDto,
   EventResponseDto,
+  ParticipantListResponseDto,
 } from './dto/event.dto.js'
 import { EventPresenter } from './event.presenter.js'
 
@@ -30,6 +33,7 @@ export class EventsController {
     private readonly publishEventUseCase: PublishEventUseCase,
     private readonly cancelEventUseCase: CancelEventUseCase,
     private readonly uncancelEventUseCase: UncancelEventUseCase,
+    private readonly listParticipantsUseCase: ListParticipantsUseCase,
   ) {}
 
   @Post('groups/:id/events')
@@ -37,7 +41,7 @@ export class EventsController {
   @ApiOperation({
     summary: 'Criar um Event',
     description:
-      'O Super admin ou um Owner do Group. O Event nasce em Draft, e todo Group member já vê onde e quando. Data final antes da inicial: 400 EVENT_PERIOD_INVALID. Quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group. O Event nasce em Draft, e todo Group member já vê onde e quando. A lista de Participants nasce como cópia de todos os Group members do momento (Owners e Viewers); quem entra no Group depois não vira Participant dele. Data final antes da inicial: 400 EVENT_PERIOD_INVALID. Quem não é Group member do Group recebe 404; um Viewer, 403.',
   })
   @ApiCreatedResponse({ type: EventResponseDto })
   @ApiErrors('EVENT_PERIOD_INVALID', 'FORBIDDEN', 'NOT_FOUND')
@@ -70,16 +74,32 @@ export class EventsController {
   @ApiOperation({
     summary: 'Ver um Event',
     description:
-      'O Super admin ou qualquer Group member do Group do Event. Quem não é Group member do Group recebe 404.',
+      'O Super admin ou qualquer Group member do Group do Event, com a Membership de quem pede no Event: se é Participant dele (null para o Super admin). Quem não é Group member do Group recebe 404.',
   })
-  @ApiOkResponse({ type: EventResponseDto })
+  @ApiOkResponse({ type: EventDetailResponseDto })
   @ApiErrors('NOT_FOUND')
   async get(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,
-  ): Promise<EventResponseDto> {
+  ): Promise<EventDetailResponseDto> {
     const view = await this.getEventUseCase.execute({ actor, eventId })
-    return { data: EventPresenter.toJson(view) }
+    return { data: EventPresenter.toDetailJson(view) }
+  }
+
+  @Get('events/:id/participants')
+  @ApiOperation({
+    summary: 'Listar os Participants de um Event',
+    description:
+      'O Super admin ou qualquer Group member do Group do Event, vá ou não: nome, telefone (E.164, para abrir o WhatsApp) e papel no Group de cada Participant, na ordem da lista. Quem não é Group member do Group recebe 404.',
+  })
+  @ApiOkResponse({ type: ParticipantListResponseDto })
+  @ApiErrors('NOT_FOUND')
+  async listParticipants(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+  ): Promise<ParticipantListResponseDto> {
+    const participants = await this.listParticipantsUseCase.execute({ actor, eventId })
+    return { data: participants.map(EventPresenter.toParticipantJson) }
   }
 
   @Patch('events/:id')

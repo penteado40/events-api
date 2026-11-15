@@ -7,11 +7,13 @@ import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { GetEventUseCase } from './get-event.use-case.js'
 
 describe('GetEventUseCase', () => {
   let directory: FakeGroupDirectory
   let clock: FixedClock
+  let participants: InMemoryParticipantRepository
   let getEvent: GetEventUseCase
   let eventId: number
 
@@ -19,7 +21,8 @@ describe('GetEventUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     const events = new InMemoryEventRepository()
     clock = new FixedClock(new Date('2026-11-14T15:00:00.000Z'))
-    getEvent = new GetEventUseCase(directory, events, clock)
+    participants = new InMemoryParticipantRepository()
+    getEvent = new GetEventUseCase(directory, events, participants, clock)
     const event = await events.create(
       {
         groupId: 1,
@@ -41,6 +44,18 @@ describe('GetEventUseCase', () => {
     expect(isFinished).toBe(false)
   })
 
+  it('tells the Group member whether they are a Participant of the Event', async () => {
+    directory.addMember(1, ANA.id, 'VIEWER').addMember(1, 7, 'VIEWER')
+    await participants.addMany(eventId, [7], { by: null, at: new Date() })
+
+    expect((await getEvent.execute({ actor: ANA, eventId })).membership).toEqual({
+      isParticipant: false,
+    })
+    expect(
+      (await getEvent.execute({ actor: { id: 7, isSuperAdmin: false }, eventId })).membership,
+    ).toEqual({ isParticipant: true })
+  })
+
   it('shows it as a Finished event once the end date is before today in the zone of the Event', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
     clock.set(new Date('2026-11-17T04:00:00.000Z'))
@@ -51,9 +66,11 @@ describe('GetEventUseCase', () => {
   })
 
   it('shows the Event to the Super admin', async () => {
-    const { event } = await getEvent.execute({ actor: SUPER_ADMIN, eventId })
+    const { event, membership } = await getEvent.execute({ actor: SUPER_ADMIN, eventId })
 
     expect(event.id).toBe(eventId)
+    // The Super admin has no Membership.
+    expect(membership).toBeNull()
   })
 
   it('answers NOT_FOUND to who is not a Group member of its Group, and for an Event that does not exist', async () => {

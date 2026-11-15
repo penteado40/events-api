@@ -64,6 +64,40 @@ const EventJsonSchema = z.object({
 
 export type EventJson = z.infer<typeof EventJsonSchema>
 
+/** An Event as GET /events/:id shows it: with the Membership of who asks on it. */
+const EventDetailJsonSchema = EventJsonSchema.extend({
+  membership: z
+    .object({
+      isParticipant: z.boolean().meta({
+        description: 'Se quem pede é Participant do Event (vai a ele).',
+        example: true,
+      }),
+    })
+    .nullable()
+    .meta({
+      description:
+        'O vínculo de quem pede com o Event. null para o Super admin, que não tem Membership.',
+    }),
+})
+
+export type EventDetailJson = z.infer<typeof EventDetailJsonSchema>
+
+/** A Participant of an Event, as every Group member sees them. */
+const ParticipantJsonSchema = z.object({
+  userId: z.number().int().meta({ example: 2 }),
+  name: z.string().meta({ example: 'Ana Souza' }),
+  phone: z.string().meta({
+    description: 'E.164, para abrir o WhatsApp.',
+    example: '+5592999990002',
+  }),
+  role: z.enum(['OWNER', 'VIEWER']).nullable().meta({
+    description: 'O papel no Group agora; null para quem já não é Group member.',
+    example: 'VIEWER',
+  }),
+})
+
+export type ParticipantJson = z.infer<typeof ParticipantJsonSchema>
+
 export class CreateEventDto extends createZodDto(
   z.strictObject({ name: eventNameSchema, place: eventPlaceSchema, period: EventPeriodSchema }),
 ) {}
@@ -81,6 +115,14 @@ export class EditEventDto extends createZodDto(
 ) {}
 
 export class EventResponseDto extends createZodDto(z.object({ data: EventJsonSchema })) {}
+
+export class EventDetailResponseDto extends createZodDto(
+  z.object({ data: EventDetailJsonSchema }),
+) {}
+
+export class ParticipantListResponseDto extends createZodDto(
+  z.object({ data: z.array(ParticipantJsonSchema) }),
+) {}
 
 export class EventListResponseDto extends createZodDto(
   z.object({ data: z.array(EventJsonSchema) }),

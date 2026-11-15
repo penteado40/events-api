@@ -10,7 +10,7 @@ import type { GroupRepository } from '../domain/group.repository.js'
 export class GroupLookup {
   constructor(
     private readonly groups: GroupRepository,
-    private readonly members: GroupMemberRepository,
+    private readonly groupMembers: GroupMemberRepository,
   ) {}
 
   async exists(groupId: number): Promise<boolean> {
@@ -20,8 +20,16 @@ export class GroupLookup {
   /** The User's role in the Group; null when they are not a Group member of it. */
   async roleIn(groupId: number, userId: number): Promise<GroupRole | null> {
     // A User is a Group member of a handful of Groups: reading them all is cheap.
-    const member = (await this.members.findByUser(userId)).find((m) => m.groupId === groupId)
+    const member = (await this.groupMembers.findByUser(userId)).find((m) => m.groupId === groupId)
     return member?.role ?? null
+  }
+
+  /** Every Group member of the Group (Owners and Viewers), with their role, in the order they joined. */
+  async members(groupId: number): Promise<{ userId: number; role: GroupRole }[]> {
+    return (await this.groupMembers.findByGroup(groupId)).map(({ userId, role }) => ({
+      userId,
+      role,
+    }))
   }
 
   /**
@@ -30,6 +38,9 @@ export class GroupLookup {
    * until the running UnitOfWork ends (ADR-0014). Only inside a UnitOfWork.
    */
   async lockMembers(groupId: number): Promise<{ userId: number; role: GroupRole }[]> {
-    return (await this.members.lockByGroup(groupId)).map(({ userId, role }) => ({ userId, role }))
+    return (await this.groupMembers.lockByGroup(groupId)).map(({ userId, role }) => ({
+      userId,
+      role,
+    }))
   }
 }

@@ -89,7 +89,7 @@ function calendarDay(column: Date): string {
 }
 
 /** The table's check keeps CANCELLED out of the column; a row that breaks it is a bug. */
-function cancelledFromOf(column: EventState | null): CancellableEventState | null {
+export function cancelledFromOf(column: EventState | null): CancellableEventState | null {
   if (column === 'CANCELLED') throw new Error('An Event cannot be cancelled from CANCELLED')
   return column
 }

@@ -1,12 +1,14 @@
 import { type EventScheduleData, EventScheduleReader } from '../ports/event-schedule-reader.js'
 import type { InMemoryEventItemRepository } from './in-memory-event-item.repository.js'
 import type { InMemoryEventRepository } from './in-memory-event.repository.js'
+import type { InMemoryParticipantRepository } from './in-memory-participant.repository.js'
 
-/** The read port over the in-memory Events and Event items. */
+/** The read port over the in-memory Events, Event items and Participants. */
 export class InMemoryEventScheduleReader extends EventScheduleReader {
   constructor(
     private readonly events: InMemoryEventRepository,
     private readonly items: InMemoryEventItemRepository,
+    private readonly participants: InMemoryParticipantRepository,
   ) {
     super()
   }
@@ -18,6 +20,9 @@ export class InMemoryEventScheduleReader extends EventScheduleReader {
       eventId: event.id,
       groupId: event.groupId,
       timezone: event.period.timezone.value,
+      state: event.state,
+      cancelledFrom: event.cancelledFrom,
+      participants: await this.participants.findByEvent(eventId),
       items: this.items.ofEvent(eventId).map((item) => item.snapshot()),
     }
   }

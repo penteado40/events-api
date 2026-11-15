@@ -1,7 +1,6 @@
 import type { ChangeValue, NewChange } from './change.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import type { GroupMemberRole } from './event-access-policy.js'
-import { eventItemReach } from './event-item-reach.js'
+import { eventItemReach, type ItemReachContext } from './event-item-reach.js'
 
 /** The attributes of an Event item that make Changes on an edit or a move of state, in the order their Changes come. */
 const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as const
@@ -13,25 +12,26 @@ const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as cons
  * it exists; an edit is one Change per attribute that changed, none when
  * nothing did. The date and the time are apart: moving the Passagem de som
  * from 15h to 16h changes only the time; publishing a Draft is a Change of
- * the state. The reach of before and of after
- * come from the reach rule (eventItemReach) over the Group members given.
+ * the state. The reach of before and of after come from the reach rule
+ * (eventItemReach) over the Event, Group members and Participants given.
  * Who made them and when is the Stamp of the change, written with them.
  */
 export function eventItemChanges(
   before: EventItemSnapshot | null,
   after: EventItemSnapshot | null,
-  members: readonly GroupMemberRole[],
+  reach: ItemReachContext,
 ): NewChange[] {
   const item = after ?? before
   if (item === null) return []
+  const reachOf = (snapshot: EventItemSnapshot | null): number[] => eventItemReach(snapshot, reach)
   const change = (attribute: string, from: ChangeValue, to: ChangeValue): NewChange => ({
     eventItemId: item.id,
     attribute,
     before: from,
     after: to,
     productionOnly: false,
-    reachBefore: eventItemReach(before, members),
-    reachAfter: eventItemReach(after, members),
+    reachBefore: reachOf(before),
+    reachAfter: reachOf(after),
   })
   if (before === null || after === null) {
     return [change('item', itemValue(before), itemValue(after))]

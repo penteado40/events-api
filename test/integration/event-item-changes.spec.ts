@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { EventItemWriteDeps } from '../../src/modules/events/application/event-item-write-deps.js'
 import { GroupDirectory } from '../../src/modules/events/application/ports/group-directory.js'
 import { CreateEventItemUseCase } from '../../src/modules/events/application/use-cases/create-event-item.use-case.js'
 import { DeleteEventItemUseCase } from '../../src/modules/events/application/use-cases/delete-event-item.use-case.js'
@@ -27,8 +28,8 @@ const NOW = new Date('2026-11-13T15:00:00.000Z')
 
 /**
  * Every write of an Event item writes its Changes in the same transaction
- * (amendment of ADR-0010): both commit or neither does. Until the reach rule
- * covers the Viewers, an Event item reaches the Owners.
+ * (amendment of ADR-0010): both commit or neither does. In an Event in
+ * Draft, an Event item reaches only the Owners (the reach rule).
  */
 describe('Changes of an Event item', () => {
   let t: TestApp
@@ -182,7 +183,7 @@ describe('Changes of an Event item', () => {
     })
 
     const actor = () => ({ id: ownerId, isSuperAdmin: false })
-    const deps = () =>
+    const reorderDeps = () =>
       [
         t.app.get(GroupDirectory),
         t.app.get(EventRepository),
@@ -191,10 +192,14 @@ describe('Changes of an Event item', () => {
         t.app.get(UnitOfWork),
         clock,
       ] as const
+    const deps = (): EventItemWriteDeps => ({
+      ...t.app.get(EventItemWriteDeps),
+      changeLog: failing,
+    })
 
     it('undoes the creation and its Change together', async () => {
       await expect(
-        new CreateEventItemUseCase(...deps()).execute({
+        new CreateEventItemUseCase(deps()).execute({
           actor: actor(),
           eventId,
           name: 'Passagem de som',
@@ -210,7 +215,7 @@ describe('Changes of an Event item', () => {
       const itemId = await soundcheck()
 
       await expect(
-        new EditEventItemUseCase(...deps()).execute({
+        new EditEventItemUseCase(deps()).execute({
           actor: actor(),
           eventId,
           itemId,
@@ -230,7 +235,7 @@ describe('Changes of an Event item', () => {
       const itemId = await soundcheck()
 
       await expect(
-        new DeleteEventItemUseCase(...deps()).execute({ actor: actor(), eventId, itemId }),
+        new DeleteEventItemUseCase(deps()).execute({ actor: actor(), eventId, itemId }),
       ).rejects.toThrow('forced failure after writing the Changes')
 
       expect(writtenInsideTheUnit).toBe(2)
@@ -243,7 +248,7 @@ describe('Changes of an Event item', () => {
       const second = (await createItem({ name: 'Contatos da produção' })).body.data.id as number
 
       await expect(
-        new ReorderEventItemsUseCase(...deps()).execute({
+        new ReorderEventItemsUseCase(...reorderDeps()).execute({
           actor: actor(),
           eventId,
           itemIds: [second, first],

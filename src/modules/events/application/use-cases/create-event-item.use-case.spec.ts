@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
@@ -9,7 +8,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
-import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
+import { inMemoryEventItemWriteDeps } from '../testing/in-memory-event-item-write-deps.js'
 import { CreateEventItemUseCase } from './create-event-item.use-case.js'
 
 const NOW = new Date('2026-11-01T12:00:00.000Z')
@@ -23,18 +22,10 @@ describe('CreateEventItemUseCase', () => {
   let eventId: number
 
   beforeEach(async () => {
-    directory = new FakeGroupDirectory().addGroup(1)
-    events = new InMemoryEventRepository()
-    items = new InMemoryEventItemRepository()
-    changeLog = new InMemoryChangeRepository()
-    createItem = new CreateEventItemUseCase(
-      directory,
-      events,
-      items,
-      changeLog,
-      new InMemoryUnitOfWork(),
-      new FixedClock(NOW),
-    )
+    const deps = inMemoryEventItemWriteDeps(NOW)
+    ;({ directory, events, items, changeLog } = deps)
+    directory.addGroup(1)
+    createItem = new CreateEventItemUseCase(deps)
     const event = await events.create(
       {
         groupId: 1,

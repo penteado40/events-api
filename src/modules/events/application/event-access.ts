@@ -6,14 +6,14 @@ import type { GroupDirectory } from './ports/group-directory.js'
 /**
  * Lets the user see the Events of a Group: the Super admin or any Group member.
  * Who cannot see the Group, or a Group that does not exist, gets NOT_FOUND, so
- * its existence does not leak.
+ * its existence does not leak. Gives back the actor, with their role in the Group.
  */
 export async function requireEventsReader(
   user: ActingUser,
   groupId: number,
   directory: GroupDirectory,
-): Promise<void> {
-  await visibleActor(user, groupId, directory)
+): Promise<EventActor> {
+  return visibleActor(user, groupId, directory)
 }
 
 /** Lets the user create and edit the Events of a Group: like the reader check, plus FORBIDDEN for a Viewer. */

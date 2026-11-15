@@ -1,12 +1,7 @@
-import type { Clock } from '../../../../shared/application/clock.js'
-import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
-import type { ChangeRepository } from '../../domain/change.repository.js'
-import type { EventItemRepository } from '../../domain/event-item.repository.js'
-import type { EventRepository } from '../../domain/event.repository.js'
 import type { ActingUser } from '../actor.js'
-import { changeEventItemState, type EventItemStateChangeDeps } from '../event-item-state-change.js'
+import { changeEventItemState } from '../event-item-state-change.js'
+import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import type { EventItemView } from '../event-item-view.js'
-import type { GroupDirectory } from '../ports/group-directory.js'
 
 export interface CancelEventItemInput {
   actor: ActingUser
@@ -25,23 +20,10 @@ export type CancelEventItemOutput = EventItemView
  * (changeEventItemState).
  */
 export class CancelEventItemUseCase {
-  private readonly deps: EventItemStateChangeDeps
-  private readonly clock: Clock
-
-  constructor(
-    directory: GroupDirectory,
-    events: EventRepository,
-    items: EventItemRepository,
-    changeLog: ChangeRepository,
-    unitOfWork: UnitOfWork,
-    clock: Clock,
-  ) {
-    this.deps = { directory, events, items, changeLog, unitOfWork }
-    this.clock = clock
-  }
+  constructor(private readonly deps: EventItemWriteDeps) {}
 
   async execute(input: CancelEventItemInput): Promise<CancelEventItemOutput> {
-    const stamp = { by: input.actor.id, at: this.clock.now() }
+    const stamp = { by: input.actor.id, at: this.deps.clock.now() }
     return changeEventItemState(
       this.deps,
       input.actor,

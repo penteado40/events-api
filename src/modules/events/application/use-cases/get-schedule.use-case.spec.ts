@@ -11,20 +11,28 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventScheduleReader } from '../testing/in-memory-event-schedule-reader.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
-import { GetScheduleUseCase } from './get-schedule.use-case.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
+import { type GetScheduleOutput, GetScheduleUseCase } from './get-schedule.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
 
 describe('GetScheduleUseCase', () => {
   let directory: FakeGroupDirectory
+  let events: InMemoryEventRepository
+  let items: InMemoryEventItemRepository
+  let participants: InMemoryParticipantRepository
   let getSchedule: GetScheduleUseCase
   let eventId: number
 
   beforeEach(async () => {
     directory = new FakeGroupDirectory().addGroup(1)
-    const events = new InMemoryEventRepository()
-    const items = new InMemoryEventItemRepository()
-    getSchedule = new GetScheduleUseCase(directory, new InMemoryEventScheduleReader(events, items))
+    events = new InMemoryEventRepository()
+    items = new InMemoryEventItemRepository()
+    participants = new InMemoryParticipantRepository(events)
+    getSchedule = new GetScheduleUseCase(
+      directory,
+      new InMemoryEventScheduleReader(events, items, participants),
+    )
     eventId = (
       await events.create(
         {
@@ -36,9 +44,11 @@ describe('GetScheduleUseCase', () => {
         { by: null, at: AT },
       )
     ).id
-    for (const [name, date, time] of [
-      ['O que levar', null, null],
-      ['Show', '2026-11-14', '19:00'],
+    for (const [name, date, time, state] of [
+      ['O que levar', null, null, 'PUBLISHED'],
+      ['Show', '2026-11-14', '19:00', 'PUBLISHED'],
+      ['Bis', '2026-11-14', '22:00', 'DRAFT'],
+      ['Passeio de barco', '2026-11-15', '09:00', 'CANCELLED'],
     ] as const) {
       await items.create(
         {
@@ -47,49 +57,94 @@ describe('GetScheduleUseCase', () => {
           start: EventItemStart.create({ date, time }),
           place: null,
           position: positionAfter(items.ofEvent(eventId)),
-          state: 'PUBLISHED',
+          state,
         },
         { by: null, at: AT },
       )
     }
   })
 
-  it('gives an Owner the General info and the Timeline of the Event', async () => {
+  async function publishEvent(): Promise<void> {
+    const event = await events.findById(eventId)
+    event!.publish({ by: null, at: AT })
+    await events.save(event!)
+  }
+
+  /** The names of the items of the schedule, General info first, then the Timeline day by day. */
+  function namesIn(schedule: GetScheduleOutput): string[] {
+    return [
+      ...schedule.generalInfo.map((i) => i.name),
+      ...schedule.timeline.flatMap((day) => day.items.map((i) => i.name)),
+    ]
+  }
+
+  it('gives an Owner the General info and the Timeline of the Event, Draft and Cancelled included', async () => {
     directory.addMember(1, ANA.id, 'OWNER')
 
     const schedule = await getSchedule.execute({ actor: ANA, eventId })
 
-    expect(schedule).toEqual({
-      generalInfo: [{ id: 1, name: 'O que levar', when: null, place: null, state: 'PUBLISHED' }],
-      timeline: [
+    expect(schedule.generalInfo).toEqual([
+      { id: 1, name: 'O que levar', when: null, place: null, state: 'PUBLISHED' },
+    ])
+    expect(schedule.timeline[0]).toEqual({
+      date: '2026-11-14',
+      items: [
         {
-          date: '2026-11-14',
-          items: [
-            {
-              id: 2,
-              name: 'Show',
-              when: { date: '2026-11-14', time: '19:00', timezone: 'America/Manaus' },
-              place: null,
-              state: 'PUBLISHED',
-            },
-          ],
+          id: 2,
+          name: 'Show',
+          when: { date: '2026-11-14', time: '19:00', timezone: 'America/Manaus' },
+          place: null,
+          state: 'PUBLISHED',
+        },
+        {
+          id: 3,
+          name: 'Bis',
+          when: { date: '2026-11-14', time: '22:00', timezone: 'America/Manaus' },
+          place: null,
+          state: 'DRAFT',
         },
       ],
     })
+    expect(namesIn(schedule)).toEqual(['O que levar', 'Show', 'Bis', 'Passeio de barco'])
   })
 
-  it('gives the Super admin the schedule', async () => {
+  it('gives the Super admin the whole schedule', async () => {
     const schedule = await getSchedule.execute({ actor: SUPER_ADMIN, eventId })
 
-    expect(schedule.generalInfo).toHaveLength(1)
+    expect(namesIn(schedule)).toEqual(['O que levar', 'Show', 'Bis', 'Passeio de barco'])
   })
 
-  it('refuses a Viewer with FORBIDDEN, until the reach rule lets them read their own', async () => {
+  it('gives a Viewer Participant of a published Event only the published and the Cancelled items', async () => {
     directory.addMember(1, ANA.id, 'VIEWER')
+    await participants.create(eventId, [ANA.id], { by: null, at: AT })
+    await publishEvent()
 
-    await expect(getSchedule.execute({ actor: ANA, eventId })).rejects.toEqual(
-      new AppError('FORBIDDEN'),
-    )
+    const schedule = await getSchedule.execute({ actor: ANA, eventId })
+
+    expect(namesIn(schedule)).toEqual(['O que levar', 'Show', 'Passeio de barco'])
+    expect(schedule.timeline.map((day) => day.date)).toEqual(['2026-11-14', '2026-11-15'])
+    expect(schedule.timeline[1]?.items[0]?.state).toBe('CANCELLED')
+  })
+
+  it('gives a Viewer Participant of an Event in Draft an empty schedule', async () => {
+    directory.addMember(1, ANA.id, 'VIEWER')
+    await participants.create(eventId, [ANA.id], { by: null, at: AT })
+
+    expect(await getSchedule.execute({ actor: ANA, eventId })).toEqual({
+      generalInfo: [],
+      timeline: [],
+    })
+  })
+
+  it('gives a Viewer who is not a Participant an empty schedule, even of a published Event', async () => {
+    directory.addMember(1, ANA.id, 'VIEWER')
+    await participants.create(eventId, [42], { by: null, at: AT })
+    await publishEvent()
+
+    expect(await getSchedule.execute({ actor: ANA, eventId })).toEqual({
+      generalInfo: [],
+      timeline: [],
+    })
   })
 
   it('answers NOT_FOUND to who is not a Group member, and for an Event that does not exist', async () => {

@@ -5,8 +5,9 @@ import {
   EventScheduleReader,
 } from '../application/ports/event-schedule-reader.js'
 import { snapshotOf } from './prisma-event-item.repository.js'
+import { cancelledFromOf } from './prisma-event.repository.js'
 
-/** Loads one Event with all its Event items in one query, as plain data (ADR-0019). */
+/** Loads one Event with all its Event items and its Participants in one query, as plain data (ADR-0019). */
 @Injectable()
 export class PrismaEventScheduleReader extends EventScheduleReader {
   constructor(private readonly unitOfWork: PrismaUnitOfWork) {
@@ -20,6 +21,9 @@ export class PrismaEventScheduleReader extends EventScheduleReader {
         id: true,
         groupId: true,
         timezone: true,
+        state: true,
+        cancelledFrom: true,
+        participants: { select: { userId: true }, orderBy: { id: 'asc' } },
         // In the order of the production; the assembly sorts again, so this is only for a stable read.
         items: { orderBy: [{ position: 'asc' }, { id: 'asc' }] },
       },
@@ -29,6 +33,9 @@ export class PrismaEventScheduleReader extends EventScheduleReader {
       eventId: row.id,
       groupId: row.groupId,
       timezone: row.timezone,
+      state: row.state,
+      cancelledFrom: cancelledFromOf(row.cancelledFrom),
+      participants: row.participants.map((p) => p.userId),
       items: row.items.map(snapshotOf),
     }
   }

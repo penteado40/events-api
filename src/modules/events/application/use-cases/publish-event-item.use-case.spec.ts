@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
-import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { positionAfter } from '../../domain/event-item-order.js'
@@ -14,6 +12,8 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { inMemoryEventItemWriteDeps } from '../testing/in-memory-event-item-write-deps.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { PublishEventItemUseCase } from './publish-event-item.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
@@ -24,22 +24,15 @@ describe('PublishEventItemUseCase', () => {
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
   let changeLog: InMemoryChangeRepository
+  let participants: InMemoryParticipantRepository
   let publishItem: PublishEventItemUseCase
   let eventId: number
 
   beforeEach(async () => {
-    directory = new FakeGroupDirectory().addGroup(1)
-    events = new InMemoryEventRepository()
-    items = new InMemoryEventItemRepository()
-    changeLog = new InMemoryChangeRepository()
-    publishItem = new PublishEventItemUseCase(
-      directory,
-      events,
-      items,
-      changeLog,
-      new InMemoryUnitOfWork(),
-      new FixedClock(NOW),
-    )
+    const deps = inMemoryEventItemWriteDeps(NOW)
+    ;({ directory, events, items, changeLog, participants } = deps)
+    directory.addGroup(1)
+    publishItem = new PublishEventItemUseCase(deps)
     eventId = (
       await events.create(
         {
@@ -101,6 +94,25 @@ describe('PublishEventItemUseCase', () => {
         reachAfter: [ANA.id],
         by: ANA.id,
         at: NOW,
+      }),
+    ])
+  })
+
+  it('reaches the Participants once published in a published Event, and only the Owners before', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER').addMember(1, 4, 'VIEWER')
+    await participants.create(eventId, [3], { by: null, at: AT })
+    const event = await events.findById(eventId)
+    event!.publish({ by: null, at: AT })
+    await events.save(event!)
+    const itemId = await itemIn('DRAFT')
+
+    await publishItem.execute({ actor: ANA, eventId, itemId })
+
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        attribute: 'state',
+        reachBefore: [ANA.id],
+        reachAfter: [ANA.id, 3],
       }),
     ])
   })

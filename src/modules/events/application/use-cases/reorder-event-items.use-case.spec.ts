@@ -15,6 +15,7 @@ import { InMemoryChangeRepository } from '../testing/in-memory-change.repository
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventScheduleReader } from '../testing/in-memory-event-schedule-reader.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { ReorderEventItemsUseCase } from './reorder-event-items.use-case.js'
 
 const CREATED_AT = new Date('2026-10-01T12:00:00.000Z')
@@ -46,7 +47,11 @@ describe('ReorderEventItemsUseCase', () => {
   }
 
   async function schedule() {
-    const data = await new InMemoryEventScheduleReader(events, items).load(eventId)
+    const data = await new InMemoryEventScheduleReader(
+      events,
+      items,
+      new InMemoryParticipantRepository(events),
+    ).load(eventId)
     return assembleSchedule(data!)
   }
 

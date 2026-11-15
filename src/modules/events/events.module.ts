@@ -3,6 +3,7 @@ import { Clock } from '../../shared/application/clock.js'
 import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { GroupLookup, GroupsQueriesModule } from '../groups/index.js'
 import { IdentityQueriesModule, UserLookup } from '../identity/index.js'
+import { EventItemWriteDeps } from './application/event-item-write-deps.js'
 import { EventScheduleReader } from './application/ports/event-schedule-reader.js'
 import { GroupDirectory } from './application/ports/group-directory.js'
 import { UserDirectory } from './application/ports/user-directory.js'
@@ -137,118 +138,63 @@ import { EventsController } from './presentation/events.controller.js'
       inject: [GroupDirectory, EventRepository, ChangeRepository, UnitOfWork, Clock],
     },
     {
-      provide: CreateEventItemUseCase,
+      provide: EventItemWriteDeps,
       useFactory: (
         directory: GroupDirectory,
         events: EventRepository,
         items: EventItemRepository,
+        participants: ParticipantRepository,
         changeLog: ChangeRepository,
         unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new CreateEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
+      ): EventItemWriteDeps => ({
+        directory,
+        events,
+        items,
+        participants,
+        changeLog,
+        unitOfWork,
+        clock,
+      }),
       inject: [
         GroupDirectory,
         EventRepository,
         EventItemRepository,
+        ParticipantRepository,
         ChangeRepository,
         UnitOfWork,
         Clock,
       ],
+    },
+    {
+      provide: CreateEventItemUseCase,
+      useFactory: (deps: EventItemWriteDeps) => new CreateEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: EditEventItemUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        items: EventItemRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) => new EditEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        EventItemRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: EventItemWriteDeps) => new EditEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: PublishEventItemUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        items: EventItemRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) => new PublishEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        EventItemRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: EventItemWriteDeps) => new PublishEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: CancelEventItemUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        items: EventItemRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) => new CancelEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        EventItemRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: EventItemWriteDeps) => new CancelEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: UncancelEventItemUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        items: EventItemRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) => new UncancelEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        EventItemRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: EventItemWriteDeps) => new UncancelEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: DeleteEventItemUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        items: EventItemRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) => new DeleteEventItemUseCase(directory, events, items, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        EventItemRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: EventItemWriteDeps) => new DeleteEventItemUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: ReorderEventItemsUseCase,

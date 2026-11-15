@@ -1,21 +1,15 @@
-import type { Clock } from '../../../../shared/application/clock.js'
-import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
-import type { ChangeRepository } from '../../domain/change.repository.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
 import { positionAfter } from '../../domain/event-item-order.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventItem } from '../../domain/event-item.entity.js'
-import type { EventItemRepository } from '../../domain/event-item.repository.js'
-import type { EventRepository } from '../../domain/event.repository.js'
-import type { ParticipantRepository } from '../../domain/participant.repository.js'
 import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
+import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
-import type { GroupDirectory } from '../ports/group-directory.js'
 
 export interface CreateEventItemInput {
   actor: ActingUser
@@ -44,20 +38,12 @@ export type CreateEventItemOutput = EventItemView
  * before it, the item reached no one.
  */
 export class CreateEventItemUseCase {
-  constructor(
-    private readonly directory: GroupDirectory,
-    private readonly events: EventRepository,
-    private readonly items: EventItemRepository,
-    private readonly participants: ParticipantRepository,
-    private readonly changeLog: ChangeRepository,
-    private readonly unitOfWork: UnitOfWork,
-    private readonly clock: Clock,
-  ) {}
+  constructor(private readonly deps: EventItemWriteDeps) {}
 
   async execute(input: CreateEventItemInput): Promise<CreateEventItemOutput> {
-    const event = await this.events.findById(input.eventId)
+    const event = await this.deps.events.findById(input.eventId)
     if (!event) throw new AppError('NOT_FOUND')
-    await requireEventsEditor(input.actor, event.groupId, this.directory)
+    await requireEventsEditor(input.actor, event.groupId, this.deps.directory)
 
     const props = {
       eventId: event.id,
@@ -66,22 +52,26 @@ export class CreateEventItemUseCase {
       place: input.place == null ? null : EventItemPlace.create(input.place),
     }
 
-    const stamp = { by: input.actor.id, at: this.clock.now() }
+    const stamp = { by: input.actor.id, at: this.deps.clock.now() }
 
-    return this.unitOfWork.run(async () => {
+    return this.deps.unitOfWork.run(async () => {
       // Locks go Group, then Event, always (see EditEventItemUseCase).
-      const members = await this.directory.lockMembers(event.groupId)
+      const members = await this.deps.directory.lockMembers(event.groupId)
       // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
-      const frozen = await this.events.lockById(event.id)
+      const frozen = await this.deps.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const reach = await itemReachContext(frozen, members, this.participants)
+      const reach = await itemReachContext(frozen, members, this.deps.participants)
       // Last in the order of the production; the lock keeps two creations off the same position.
-      const position = positionAfter(await this.items.findAllInEvent(event.id))
+      const position = positionAfter(await this.deps.items.findAllInEvent(event.id))
       // Under the lock: a publish of the Event that came first makes it born in Draft.
       const state = EventItem.bornIn(frozen.state)
-      const item = await this.items.create({ ...props, state, position }, stamp)
-      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), reach), stamp)
+      const item = await this.deps.items.create({ ...props, state, position }, stamp)
+      await this.deps.changeLog.create(
+        event.id,
+        eventItemChanges(null, item.snapshot(), reach),
+        stamp,
+      )
       return itemViewOf(item, event.period.timezone.value)
     })
   }

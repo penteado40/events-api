@@ -1,26 +1,12 @@
-import type { UnitOfWork } from '../../../shared/application/unit-of-work.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
-import type { ChangeRepository } from '../domain/change.repository.js'
 import { eventItemChanges } from '../domain/event-item-changes.js'
 import type { EventItem } from '../domain/event-item.entity.js'
-import type { EventItemRepository } from '../domain/event-item.repository.js'
-import type { EventRepository } from '../domain/event.repository.js'
-import type { ParticipantRepository } from '../domain/participant.repository.js'
+import type { EventItemWriteDeps } from './event-item-write-deps.js'
 import { itemReachContext } from './item-reach-context.js'
 import type { ActingUser } from './actor.js'
 import { requireEventsEditor } from './event-access.js'
 import { type EventItemView, itemViewOf } from './event-item-view.js'
-import type { GroupDirectory } from './ports/group-directory.js'
-
-export interface EventItemStateChangeDeps {
-  directory: GroupDirectory
-  events: EventRepository
-  items: EventItemRepository
-  participants: ParticipantRepository
-  changeLog: ChangeRepository
-  unitOfWork: UnitOfWork
-}
 
 /**
  * Moves an Event item to another state (publish, cancel, uncancel), by an
@@ -29,10 +15,11 @@ export interface EventItemStateChangeDeps {
  * state of the item, written in the same unit of work (amendment of ADR-0010),
  * with the reach of before and of after from the reach rule over the Event,
  * its Participants and the Group members read under the Group's lock. The role is checked before the state:
- * a Viewer is FORBIDDEN, never a 409. The stamp is the use case's.
+ * a Viewer is FORBIDDEN, never a 409. The stamp is the use case's, so the
+ * clock of the deps is not read here.
  */
 export async function changeEventItemState(
-  deps: EventItemStateChangeDeps,
+  deps: EventItemWriteDeps,
   actor: ActingUser,
   target: { eventId: number; itemId: number },
   stamp: Stamp,

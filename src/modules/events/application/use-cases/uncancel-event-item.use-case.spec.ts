@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FixedClock } from '../../../../shared/application/testing/fixed-clock.js'
-import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { positionAfter } from '../../domain/event-item-order.js'
@@ -14,7 +12,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
-import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
+import { inMemoryEventItemWriteDeps } from '../testing/in-memory-event-item-write-deps.js'
 import { UncancelEventItemUseCase } from './uncancel-event-item.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
@@ -29,19 +27,10 @@ describe('UncancelEventItemUseCase', () => {
   let eventId: number
 
   beforeEach(async () => {
-    directory = new FakeGroupDirectory().addGroup(1)
-    events = new InMemoryEventRepository()
-    items = new InMemoryEventItemRepository()
-    changeLog = new InMemoryChangeRepository()
-    uncancelItem = new UncancelEventItemUseCase(
-      directory,
-      events,
-      items,
-      new InMemoryParticipantRepository(events),
-      changeLog,
-      new InMemoryUnitOfWork(),
-      new FixedClock(NOW),
-    )
+    const deps = inMemoryEventItemWriteDeps(NOW)
+    ;({ directory, events, items, changeLog } = deps)
+    directory.addGroup(1)
+    uncancelItem = new UncancelEventItemUseCase(deps)
     eventId = (
       await events.create(
         {

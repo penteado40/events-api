@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { EventItemWriteDeps } from '../../src/modules/events/application/event-item-write-deps.js'
 import { GroupDirectory } from '../../src/modules/events/application/ports/group-directory.js'
 import { CreateEventItemUseCase } from '../../src/modules/events/application/use-cases/create-event-item.use-case.js'
 import { DeleteEventItemUseCase } from '../../src/modules/events/application/use-cases/delete-event-item.use-case.js'
@@ -8,7 +9,6 @@ import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
 import { EventItemRepository } from '../../src/modules/events/domain/event-item.repository.js'
 import { EventRepository } from '../../src/modules/events/domain/event.repository.js'
-import { ParticipantRepository } from '../../src/modules/events/domain/participant.repository.js'
 import { Clock } from '../../src/shared/application/clock.js'
 import { FixedClock } from '../../src/shared/application/testing/fixed-clock.js'
 import { UnitOfWork } from '../../src/shared/application/unit-of-work.js'
@@ -192,20 +192,14 @@ describe('Changes of an Event item', () => {
         t.app.get(UnitOfWork),
         clock,
       ] as const
-    const deps = () =>
-      [
-        t.app.get(GroupDirectory),
-        t.app.get(EventRepository),
-        t.app.get(EventItemRepository),
-        t.app.get(ParticipantRepository),
-        failing,
-        t.app.get(UnitOfWork),
-        clock,
-      ] as const
+    const deps = (): EventItemWriteDeps => ({
+      ...t.app.get(EventItemWriteDeps),
+      changeLog: failing,
+    })
 
     it('undoes the creation and its Change together', async () => {
       await expect(
-        new CreateEventItemUseCase(...deps()).execute({
+        new CreateEventItemUseCase(deps()).execute({
           actor: actor(),
           eventId,
           name: 'Passagem de som',
@@ -221,7 +215,7 @@ describe('Changes of an Event item', () => {
       const itemId = await soundcheck()
 
       await expect(
-        new EditEventItemUseCase(...deps()).execute({
+        new EditEventItemUseCase(deps()).execute({
           actor: actor(),
           eventId,
           itemId,
@@ -241,7 +235,7 @@ describe('Changes of an Event item', () => {
       const itemId = await soundcheck()
 
       await expect(
-        new DeleteEventItemUseCase(...deps()).execute({ actor: actor(), eventId, itemId }),
+        new DeleteEventItemUseCase(deps()).execute({ actor: actor(), eventId, itemId }),
       ).rejects.toThrow('forced failure after writing the Changes')
 
       expect(writtenInsideTheUnit).toBe(2)

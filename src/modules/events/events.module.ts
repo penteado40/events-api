@@ -7,6 +7,7 @@ import { EventItemWriteDeps } from './application/event-item-write-deps.js'
 import { EventScheduleReader } from './application/ports/event-schedule-reader.js'
 import { GroupDirectory } from './application/ports/group-directory.js'
 import { UserDirectory } from './application/ports/user-directory.js'
+import { AddParticipantUseCase } from './application/use-cases/add-participant.use-case.js'
 import { CancelEventItemUseCase } from './application/use-cases/cancel-event-item.use-case.js'
 import { CreateEventItemUseCase } from './application/use-cases/create-event-item.use-case.js'
 import { CancelEventUseCase } from './application/use-cases/cancel-event.use-case.js'
@@ -20,6 +21,7 @@ import { ListEventsUseCase } from './application/use-cases/list-events.use-case.
 import { ListParticipantsUseCase } from './application/use-cases/list-participants.use-case.js'
 import { PublishEventItemUseCase } from './application/use-cases/publish-event-item.use-case.js'
 import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
+import { RemoveParticipantUseCase } from './application/use-cases/remove-participant.use-case.js'
 import { ReorderEventItemsUseCase } from './application/use-cases/reorder-event-items.use-case.js'
 import { UncancelEventItemUseCase } from './application/use-cases/uncancel-event-item.use-case.js'
 import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use-case.js'
@@ -37,7 +39,7 @@ import { PrismaEventRepository } from './infrastructure/prisma-event.repository.
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
 
-/** Composition root of the events context: Events, with where and when, their Participants, their publication, cancel, their Changes and their Event items, with their Draft, their cancel and the order of the production. Roles come from groups; names and phones, from identity. */
+/** Composition root of the events context: Events, with where and when, their Participants, adjusted by the production, their publication, cancel, their Changes and their Event items, with their Draft, their cancel and the order of the production. Roles come from groups; names and phones, from identity. */
 @Module({
   imports: [EventsPersistenceModule, GroupsQueriesModule, IdentityQueriesModule],
   controllers: [EventsController, EventItemsController],
@@ -92,6 +94,45 @@ import { EventsController } from './presentation/events.controller.js'
         users: UserDirectory,
       ) => new ListParticipantsUseCase(directory, events, participants, users),
       inject: [GroupDirectory, EventRepository, ParticipantRepository, UserDirectory],
+    },
+    {
+      provide: AddParticipantUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        participants: ParticipantRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) => new AddParticipantUseCase(directory, events, participants, changeLog, unitOfWork, clock),
+      inject: [
+        GroupDirectory,
+        EventRepository,
+        ParticipantRepository,
+        ChangeRepository,
+        UnitOfWork,
+        Clock,
+      ],
+    },
+    {
+      provide: RemoveParticipantUseCase,
+      useFactory: (
+        directory: GroupDirectory,
+        events: EventRepository,
+        participants: ParticipantRepository,
+        changeLog: ChangeRepository,
+        unitOfWork: UnitOfWork,
+        clock: Clock,
+      ) =>
+        new RemoveParticipantUseCase(directory, events, participants, changeLog, unitOfWork, clock),
+      inject: [
+        GroupDirectory,
+        EventRepository,
+        ParticipantRepository,
+        ChangeRepository,
+        UnitOfWork,
+        Clock,
+      ],
     },
     {
       provide: EditEventUseCase,

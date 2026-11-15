@@ -18,7 +18,10 @@ export interface NewChange {
   /**
    * The attribute that changed: `name`, `place`, `period`, `state` on an
    * Event, or `itemOrder` for a new order of the production (the ids of the
-   * tied items, before and after; only the production sees it); `name`,
+   * tied items, before and after; only the production sees it) or
+   * `participant` for an entry into the Participants (before null, after the
+   * User id) and an exit (before the User id, after null), only for the
+   * production too; `name`,
    * `date`, `time`, `place` on an Event item, or `item` for its creation
    * (before null) and its removal (after null).
    */

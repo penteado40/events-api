@@ -17,6 +17,10 @@ export class PrismaParticipantRepository extends ParticipantRepository {
     })
   }
 
+  async remove(eventId: number, userId: number): Promise<void> {
+    await this.unitOfWork.client.participant.deleteMany({ where: { eventId, userId } })
+  }
+
   async findByEvent(eventId: number): Promise<number[]> {
     const rows = await this.unitOfWork.client.participant.findMany({
       where: { eventId },

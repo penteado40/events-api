@@ -1,5 +1,5 @@
 import type { ChangeValue, NewChange } from './change.js'
-import { sameAudience } from './event-item-audience.vo.js'
+import { EventItemAudience, sameAudience } from './event-item-audience.vo.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { eventItemReach, type ItemReachContext } from './event-item-reach.js'
 
@@ -65,11 +65,7 @@ function itemValue(item: EventItemSnapshot | null): ChangeValue {
 
 function valueOf(value: EventItemAttributeValue): ChangeValue {
   if (value === null || typeof value === 'string') return value
-  if ('kind' in value) {
-    return value.kind === 'ALL'
-      ? { kind: 'ALL' }
-      : { kind: 'SELECTED', userIds: [...value.userIds] }
-  }
+  if ('kind' in value) return EventItemAudience.create(value).toValues()
   return { ...value }
 }
 

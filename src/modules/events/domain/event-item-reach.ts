@@ -44,7 +44,10 @@ export function standingOf(actor: EventActor, userId: number, participant: boole
  * reached before the cancel, and Draft never reaches a Viewer. Then the
  * Audience decides: "Todos" reaches the Participants, and a Viewer who is
  * not one is reached by no such item; an Audience chosen reaches only the
- * people on its list. Pure: it never reads, so the reach of before and of
+ * people on its list, which holds only Participants (and, later, Event
+ * guests): every path that takes someone off the Participants also takes
+ * them off the Audiences chosen (EventItemRepository.removeFromAudiences),
+ * so the list is not checked against the Participants here. Pure: it never reads, so the reach of before and of
  * after come from it alike.
  */
 export function eventItemReaches(

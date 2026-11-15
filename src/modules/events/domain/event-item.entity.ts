@@ -2,6 +2,7 @@ import type { LocalDate } from '../../../shared/domain/local-date.vo.js'
 import type { LocalTime } from '../../../shared/domain/local-time.vo.js'
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
+import type { EventItemAudience, EventItemAudienceValues } from './event-item-audience.vo.js'
 import type { EventItemName } from './event-item-name.vo.js'
 import type { EventItemPlace, EventItemPlaceValues } from './event-item-place.vo.js'
 import { EventItemStart } from './event-item-start.vo.js'
@@ -26,6 +27,8 @@ export interface EventItemProps {
   state: EventItemState
   /** Its place in the order of the production, which only breaks the ties of the time (CONTEXT.md, Event item). */
   position: number
+  /** Whom it reaches (CONTEXT.md, Audience); born "Todos". */
+  audience: EventItemAudience
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -49,6 +52,8 @@ export interface EventItemEdit {
   date?: LocalDate | null
   time?: LocalTime | null
   place?: EventItemPlace | null
+  /** The whole Audience, replaced at once. */
+  audience?: EventItemAudience
 }
 
 /**
@@ -67,6 +72,8 @@ export interface EventItemSnapshot {
   state: EventItemState
   /** The manual position in the order of the production; ties go by id, the order of creation. */
   position: number
+  /** Whom it reaches: "Todos", or the people chosen. */
+  audience: EventItemAudienceValues
 }
 
 /**
@@ -112,6 +119,9 @@ export class EventItem {
   get position(): number {
     return this.props.position
   }
+  get audience(): EventItemAudience {
+    return this.props.audience
+  }
   get createdAt(): Date {
     return this.props.createdAt
   }
@@ -126,7 +136,7 @@ export class EventItem {
   }
 
   /**
-   * Changes the name, the date, the time or the place. The time stays only
+   * Changes the name, the date, the time, the place or the Audience. The time stays only
    * with a date: what is left after the edit must hold that, or it is
    * EVENT_ITEM_TIME_WITHOUT_DATE and nothing changes. An edit that changes
    * nothing keeps the last Author. A Cancelled item is EVENT_ITEM_CANCELLED,
@@ -140,15 +150,18 @@ export class EventItem {
     )
     const name = edit.name?.value ?? this.props.name
     const place = edit.place === undefined ? this.props.place : edit.place
+    const audience = edit.audience ?? this.props.audience
     const changed =
       name !== this.props.name ||
       !start.equals(this.props.start) ||
-      !samePlace(place, this.props.place)
+      !samePlace(place, this.props.place) ||
+      !audience.equals(this.props.audience)
     // An edit that changes nothing is no write: the item keeps its last Author.
     if (!changed) return
     this.props.name = name
     this.props.start = start
     this.props.place = place
+    this.props.audience = audience
     this.touch(stamp)
   }
 
@@ -222,6 +235,7 @@ export class EventItem {
       place: this.props.place?.toValues() ?? null,
       state: this.props.state,
       position: this.props.position,
+      audience: this.props.audience.toValues(),
     }
   }
 }

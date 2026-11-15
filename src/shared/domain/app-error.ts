@@ -26,6 +26,7 @@ export type ErrorCode =
   | 'EVENT_NOT_DRAFT'
   | 'EVENT_CANCELLED'
   | 'EVENT_NOT_CANCELLED'
+  | 'NOT_A_PARTICIPANT'
   | 'RATE_LIMITED'
   | 'INTERNAL_ERROR'
 

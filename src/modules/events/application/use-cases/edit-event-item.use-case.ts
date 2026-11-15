@@ -1,6 +1,10 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { LocalDate } from '../../../../shared/domain/local-date.vo.js'
 import { LocalTime } from '../../../../shared/domain/local-time.vo.js'
+import {
+  EventItemAudience,
+  type EventItemAudienceValues,
+} from '../../domain/event-item-audience.vo.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
@@ -21,19 +25,24 @@ export interface EditEventItemInput {
   time?: string | null
   /** The whole place, replaced at once; null clears it. */
   place?: EventItemPlaceInput | null
+  /** The whole Audience, replaced at once: "Todos", or the people chosen among the Participants. */
+  audience?: EventItemAudienceValues
 }
 
 export type EditEventItemOutput = EventItemView
 
 /**
  * An Owner of its Group, or the Super admin, edits the name, the date, the
- * time or the place of an Event item. A field left out stays as it is, null
- * clears it; what is left must keep the time only with a date. A Cancelled
+ * time, the place or the Audience of an Event item. A field left out stays as
+ * it is, null clears it; what is left must keep the time only with a date.
+ * The Audience is "Todos" or people chosen only among the Participants of the
+ * Event, read under its lock: anyone else is NOT_A_PARTICIPANT. A Cancelled
  * Event is frozen: EVENT_CANCELLED; and so is a Cancelled item:
  * EVENT_ITEM_CANCELLED (EventItem.edit).
  *
  * Each attribute that changed becomes a Change, written in the same unit of
- * work as the item (amendment of ADR-0010); an edit that changes nothing
+ * work as the item (amendment of ADR-0010), the one of the Audience only for
+ * the production (eventItemChanges); an edit that changes nothing
  * writes nothing. The reach of before and of after comes from the reach rule
  * over the Event, its Participants and the Group members, read under the
  * Group's lock.
@@ -53,6 +62,7 @@ export class EditEventItemUseCase {
       date: keepClearOr(input.date, LocalDate.create),
       time: keepClearOr(input.time, LocalTime.create),
       place: keepClearOr(input.place, EventItemPlace.create),
+      audience: input.audience === undefined ? undefined : EventItemAudience.create(input.audience),
     }
 
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
@@ -66,6 +76,8 @@ export class EditEventItemUseCase {
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
       const reach = await itemReachContext(frozen, members, this.deps.participants)
+      // The Participants are held with the Event: one taken off meanwhile is not chosen.
+      edit.audience?.assertWithin(reach.participants)
       // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
       const item = await this.deps.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')

@@ -16,20 +16,23 @@ export interface RemoveParticipantInput {
  * production sees, written with it (changeParticipants).
  *
  * Who leaves stops being reached by the Event items with the Audience
- * "Todos", since the reach rule reads the Participants. Leaving the chosen
- * Audiences and being marked as out of the Event in the Fields of people
- * (CONTEXT.md, Participant) are for when those exist; neither does yet.
+ * "Todos", since the reach rule reads the Participants, and leaves the
+ * Audiences chosen of the Event's items, in the same unit of work: the people
+ * chosen are always Participants. No Change of the items' Audiences is
+ * written: the exit is the Change. Being marked as out of the Event in the
+ * Fields of people (CONTEXT.md, Participant) is for when those exist.
  */
 export class RemoveParticipantUseCase {
   constructor(private readonly deps: ParticipantWriteDeps) {}
 
   async execute(input: RemoveParticipantInput): Promise<void> {
-    const { participants } = this.deps
+    const { participants, items } = this.deps
     await changeParticipants(this.deps, input.actor, input.eventId, async ({ eventId, reach }) => {
       if (!(await participants.isParticipant(eventId, input.userId))) {
         throw new AppError('NOT_FOUND')
       }
       await participants.remove(eventId, input.userId)
+      await items.removeFromAudiences(eventId, input.userId)
       return participantLeft(input.userId, reach)
     })
   }

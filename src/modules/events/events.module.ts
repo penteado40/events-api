@@ -101,6 +101,7 @@ import { EventsController } from './presentation/events.controller.js'
       useFactory: (
         directory: GroupDirectory,
         events: EventRepository,
+        items: EventItemRepository,
         participants: ParticipantRepository,
         changeLog: ChangeRepository,
         unitOfWork: UnitOfWork,
@@ -108,6 +109,7 @@ import { EventsController } from './presentation/events.controller.js'
       ): ParticipantWriteDeps => ({
         directory,
         events,
+        items,
         participants,
         changeLog,
         unitOfWork,
@@ -116,6 +118,7 @@ import { EventsController } from './presentation/events.controller.js'
       inject: [
         GroupDirectory,
         EventRepository,
+        EventItemRepository,
         ParticipantRepository,
         ChangeRepository,
         UnitOfWork,

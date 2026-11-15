@@ -12,6 +12,7 @@ const SOUNDCHECK: EventItemSnapshot = {
   place: null,
   state: 'PUBLISHED',
   position: 9,
+  audience: { kind: 'ALL' },
 }
 
 const MEMBERS: GroupMemberRole[] = [
@@ -125,6 +126,43 @@ describe('eventItemChanges', () => {
         reachAfter: [2, 3, 7],
       },
     ])
+  })
+
+  it('gives one Change of the Audience, only for the production, with the reach of before and of after', () => {
+    // Members 2 and 7 are Owners; 3 is a Viewer Participant, reached by "Todos" and not once left off the list.
+    const chosen: EventItemSnapshot = {
+      ...SOUNDCHECK,
+      audience: { kind: 'SELECTED', userIds: [2] },
+    }
+
+    expect(eventItemChanges(SOUNDCHECK, chosen, PEOPLE)).toEqual([
+      {
+        eventItemId: 9,
+        attribute: 'audience',
+        before: { kind: 'ALL' },
+        after: { kind: 'SELECTED', userIds: [2] },
+        productionOnly: true,
+        reachBefore: [2, 3, 7],
+        reachAfter: [2, 7],
+      },
+    ])
+  })
+
+  it('gives no Change of the Audience when the same people are chosen again', () => {
+    const chosen: EventItemSnapshot = {
+      ...SOUNDCHECK,
+      audience: { kind: 'SELECTED', userIds: [3] },
+    }
+
+    expect(
+      eventItemChanges(chosen, { ...chosen, audience: { kind: 'SELECTED', userIds: [3] } }, PEOPLE),
+    ).toEqual([])
+  })
+
+  it('keeps the Audience out of the Change of a creation, which everyone it reaches sees', () => {
+    const [created] = eventItemChanges(null, SOUNDCHECK, PEOPLE)
+
+    expect(created?.after).not.toHaveProperty('audience')
   })
 
   it('treats the place as one attribute, changed when only its zone changes', () => {

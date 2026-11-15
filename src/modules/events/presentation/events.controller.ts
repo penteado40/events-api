@@ -134,7 +134,7 @@ export class EventsController {
   @ApiOperation({
     summary: 'Tirar um Participant do Event',
     description:
-      'O Super admin ou um Owner do Group do Event tira alguém da lista de Participants, um Owner ou quem já saiu do Group inclusive. Se o User do caminho não é Participant, 404. A saída vira uma Change no Change log que só a produção vê, gravada junto; quem sai deixa de ser alcançado pelos Event items. Um Event Cancelled está congelado: 409 EVENT_CANCELLED. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403.',
+      'O Super admin ou um Owner do Group do Event tira alguém da lista de Participants, um Owner ou quem já saiu do Group inclusive. Se o User do caminho não é Participant, 404. A saída vira uma Change no Change log que só a produção vê, gravada junto; quem sai deixa de ser alcançado pelos Event items e sai dos Audiences escolhidos deles, na mesma transação. Um Event Cancelled está congelado: 409 EVENT_CANCELLED. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403.',
   })
   @ApiNoContentResponse()
   @ApiErrors('EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')

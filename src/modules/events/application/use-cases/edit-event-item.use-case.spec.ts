@@ -11,6 +11,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import type { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { inMemoryEventItemWriteDeps } from '../testing/in-memory-event-item-write-deps.js'
 import { EditEventItemUseCase } from './edit-event-item.use-case.js'
 
@@ -22,13 +23,14 @@ describe('EditEventItemUseCase', () => {
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
   let changeLog: InMemoryChangeRepository
+  let participants: InMemoryParticipantRepository
   let editItem: EditEventItemUseCase
   let eventId: number
   let itemId: number
 
   beforeEach(async () => {
     const deps = inMemoryEventItemWriteDeps(NOW)
-    ;({ directory, events, items, changeLog } = deps)
+    ;({ directory, events, items, changeLog, participants } = deps)
     directory.addGroup(1)
     editItem = new EditEventItemUseCase(deps)
     const event = await events.create(
@@ -201,5 +203,116 @@ describe('EditEventItemUseCase', () => {
     ).rejects.toEqual(new AppError('EVENT_ITEM_CANCELLED'))
     expect(items.ofEvent(eventId)[0]?.name).toBe('Passagem de som')
     expect(changeLog.ofEvent(eventId)).toEqual([])
+  })
+
+  describe('the Audience', () => {
+    const BIA = 3
+    const DUDA = 4
+
+    /** A published Event where Ana (Owner), Bia and Duda (Viewers) are Participants; Edu (5) is a Viewer who does not go. */
+    beforeEach(async () => {
+      directory
+        .addMember(1, ANA.id, 'OWNER')
+        .addMember(1, BIA, 'VIEWER')
+        .addMember(1, DUDA, 'VIEWER')
+        .addMember(1, 5, 'VIEWER')
+      await participants.create(eventId, [ANA.id, BIA, DUDA], { by: null, at: CREATED_AT })
+      const event = await events.findById(eventId)
+      event!.publish({ by: null, at: CREATED_AT })
+      await events.save(event!)
+    })
+
+    it('lets an Owner choose the people, among the Participants, as its Author', async () => {
+      const { item } = await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [DUDA, BIA, DUDA] },
+      })
+
+      expect(item.audience.toValues()).toEqual({ kind: 'SELECTED', userIds: [BIA, DUDA] })
+      expect(item).toMatchObject({ updatedAt: NOW, updatedById: ANA.id })
+    })
+
+    it('records the change of the Audience as a Change only the production sees, with the reach of before and of after', async () => {
+      await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [BIA] },
+      })
+
+      expect(changeLog.ofEvent(eventId)).toEqual([
+        expect.objectContaining({
+          eventItemId: itemId,
+          attribute: 'audience',
+          before: { kind: 'ALL' },
+          after: { kind: 'SELECTED', userIds: [BIA] },
+          productionOnly: true,
+          reachBefore: [ANA.id, BIA, DUDA],
+          reachAfter: [ANA.id, BIA],
+          by: ANA.id,
+          at: NOW,
+        }),
+      ])
+    })
+
+    it('gives the Audience back to "Todos"', async () => {
+      await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [BIA] },
+      })
+
+      const { item } = await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'ALL' },
+      })
+
+      expect(item.audience.toValues()).toEqual({ kind: 'ALL' })
+      expect(changeLog.ofEvent(eventId).at(-1)).toMatchObject({
+        attribute: 'audience',
+        before: { kind: 'SELECTED', userIds: [BIA] },
+        after: { kind: 'ALL' },
+        reachBefore: [ANA.id, BIA],
+        reachAfter: [ANA.id, BIA, DUDA],
+      })
+    })
+
+    it('refuses choosing who is not a Participant with NOT_A_PARTICIPANT, writing nothing', async () => {
+      await expect(
+        editItem.execute({
+          actor: ANA,
+          eventId,
+          itemId,
+          name: 'Outro nome',
+          audience: { kind: 'SELECTED', userIds: [BIA, 5] },
+        }),
+      ).rejects.toEqual(new AppError('NOT_A_PARTICIPANT'))
+      const [item] = items.ofEvent(eventId)
+      expect(item?.snapshot()).toMatchObject({ name: 'Passagem de som', audience: { kind: 'ALL' } })
+      expect(changeLog.ofEvent(eventId)).toEqual([])
+    })
+
+    it('writes nothing when the same people are chosen again', async () => {
+      await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [BIA] },
+      })
+
+      await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [BIA] },
+      })
+
+      expect(changeLog.ofEvent(eventId)).toHaveLength(1)
+    })
   })
 })

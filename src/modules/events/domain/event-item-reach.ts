@@ -9,11 +9,13 @@ export interface ReachEvent {
 }
 
 /**
- * The standing of a person in the Event, as the reach rule needs it: whether
- * they are the production (an Owner of the Group, or the Super admin) and
- * whether they are a Participant of the Event.
+ * The standing of a person in the Event, as the reach rule needs it: who they
+ * are (for the Audiences chosen), whether they are the production (an Owner
+ * of the Group, or the Super admin) and whether they are a Participant of the
+ * Event.
  */
 export interface EventStanding {
+  userId: number
   production: boolean
   participant: boolean
 }
@@ -30,19 +32,20 @@ export interface ItemReachContext {
  * The standing of an actor in the Event: the production is who edits the Events
  * of the Group (EventAccessPolicy), the one place that says so.
  */
-export function standingOf(actor: EventActor, participant: boolean): EventStanding {
-  return { production: EventAccessPolicy.can(actor, 'editEvents'), participant }
+export function standingOf(actor: EventActor, userId: number, participant: boolean): EventStanding {
+  return { userId, production: EventAccessPolicy.can(actor, 'editEvents'), participant }
 }
 
 /**
  * Whether an Event item reaches a person (ADR-0019, the one reach rule). The
- * production sees every item, Draft included. Every item has the Audience
- * "Todos" for now: it reaches the Participants once both the Event and the
- * item are released, the item published or Cancelled (shown with its seal);
- * a Cancelled Event keeps reaching whom it reached before the cancel. Draft
- * never reaches a Viewer, and a Viewer who is not a Participant is reached by
- * no item. Pure: it never reads, so the reach of before and of after come
- * from it alike.
+ * production sees every item, Draft included. Anyone else is reached only
+ * once both the Event and the item are released, the item published or
+ * Cancelled (shown with its seal); a Cancelled Event keeps reaching whom it
+ * reached before the cancel, and Draft never reaches a Viewer. Then the
+ * Audience decides: "Todos" reaches the Participants, and a Viewer who is
+ * not one is reached by no such item; an Audience chosen reaches only the
+ * people on its list. Pure: it never reads, so the reach of before and of
+ * after come from it alike.
  */
 export function eventItemReaches(
   item: EventItemSnapshot,
@@ -50,7 +53,10 @@ export function eventItemReaches(
   standing: EventStanding,
 ): boolean {
   if (standing.production) return true
-  return standing.participant && isReleased(event) && item.state !== 'DRAFT'
+  if (!isReleased(event) || item.state === 'DRAFT') return false
+  return item.audience.kind === 'ALL'
+    ? standing.participant
+    : item.audience.userIds.includes(standing.userId)
 }
 
 /**
@@ -69,7 +75,11 @@ export function eventItemReach(
       eventItemReaches(
         item,
         context.event,
-        standingOf({ isSuperAdmin: false, role: m.role }, context.participants.includes(m.userId)),
+        standingOf(
+          { isSuperAdmin: false, role: m.role },
+          m.userId,
+          context.participants.includes(m.userId),
+        ),
       ),
     )
     .map((m) => m.userId)

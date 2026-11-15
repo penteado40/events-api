@@ -12,6 +12,7 @@ export const EventItemPresenter = {
       when,
       place: item.place?.toValues() ?? null,
       state: item.state,
+      audience: item.audience.toValues(),
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     }

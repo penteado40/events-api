@@ -53,6 +53,24 @@ const itemPlaceSchema = z
       'Onde o Event item acontece: nome, endereço e fuso, cada um opcional, mas não todos vazios.',
   })
 
+const audienceSchema = z
+  .discriminatedUnion('kind', [
+    z.strictObject({ kind: z.literal('ALL') }),
+    z.strictObject({
+      kind: z.literal('SELECTED'),
+      userIds: z.array(z.number().int().positive()).meta({
+        description:
+          'Os User ids das pessoas escolhidas, só entre os Participants do Event (senão 409 NOT_A_PARTICIPANT). A ordem e as repetições não importam; vazio deixa o item só para a produção.',
+        example: [2, 3],
+      }),
+    }),
+  ])
+  .meta({
+    description:
+      'Quem o Event item alcança: "Todos" (ALL), que acompanha a lista de Participants, ou uma lista de pessoas escolhidas (SELECTED), que não muda sozinha; quem deixa de ser Participant sai dela. A produção sempre vê o item.',
+    example: { kind: 'SELECTED', userIds: [2, 3] },
+  })
+
 const placeJsonSchema = z
   .object({
     name: z.string().nullable().meta({ example: 'Teatro Amazonas' }),
@@ -98,6 +116,7 @@ export type ScheduleItemJson = z.infer<typeof scheduleItemJsonSchema>
 /** Public shape of an Event item, as a write returns it. */
 const eventItemJsonSchema = scheduleItemJsonSchema.extend({
   eventId: z.number().int().meta({ example: 1 }),
+  audience: audienceSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 })
@@ -143,6 +162,7 @@ export class EditEventItemDto extends createZodDto(
       place: itemPlaceSchema.optional().meta({
         description: 'O lugar inteiro, trocado de uma vez; null apaga.',
       }),
+      audience: audienceSchema.optional(),
     })
     .refine((body) => Object.keys(body).length > 0, { message: 'Envie ao menos um campo.' }),
 ) {}

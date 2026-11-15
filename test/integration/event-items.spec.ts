@@ -96,6 +96,7 @@ describe('Event items and the schedule', () => {
             timezone: null,
           },
           state: 'PUBLISHED',
+          audience: { kind: 'ALL' },
           createdAt: expect.stringMatching(ISO_UTC),
           updatedAt: expect.stringMatching(ISO_UTC),
         },
@@ -220,6 +221,126 @@ describe('Event items and the schedule', () => {
       expect((await patch({ name: 'Som' }, ownerToken, itemUrl(itemId, otherEventId))).status).toBe(
         404,
       )
+    })
+  })
+
+  describe('the Audience chosen', () => {
+    let itemId: number
+    let otherViewerId: number
+    let otherViewerToken: string
+
+    /** A published Event where the Owner and both Viewers are Participants, with a published item. */
+    beforeEach(async () => {
+      const groupId = (await testPrisma().event.findUniqueOrThrow({ where: { id: eventId } }))
+        .groupId
+      const other = await createUser()
+      otherViewerId = other.id
+      otherViewerToken = sessionTokenFor(other)
+      await createGroupMember({ groupId, userId: other.id, role: 'VIEWER' })
+      for (const userId of [ownerId, viewerId, otherViewerId]) {
+        await createParticipant({ eventId, userId })
+      }
+      itemId = (await createItem({ name: 'Van 1', date: '2026-11-14', time: '10:00' })).body.data.id
+      const published = await t
+        .http()
+        .post(`/api/v1/events/${eventId}/publish`)
+        .auth(ownerToken, { type: 'bearer' })
+      expect(published.status).toBe(200)
+    })
+
+    function patch(body: Record<string, unknown>, token = ownerToken) {
+      return t.http().patch(itemUrl(itemId)).auth(token, { type: 'bearer' }).send(body)
+    }
+    const itemsSeenBy = async (token: string) => {
+      const res = await t.http().get(scheduleUrl()).auth(token, { type: 'bearer' })
+      expect(res.status).toBe(200)
+      return res.body.data.timeline.flatMap((day: { items: { id: number }[] }) =>
+        day.items.map((i) => i.id),
+      )
+    }
+
+    it('lets an Owner choose the people among the Participants: a Viewer on the list sees the item, one off it does not', async () => {
+      const res = await patch({ audience: { kind: 'SELECTED', userIds: [otherViewerId] } })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.audience).toEqual({ kind: 'SELECTED', userIds: [otherViewerId] })
+      expect(await itemsSeenBy(otherViewerToken)).toEqual([itemId])
+      expect(await itemsSeenBy(viewerToken)).toEqual([])
+      expect(await itemsSeenBy(ownerToken)).toEqual([itemId])
+    })
+
+    it('records the change of the Audience as a Change only the production sees, with the reach of before and of after', async () => {
+      await patch({ audience: { kind: 'SELECTED', userIds: [otherViewerId] } })
+      await patch({ audience: { kind: 'ALL' } })
+
+      const changes = await testPrisma().change.findMany({
+        where: { eventId, attribute: 'audience' },
+        orderBy: { id: 'asc' },
+      })
+      const everyone = [ownerId, viewerId, otherViewerId]
+      expect(changes).toEqual([
+        expect.objectContaining({
+          eventItemId: itemId,
+          before: { kind: 'ALL' },
+          after: { kind: 'SELECTED', userIds: [otherViewerId] },
+          productionOnly: true,
+          reachBefore: everyone,
+          reachAfter: [ownerId, otherViewerId],
+          createdById: ownerId,
+        }),
+        expect.objectContaining({
+          before: { kind: 'SELECTED', userIds: [otherViewerId] },
+          after: { kind: 'ALL' },
+          productionOnly: true,
+          reachBefore: [ownerId, otherViewerId],
+          reachAfter: everyone,
+        }),
+      ])
+      expect(await itemsSeenBy(viewerToken)).toEqual([itemId])
+      expect(await testPrisma().eventItemAudienceMember.count()).toBe(0)
+    })
+
+    it('answers 409 NOT_A_PARTICIPANT to choosing who is not a Participant, writing nothing', async () => {
+      await testPrisma().participant.deleteMany({ where: { eventId, userId: viewerId } })
+
+      const res = await patch({
+        name: 'Van 2',
+        audience: { kind: 'SELECTED', userIds: [viewerId] },
+      })
+
+      expect(res.status).toBe(409)
+      expect(res.body).toEqual(errorOf('NOT_A_PARTICIPANT'))
+      const row = await testPrisma().eventItem.findUniqueOrThrow({ where: { id: itemId } })
+      expect(row).toMatchObject({ name: 'Van 1', audienceKind: 'ALL' })
+      expect(await testPrisma().change.count({ where: { attribute: 'audience' } })).toBe(0)
+    })
+
+    it('takes who leaves the Participants off the Audiences chosen of the Event', async () => {
+      await patch({ audience: { kind: 'SELECTED', userIds: [viewerId, otherViewerId] } })
+
+      const removed = await t
+        .http()
+        .delete(`/api/v1/events/${eventId}/participants/${otherViewerId}`)
+        .auth(ownerToken, { type: 'bearer' })
+
+      expect(removed.status).toBe(204)
+      const members = await testPrisma().eventItemAudienceMember.findMany({
+        where: { eventItemId: itemId },
+        select: { userId: true },
+      })
+      expect(members).toEqual([{ userId: viewerId }])
+      expect(await itemsSeenBy(otherViewerToken)).toEqual([])
+      expect(await itemsSeenBy(viewerToken)).toEqual([itemId])
+    })
+
+    it('answers 400 VALIDATION_ERROR to an Audience of an unknown kind or with no people', async () => {
+      expect((await patch({ audience: { kind: 'TEAMS' } })).status).toBe(400)
+      expect((await patch({ audience: { kind: 'SELECTED' } })).status).toBe(400)
+      expect((await patch({ audience: { kind: 'ALL', userIds: [viewerId] } })).status).toBe(400)
+    })
+
+    it('answers 403 to a Viewer choosing the Audience', async () => {
+      expect((await patch({ audience: { kind: 'ALL' } }, viewerToken)).status).toBe(403)
     })
   })
 

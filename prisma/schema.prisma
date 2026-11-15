@@ -32,6 +32,11 @@ enum EventItemState {
   CANCELLED
 }
 
+enum EventItemAudienceKind {
+  ALL // "Todos": follows the list of Participants
+  SELECTED // The people chosen, in event_item_audience_members
+}
+
 enum EmailKind {
   ACCOUNT_ACTIVATION_LINK
   GROUP_ACTIVATION_LINK
@@ -63,29 +68,32 @@ model User {
   activationLinks ActivationLink[] @relation("ActivationLinkUser")
 
   // Records this User is the Author of.
-  createdUsers           User[]           @relation("UserCreated")
-  updatedUsers           User[]           @relation("UserUpdated")
-  createdActivationLinks ActivationLink[] @relation("ActivationLinkCreated")
-  updatedActivationLinks ActivationLink[] @relation("ActivationLinkUpdated")
-  createdGroups          Group[]          @relation("GroupCreated")
-  updatedGroups          Group[]          @relation("GroupUpdated")
-  createdGroupMembers    GroupMember[]    @relation("GroupMemberCreated")
-  updatedGroupMembers    GroupMember[]    @relation("GroupMemberUpdated")
-  createdTeams           Team[]           @relation("TeamCreated")
-  updatedTeams           Team[]           @relation("TeamUpdated")
-  createdEmailLogs       EmailLog[]       @relation("EmailLogCreated")
-  updatedEmailLogs       EmailLog[]       @relation("EmailLogUpdated")
-  createdEvents          Event[]          @relation("EventCreated")
-  updatedEvents          Event[]          @relation("EventUpdated")
-  createdChanges         Change[]         @relation("ChangeCreated")
-  updatedChanges         Change[]         @relation("ChangeUpdated")
-  createdEventItems      EventItem[]      @relation("EventItemCreated")
-  updatedEventItems      EventItem[]      @relation("EventItemUpdated")
-  createdParticipants    Participant[]    @relation("ParticipantCreated")
-  updatedParticipants    Participant[]    @relation("ParticipantUpdated")
+  createdUsers           User[]                    @relation("UserCreated")
+  updatedUsers           User[]                    @relation("UserUpdated")
+  createdActivationLinks ActivationLink[]          @relation("ActivationLinkCreated")
+  updatedActivationLinks ActivationLink[]          @relation("ActivationLinkUpdated")
+  createdGroups          Group[]                   @relation("GroupCreated")
+  updatedGroups          Group[]                   @relation("GroupUpdated")
+  createdGroupMembers    GroupMember[]             @relation("GroupMemberCreated")
+  updatedGroupMembers    GroupMember[]             @relation("GroupMemberUpdated")
+  createdTeams           Team[]                    @relation("TeamCreated")
+  updatedTeams           Team[]                    @relation("TeamUpdated")
+  createdEmailLogs       EmailLog[]                @relation("EmailLogCreated")
+  updatedEmailLogs       EmailLog[]                @relation("EmailLogUpdated")
+  createdEvents          Event[]                   @relation("EventCreated")
+  updatedEvents          Event[]                   @relation("EventUpdated")
+  createdChanges         Change[]                  @relation("ChangeCreated")
+  updatedChanges         Change[]                  @relation("ChangeUpdated")
+  createdEventItems      EventItem[]               @relation("EventItemCreated")
+  updatedEventItems      EventItem[]               @relation("EventItemUpdated")
+  createdParticipants    Participant[]             @relation("ParticipantCreated")
+  updatedParticipants    Participant[]             @relation("ParticipantUpdated")
+  createdAudienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberCreated")
+  updatedAudienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberUpdated")
 
-  groupMembers GroupMember[] @relation("GroupMemberUser")
-  participants Participant[] @relation("ParticipantUser")
+  groupMembers    GroupMember[]             @relation("GroupMemberUser")
+  participants    Participant[]             @relation("ParticipantUser")
+  audienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberUser")
 
   @@map("users")
 }
@@ -206,7 +214,7 @@ model Change {
   eventId        Int
   // The Event item that changed; null for a Change of the Event. No foreign key: the Change outlives the item.
   eventItemId    Int?
-  attribute      String // Event: name, place, period, state, itemOrder, participant; Event item: item (created, deleted), name, date, time, place, state
+  attribute      String // Event: name, place, period, state, itemOrder, participant; Event item: item (created, deleted), name, date, time, place, state, audience
   before         Json
   after          Json
   productionOnly Boolean // Only the production sees it in the Change log
@@ -247,27 +255,50 @@ model EmailLog {
 // A piece of the schedule of an Event. Date and time are local, never
 // converted (ADR-0016); without a zone of its own, the Event's applies.
 model EventItem {
-  id            Int            @id @default(autoincrement())
+  id            Int                   @id @default(autoincrement())
   eventId       Int
   name          String
-  date          DateTime?      @db.Date // Calendar day; null for the General info
-  time          String?        @db.VarChar(5) // HH:mm, local; only with a date
+  date          DateTime?             @db.Date // Calendar day; null for the General info
+  time          String?               @db.VarChar(5) // HH:mm, local; only with a date
   placeName     String?
   placeAddress  String?
   placeTimezone String? // IANA zone of the place; null: the Event's applies
-  state         EventItemState @default(PUBLISHED)
+  state         EventItemState        @default(PUBLISHED)
   position      Int // Order of the production; only breaks the ties of the time. Last on create
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  audienceKind  EventItemAudienceKind @default(ALL) // Whom it reaches; the people chosen in audienceMembers
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
   createdById   Int? // Author (ADR-0013)
   updatedById   Int?
-  createdBy     User?          @relation("EventItemCreated", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy     User?          @relation("EventItemUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+  createdBy     User?                 @relation("EventItemCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy     User?                 @relation("EventItemUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event           Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  audienceMembers EventItemAudienceMember[]
 
   @@index([eventId])
   @@map("event_items")
+}
+
+// A person chosen in the Audience of an Event item (audienceKind SELECTED),
+// always a Participant of its Event: who leaves the Participants leaves here too.
+model EventItemAudienceMember {
+  id          Int      @id @default(autoincrement())
+  eventItemId Int
+  userId      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("EventItemAudienceMemberCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("EventItemAudienceMemberUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  eventItem EventItem @relation(fields: [eventItemId], references: [id], onDelete: Cascade)
+  user      User      @relation("EventItemAudienceMemberUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([eventItemId, userId])
+  @@index([userId])
+  @@map("event_item_audience_members")
 }
 
 // A User who goes to an Event: the list of Participants, a cut of the Group.

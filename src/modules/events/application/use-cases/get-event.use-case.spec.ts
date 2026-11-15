@@ -21,7 +21,7 @@ describe('GetEventUseCase', () => {
     directory = new FakeGroupDirectory().addGroup(1)
     const events = new InMemoryEventRepository()
     clock = new FixedClock(new Date('2026-11-14T15:00:00.000Z'))
-    participants = new InMemoryParticipantRepository()
+    participants = new InMemoryParticipantRepository(events)
     getEvent = new GetEventUseCase(directory, events, participants, clock)
     const event = await events.create(
       {

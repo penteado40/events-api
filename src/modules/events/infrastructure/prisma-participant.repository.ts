@@ -33,4 +33,13 @@ export class PrismaParticipantRepository extends ParticipantRepository {
     })
     return row !== null
   }
+
+  async findByUser(userId: number): Promise<{ groupId: number; eventId: number }[]> {
+    const rows = await this.unitOfWork.client.participant.findMany({
+      where: { userId },
+      select: { eventId: true, event: { select: { groupId: true } } },
+      orderBy: { eventId: 'asc' },
+    })
+    return rows.map((r) => ({ groupId: r.event.groupId, eventId: r.eventId }))
+  }
 }

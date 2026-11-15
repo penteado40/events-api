@@ -88,7 +88,9 @@ describe('docs with DOCS_ENABLED=true', () => {
         expect(data.properties!['isSuperAdmin']).toMatchObject({ type: 'boolean', example: false })
         expect(data.properties!['memberships']).toMatchObject({
           type: 'array',
-          example: [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }],
+          example: [
+            { groupId: 1, groupName: 'Vocal Livre', role: 'OWNER', participantEventIds: [1, 3] },
+          ],
         })
       }
     })

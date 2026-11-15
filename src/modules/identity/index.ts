@@ -5,6 +5,10 @@ export { IdentityAccountsModule } from './identity-accounts.module.js'
 export type { Role, User } from './domain/user.entity.js'
 export type { GroupMember } from './domain/group-member.js'
 export { GroupMembers } from './application/ports/group-members.js'
+export {
+  EventParticipations,
+  type Participation,
+} from './application/ports/event-participations.js'
 export { UserLookup, type UserSummary } from './application/user-lookup.js'
 export {
   UserAccounts,

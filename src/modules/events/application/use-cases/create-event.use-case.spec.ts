@@ -20,7 +20,7 @@ describe('CreateEventUseCase', () => {
   beforeEach(() => {
     directory = new FakeGroupDirectory().addGroup(1)
     events = new InMemoryEventRepository()
-    participants = new InMemoryParticipantRepository()
+    participants = new InMemoryParticipantRepository(events)
     unitOfWork = new InMemoryUnitOfWork()
     createEvent = new CreateEventUseCase(
       directory,

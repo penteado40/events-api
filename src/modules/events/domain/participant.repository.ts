@@ -12,4 +12,6 @@ export abstract class ParticipantRepository {
   /** The User ids of the Participants of the Event, in the order they were added. */
   abstract findByEvent(eventId: number): Promise<number[]>
   abstract isParticipant(eventId: number, userId: number): Promise<boolean>
+  /** The Events the User is a Participant of, with their Group, in the order the Events were created. */
+  abstract findByUser(userId: number): Promise<{ groupId: number; eventId: number }[]>
 }

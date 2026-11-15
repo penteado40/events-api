@@ -25,6 +25,7 @@ import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use
 import { ChangeRepository } from './domain/change.repository.js'
 import { EventItemRepository } from './domain/event-item.repository.js'
 import { EventRepository } from './domain/event.repository.js'
+import { EventsPersistenceModule } from './events-persistence.module.js'
 import { ParticipantRepository } from './domain/participant.repository.js'
 import { InProcessGroupDirectory } from './infrastructure/in-process-group-directory.js'
 import { InProcessUserDirectory } from './infrastructure/in-process-user-directory.js'
@@ -32,20 +33,18 @@ import { PrismaChangeRepository } from './infrastructure/prisma-change.repositor
 import { PrismaEventItemRepository } from './infrastructure/prisma-event-item.repository.js'
 import { PrismaEventScheduleReader } from './infrastructure/prisma-event-schedule-reader.js'
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
-import { PrismaParticipantRepository } from './infrastructure/prisma-participant.repository.js'
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
 
 /** Composition root of the events context: Events, with where and when, their Participants, their publication, cancel, their Changes and their Event items, with their Draft, their cancel and the order of the production. Roles come from groups; names and phones, from identity. */
 @Module({
-  imports: [GroupsQueriesModule, IdentityQueriesModule],
+  imports: [EventsPersistenceModule, GroupsQueriesModule, IdentityQueriesModule],
   controllers: [EventsController, EventItemsController],
   providers: [
     { provide: EventRepository, useClass: PrismaEventRepository },
     { provide: ChangeRepository, useClass: PrismaChangeRepository },
     { provide: EventItemRepository, useClass: PrismaEventItemRepository },
     { provide: EventScheduleReader, useClass: PrismaEventScheduleReader },
-    { provide: ParticipantRepository, useClass: PrismaParticipantRepository },
     {
       provide: GroupDirectory,
       useFactory: (lookup: GroupLookup) => new InProcessGroupDirectory(lookup),

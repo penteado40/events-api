@@ -212,4 +212,44 @@ describe('Participants', () => {
       expect(byAdmin.body.data.membership).toBeNull()
     })
   })
+
+  describe('GET /api/v1/me', () => {
+    const meOf = (token: string) => t.http().get('/api/v1/me').auth(token, { type: 'bearer' })
+
+    it('says in the Membership the Events of the Group each one is a Participant of, Edu only in the one created after he joined', async () => {
+      const manausId = await createManausAs(caio.token)
+      const added = await t
+        .http()
+        .post(`/api/v1/groups/${groupId}/viewers`)
+        .auth(ana.token, { type: 'bearer' })
+        .send({ email: `edu.me${run}@example.com`, name: 'Edu', phone: '+5592955555555' })
+      expect(added.status).toBe(201)
+      const edu = added.body.data.member.user
+      const nextId = await createManausAs(ana.token)
+
+      const byEdu = await meOf(sessionTokenFor({ id: edu.id, email: edu.email }))
+      const byBia = await meOf(bia.token)
+
+      expect(byEdu.status).toBe(200)
+      expect(byEdu.body.data.memberships).toEqual([
+        { groupId, groupName: 'Vocal Livre', role: 'VIEWER', participantEventIds: [nextId] },
+      ])
+      expect(byBia.body.data.memberships).toEqual([
+        {
+          groupId,
+          groupName: 'Vocal Livre',
+          role: 'VIEWER',
+          participantEventIds: [manausId, nextId],
+        },
+      ])
+    })
+
+    it('keeps the Super admin without Membership', async () => {
+      await createManausAs(adminToken)
+
+      const res = await meOf(adminToken)
+
+      expect(res.body.data).toMatchObject({ isSuperAdmin: true, memberships: [] })
+    })
+  })
 })

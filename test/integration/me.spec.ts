@@ -73,8 +73,8 @@ describe('GET /api/v1/me', () => {
     expect(res.body.data).toMatchObject({
       isSuperAdmin: false,
       memberships: [
-        { groupId: coral.id, groupName: 'Coral', role: 'OWNER' },
-        { groupId: vocal.id, groupName: 'Vocal Livre', role: 'VIEWER' },
+        { groupId: coral.id, groupName: 'Coral', role: 'OWNER', participantEventIds: [] },
+        { groupId: vocal.id, groupName: 'Vocal Livre', role: 'VIEWER', participantEventIds: [] },
       ],
     })
   })

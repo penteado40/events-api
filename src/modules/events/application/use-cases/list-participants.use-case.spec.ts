@@ -23,7 +23,7 @@ describe('ListParticipantsUseCase', () => {
   beforeEach(async () => {
     directory = new FakeGroupDirectory().addGroup(1)
     const events = new InMemoryEventRepository()
-    participants = new InMemoryParticipantRepository()
+    participants = new InMemoryParticipantRepository(events)
     const users = new FakeUserDirectory()
       .add({ id: ANA.id, name: 'Ana', phone: '+5592999990002' })
       .add(BIA)

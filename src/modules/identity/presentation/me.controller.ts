@@ -20,7 +20,7 @@ export class MeController {
   @ApiOperation({
     summary: 'Ver o User logado',
     description:
-      'Traz a Membership (os Groups de que o User é Group member e o papel em cada um) e se é o Super admin, que não tem Membership.',
+      'Traz a Membership (os Groups de que o User é Group member, o papel em cada um e os Events de cada Group de que é Participant) e se é o Super admin, que não tem Membership.',
   })
   @ApiOkResponse({ type: MeResponseDto })
   @ApiErrors()

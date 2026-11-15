@@ -9,6 +9,8 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 export abstract class ParticipantRepository {
   /** Adds the Users, in the order given, to the Participants of the Event. */
   abstract create(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void>
+  /** Takes the User off the Participants of the Event; nothing when they are not one. */
+  abstract remove(eventId: number, userId: number): Promise<void>
   /** The User ids of the Participants of the Event, in the order they were added. */
   abstract findByEvent(eventId: number): Promise<number[]>
   abstract isParticipant(eventId: number, userId: number): Promise<boolean>

@@ -1,9 +1,16 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common'
-import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common'
+import {
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger'
 import { ApiErrors } from '../../../shared/presentation/api-errors.decorator.js'
 import { CurrentUser } from '../../../shared/presentation/current-user.decorator.js'
 import { ParseIdPipe } from '../../../shared/presentation/parse-id.pipe.js'
 import type { User } from '../../identity/index.js'
+import { AddParticipantUseCase } from '../application/use-cases/add-participant.use-case.js'
 import { CancelEventUseCase } from '../application/use-cases/cancel-event.use-case.js'
 import { CreateEventUseCase } from '../application/use-cases/create-event.use-case.js'
 import { EditEventUseCase } from '../application/use-cases/edit-event.use-case.js'
@@ -11,6 +18,7 @@ import { GetEventUseCase } from '../application/use-cases/get-event.use-case.js'
 import { ListEventsUseCase } from '../application/use-cases/list-events.use-case.js'
 import { ListParticipantsUseCase } from '../application/use-cases/list-participants.use-case.js'
 import { PublishEventUseCase } from '../application/use-cases/publish-event.use-case.js'
+import { RemoveParticipantUseCase } from '../application/use-cases/remove-participant.use-case.js'
 import { UncancelEventUseCase } from '../application/use-cases/uncancel-event.use-case.js'
 import {
   CreateEventDto,
@@ -34,6 +42,8 @@ export class EventsController {
     private readonly cancelEventUseCase: CancelEventUseCase,
     private readonly uncancelEventUseCase: UncancelEventUseCase,
     private readonly listParticipantsUseCase: ListParticipantsUseCase,
+    private readonly addParticipantUseCase: AddParticipantUseCase,
+    private readonly removeParticipantUseCase: RemoveParticipantUseCase,
   ) {}
 
   @Post('groups/:id/events')
@@ -100,6 +110,40 @@ export class EventsController {
   ): Promise<ParticipantListResponseDto> {
     const participants = await this.listParticipantsUseCase.execute({ actor, eventId })
     return { data: participants.map(EventPresenter.toParticipantJson) }
+  }
+
+  @Put('events/:id/participants/:userId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Adicionar um Participant ao Event',
+    description:
+      'O Super admin ou um Owner do Group do Event adiciona um Group member do Group (Owner ou Viewer) à lista de Participants. Se o User do caminho não é Group member do Group, 404; se já é Participant, nada muda. A entrada vira uma Change no Change log que só a produção vê, gravada junto. Um Event Cancelled está congelado: 409 EVENT_CANCELLED. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
+  async addParticipant(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+    @Param('userId', ParseIdPipe) userId: number,
+  ): Promise<void> {
+    await this.addParticipantUseCase.execute({ actor, eventId, userId })
+  }
+
+  @Delete('events/:id/participants/:userId')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Tirar um Participant do Event',
+    description:
+      'O Super admin ou um Owner do Group do Event tira alguém da lista de Participants, um Owner ou quem já saiu do Group inclusive. Se o User do caminho não é Participant, 404. A saída vira uma Change no Change log que só a produção vê, gravada junto; quem sai deixa de ser alcançado pelos Event items. Um Event Cancelled está congelado: 409 EVENT_CANCELLED. Quanto a quem chama: quem não é Group member do Group recebe 404; um Viewer, 403.',
+  })
+  @ApiNoContentResponse()
+  @ApiErrors('EVENT_CANCELLED', 'FORBIDDEN', 'NOT_FOUND')
+  async removeParticipant(
+    @CurrentUser() actor: User,
+    @Param('id', ParseIdPipe) eventId: number,
+    @Param('userId', ParseIdPipe) userId: number,
+  ): Promise<void> {
+    await this.removeParticipantUseCase.execute({ actor, eventId, userId })
   }
 
   @Patch('events/:id')

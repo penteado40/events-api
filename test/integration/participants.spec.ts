@@ -188,6 +188,155 @@ describe('Participants', () => {
     })
   })
 
+  describe('PUT and DELETE /api/v1/events/:id/participants/:userId', () => {
+    const participantUrl = (eventId: number, userId: number) =>
+      `${participantsUrl(eventId)}/${userId}`
+    const namesIn = async (eventId: number) => {
+      const res = await t.http().get(participantsUrl(eventId)).auth(ana.token, { type: 'bearer' })
+      return res.body.data.map((p: { name: string }) => p.name)
+    }
+    const participantChanges = (eventId: number) =>
+      testPrisma().change.findMany({
+        where: { eventId, attribute: 'participant' },
+        orderBy: { id: 'asc' },
+      })
+
+    it('lets an Owner take Duda off and add her back, each step a Change only the production sees', async () => {
+      const eventId = await createManausAs(ana.token)
+
+      const removed = await t
+        .http()
+        .delete(participantUrl(eventId, duda.id))
+        .auth(caio.token, { type: 'bearer' })
+      expect(removed.status).toBe(204)
+      expect(await namesIn(eventId)).toEqual(['Ana', 'Bia', 'Caio'])
+
+      const added = await t
+        .http()
+        .put(participantUrl(eventId, duda.id))
+        .auth(ana.token, { type: 'bearer' })
+      expect(added.status).toBe(204)
+      expect(await namesIn(eventId)).toEqual(['Ana', 'Bia', 'Caio', 'Duda'])
+
+      const everyone = [ana.id, bia.id, caio.id, duda.id]
+      expect(await participantChanges(eventId)).toEqual([
+        expect.objectContaining({
+          eventItemId: null,
+          before: duda.id,
+          after: null,
+          productionOnly: true,
+          reachBefore: everyone,
+          reachAfter: everyone,
+          createdById: caio.id,
+        }),
+        expect.objectContaining({
+          before: null,
+          after: duda.id,
+          productionOnly: true,
+          createdById: ana.id,
+        }),
+      ])
+      const row = await testPrisma().participant.findUnique({
+        where: { eventId_userId: { eventId, userId: duda.id } },
+      })
+      expect(row).toMatchObject({ createdById: ana.id })
+    })
+
+    it('changes nothing when adding who is already a Participant', async () => {
+      const eventId = await createManausAs(ana.token)
+
+      const res = await t
+        .http()
+        .put(participantUrl(eventId, bia.id))
+        .auth(ana.token, { type: 'bearer' })
+
+      expect(res.status).toBe(204)
+      expect(await namesIn(eventId)).toEqual(['Ana', 'Bia', 'Caio', 'Duda'])
+      expect(await participantChanges(eventId)).toEqual([])
+    })
+
+    it('answers 404 to adding who is not a Group member, and to taking off who is not a Participant', async () => {
+      const eventId = await createManausAs(ana.token)
+      const stranger = await createUser()
+      await t.http().delete(participantUrl(eventId, duda.id)).auth(ana.token, { type: 'bearer' })
+
+      const add = await t
+        .http()
+        .put(participantUrl(eventId, stranger.id))
+        .auth(ana.token, { type: 'bearer' })
+      const remove = await t
+        .http()
+        .delete(participantUrl(eventId, duda.id))
+        .auth(ana.token, { type: 'bearer' })
+
+      expect(add.status).toBe(404)
+      expect(add.body).toEqual(errorOf('NOT_FOUND'))
+      expect(remove.status).toBe(404)
+      expect(await participantChanges(eventId)).toHaveLength(1)
+    })
+
+    it('answers 409 EVENT_CANCELLED on a Cancelled Event, writing nothing', async () => {
+      const eventId = await createManausAs(ana.token)
+      const cancelled = await t
+        .http()
+        .post(`/api/v1/events/${eventId}/cancel`)
+        .auth(ana.token, { type: 'bearer' })
+      expect(cancelled.status).toBe(200)
+
+      const remove = await t
+        .http()
+        .delete(participantUrl(eventId, duda.id))
+        .auth(ana.token, { type: 'bearer' })
+      const add = await t
+        .http()
+        .put(participantUrl(eventId, duda.id))
+        .auth(ana.token, { type: 'bearer' })
+
+      expect(remove.status).toBe(409)
+      expect(remove.body).toEqual(errorOf('EVENT_CANCELLED'))
+      expect(add.status).toBe(409)
+      expect(await namesIn(eventId)).toEqual(['Ana', 'Bia', 'Caio', 'Duda'])
+      expect(await participantChanges(eventId)).toEqual([])
+    })
+
+    it('answers 403 to a Viewer, 404 to who is not a Group member and 401 without a token', async () => {
+      const eventId = await createManausAs(ana.token)
+
+      const byViewer = await t
+        .http()
+        .delete(participantUrl(eventId, bia.id))
+        .auth(bia.token, { type: 'bearer' })
+      const addByViewer = await t
+        .http()
+        .put(participantUrl(eventId, bia.id))
+        .auth(duda.token, { type: 'bearer' })
+      const byOutsider = await t
+        .http()
+        .delete(participantUrl(eventId, bia.id))
+        .auth(outsiderToken, { type: 'bearer' })
+      const anonymous = await t.http().put(participantUrl(eventId, bia.id))
+
+      expect(byViewer.status).toBe(403)
+      expect(byViewer.body).toEqual(errorOf('FORBIDDEN'))
+      expect(addByViewer.status).toBe(403)
+      expect(byOutsider.status).toBe(404)
+      expect(anonymous.status).toBe(401)
+      expect(await namesIn(eventId)).toEqual(['Ana', 'Bia', 'Caio', 'Duda'])
+    })
+
+    it('lets the Super admin adjust the list', async () => {
+      const eventId = await createManausAs(ana.token)
+
+      const res = await t
+        .http()
+        .delete(participantUrl(eventId, ana.id))
+        .auth(adminToken, { type: 'bearer' })
+
+      expect(res.status).toBe(204)
+      expect(await namesIn(eventId)).toEqual(['Bia', 'Caio', 'Duda'])
+    })
+  })
+
   describe('GET /api/v1/events/:id', () => {
     it('tells who asks whether they are a Participant, and gives the Super admin no Membership', async () => {
       // Bia goes, Duda does not: arranged straight in the tables.

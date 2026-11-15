@@ -14,6 +14,11 @@ export class InMemoryParticipantRepository extends ParticipantRepository {
     for (const userId of userIds) this.participants.push({ eventId, userId, stamp })
   }
 
+  async remove(eventId: number, userId: number): Promise<void> {
+    const index = this.participants.findIndex((p) => p.eventId === eventId && p.userId === userId)
+    if (index >= 0) this.participants.splice(index, 1)
+  }
+
   async findByEvent(eventId: number): Promise<number[]> {
     return this.participants.filter((p) => p.eventId === eventId).map((p) => p.userId)
   }

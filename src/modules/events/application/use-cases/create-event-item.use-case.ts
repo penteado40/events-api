@@ -11,6 +11,7 @@ import { EventItem } from '../../domain/event-item.entity.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ParticipantRepository } from '../../domain/participant.repository.js'
+import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
@@ -74,17 +75,13 @@ export class CreateEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const people = {
-        event: frozen,
-        members,
-        participants: await this.participants.findByEvent(event.id),
-      }
+      const reach = await itemReachContext(frozen, members, this.participants)
       // Last in the order of the production; the lock keeps two creations off the same position.
       const position = positionAfter(await this.items.findAllInEvent(event.id))
       // Under the lock: a publish of the Event that came first makes it born in Draft.
       const state = EventItem.bornIn(frozen.state)
       const item = await this.items.create({ ...props, state, position }, stamp)
-      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), people), stamp)
+      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), reach), stamp)
       return itemViewOf(item, event.period.timezone.value)
     })
   }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GroupMemberRole } from './event-access-policy.js'
-import { eventItemChanges, type ItemReachContext } from './event-item-changes.js'
+import { eventItemChanges } from './event-item-changes.js'
+import type { ItemReachContext } from './event-item-reach.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 
 const SOUNDCHECK: EventItemSnapshot = {

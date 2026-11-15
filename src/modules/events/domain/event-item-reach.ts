@@ -1,4 +1,4 @@
-import type { GroupMemberRole } from './event-access-policy.js'
+import { type EventActor, EventAccessPolicy, type GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import type { CancellableEventState, EventState } from './event.entity.js'
 
@@ -16,6 +16,22 @@ export interface ReachEvent {
 export interface EventBond {
   production: boolean
   participant: boolean
+}
+
+/** Whom the reach rule weighs an Event item against: the Event, its Group members and its Participants. */
+export interface ItemReachContext {
+  event: ReachEvent
+  members: readonly GroupMemberRole[]
+  /** The User ids of the Participants of the Event. */
+  participants: readonly number[]
+}
+
+/**
+ * The bond of an actor with the Event: the production is who edits the Events
+ * of the Group (EventAccessPolicy), the one place that says so.
+ */
+export function bondOf(actor: EventActor, participant: boolean): EventBond {
+  return { production: EventAccessPolicy.can(actor, 'editEvents'), participant }
 }
 
 /**
@@ -45,17 +61,16 @@ export function eventItemReaches(
  */
 export function eventItemReach(
   item: EventItemSnapshot | null,
-  event: ReachEvent,
-  members: readonly GroupMemberRole[],
-  participants: readonly number[],
+  context: ItemReachContext,
 ): number[] {
   if (item === null) return []
-  return members
+  return context.members
     .filter((m) =>
-      eventItemReaches(item, event, {
-        production: m.role === 'OWNER',
-        participant: participants.includes(m.userId),
-      }),
+      eventItemReaches(
+        item,
+        context.event,
+        bondOf({ isSuperAdmin: false, role: m.role }, context.participants.includes(m.userId)),
+      ),
     )
     .map((m) => m.userId)
 }

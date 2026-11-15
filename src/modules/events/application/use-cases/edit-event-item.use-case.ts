@@ -10,6 +10,7 @@ import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-ite
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ParticipantRepository } from '../../domain/participant.repository.js'
+import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
@@ -78,17 +79,13 @@ export class EditEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const people = {
-        event: frozen,
-        members,
-        participants: await this.participants.findByEvent(event.id),
-      }
+      const reach = await itemReachContext(frozen, members, this.participants)
       // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')
       const before = item.snapshot()
       item.edit(edit, stamp)
-      const changes = eventItemChanges(before, item.snapshot(), people)
+      const changes = eventItemChanges(before, item.snapshot(), reach)
       if (changes.length > 0) {
         await this.items.save(item)
         await this.changeLog.create(event.id, changes, stamp)

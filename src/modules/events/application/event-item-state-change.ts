@@ -7,6 +7,7 @@ import type { EventItem } from '../domain/event-item.entity.js'
 import type { EventItemRepository } from '../domain/event-item.repository.js'
 import type { EventRepository } from '../domain/event.repository.js'
 import type { ParticipantRepository } from '../domain/participant.repository.js'
+import { itemReachContext } from './item-reach-context.js'
 import type { ActingUser } from './actor.js'
 import { requireEventsEditor } from './event-access.js'
 import { type EventItemView, itemViewOf } from './event-item-view.js'
@@ -51,15 +52,11 @@ export async function changeEventItemState(
     // Under the lock, of two moves that race, the second sees the first's state; a delete leaves NOT_FOUND.
     const item = await deps.items.lockInEvent(event.id, target.itemId)
     if (!item) throw new AppError('NOT_FOUND')
-    const people = {
-      event: frozen,
-      members,
-      participants: await deps.participants.findByEvent(event.id),
-    }
+    const reach = await itemReachContext(frozen, members, deps.participants)
     const before = item.snapshot()
     move(item, stamp)
     await deps.items.save(item)
-    await deps.changeLog.create(event.id, eventItemChanges(before, item.snapshot(), people), stamp)
+    await deps.changeLog.create(event.id, eventItemChanges(before, item.snapshot(), reach), stamp)
     return itemViewOf(item, event.period.timezone.value)
   })
 }

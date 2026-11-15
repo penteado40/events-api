@@ -6,6 +6,7 @@ import { eventItemChanges } from '../../domain/event-item-changes.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
 import type { ParticipantRepository } from '../../domain/participant.repository.js'
+import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
@@ -49,18 +50,14 @@ export class DeleteEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
-      const people = {
-        event: frozen,
-        members,
-        participants: await this.participants.findByEvent(event.id),
-      }
+      const reach = await itemReachContext(frozen, members, this.participants)
       // Under the lock, a delete or an edit that came first leaves it gone: NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')
       // A Cancelled item is frozen until uncancelled: EVENT_ITEM_CANCELLED.
       item.assertWritable()
       await this.items.delete(item.id)
-      await this.changeLog.create(event.id, eventItemChanges(item.snapshot(), null, people), stamp)
+      await this.changeLog.create(event.id, eventItemChanges(item.snapshot(), null, reach), stamp)
     })
   }
 }

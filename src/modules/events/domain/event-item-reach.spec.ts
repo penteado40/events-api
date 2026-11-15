@@ -59,14 +59,20 @@ describe('eventItemReach', () => {
   ]
 
   it('lists the Owners and the Viewers it reaches, in the order of the members given', () => {
-    expect(eventItemReach(item('PUBLISHED'), PUBLISHED, members, [11, 10])).toEqual([10, 11])
+    expect(
+      eventItemReach(item('PUBLISHED'), { event: PUBLISHED, members, participants: [11, 10] }),
+    ).toEqual([10, 11])
   })
 
   it('lists only the Owners for an item in Draft, even when they are not Participants', () => {
-    expect(eventItemReach(item('DRAFT'), PUBLISHED, members, [11, 12])).toEqual([10])
+    expect(
+      eventItemReach(item('DRAFT'), { event: PUBLISHED, members, participants: [11, 12] }),
+    ).toEqual([10])
   })
 
   it('reaches no one with an item that does not exist', () => {
-    expect(eventItemReach(null, PUBLISHED, members, [10, 11, 12])).toEqual([])
+    expect(eventItemReach(null, { event: PUBLISHED, members, participants: [10, 11, 12] })).toEqual(
+      [],
+    )
   })
 })

@@ -1,15 +1,6 @@
 import type { ChangeValue, NewChange } from './change.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
-import type { GroupMemberRole } from './event-access-policy.js'
-import { eventItemReach, type ReachEvent } from './event-item-reach.js'
-
-/** Whom the reach rule weighs an Event item against: the Event, its Group members and its Participants. */
-export interface ItemReachContext {
-  event: ReachEvent
-  members: readonly GroupMemberRole[]
-  /** The User ids of the Participants of the Event. */
-  participants: readonly number[]
-}
+import { eventItemReach, type ItemReachContext } from './event-item-reach.js'
 
 /** The attributes of an Event item that make Changes on an edit or a move of state, in the order their Changes come. */
 const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as const
@@ -28,12 +19,11 @@ const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as cons
 export function eventItemChanges(
   before: EventItemSnapshot | null,
   after: EventItemSnapshot | null,
-  people: ItemReachContext,
+  reach: ItemReachContext,
 ): NewChange[] {
   const item = after ?? before
   if (item === null) return []
-  const reachOf = (snapshot: EventItemSnapshot | null): number[] =>
-    eventItemReach(snapshot, people.event, people.members, people.participants)
+  const reachOf = (snapshot: EventItemSnapshot | null): number[] => eventItemReach(snapshot, reach)
   const change = (attribute: string, from: ChangeValue, to: ChangeValue): NewChange => ({
     eventItemId: item.id,
     attribute,

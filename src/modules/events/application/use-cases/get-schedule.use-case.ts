@@ -1,5 +1,5 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
-import { bondOf, eventItemReaches } from '../../domain/event-item-reach.js'
+import { standingOf, eventItemReaches } from '../../domain/event-item-reach.js'
 import { assembleSchedule, type Schedule } from '../../domain/schedule.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsReader } from '../event-access.js'
@@ -33,10 +33,10 @@ export class GetScheduleUseCase {
     const data = await this.reader.load(input.eventId)
     if (!data) throw new AppError('NOT_FOUND')
     const actor = await requireEventsReader(input.actor, data.groupId, this.directory)
-    const bond = bondOf(actor, data.participants.includes(input.actor.id))
+    const standing = standingOf(actor, data.participants.includes(input.actor.id))
     return assembleSchedule({
       timezone: data.timezone,
-      items: data.items.filter((item) => eventItemReaches(item, data, bond)),
+      items: data.items.filter((item) => eventItemReaches(item, data, standing)),
     })
   }
 }

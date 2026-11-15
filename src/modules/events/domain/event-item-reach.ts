@@ -9,11 +9,11 @@ export interface ReachEvent {
 }
 
 /**
- * The bond of a person with the Event, as the reach rule needs it: whether
+ * The standing of a person in the Event, as the reach rule needs it: whether
  * they are the production (an Owner of the Group, or the Super admin) and
  * whether they are a Participant of the Event.
  */
-export interface EventBond {
+export interface EventStanding {
   production: boolean
   participant: boolean
 }
@@ -27,10 +27,10 @@ export interface ItemReachContext {
 }
 
 /**
- * The bond of an actor with the Event: the production is who edits the Events
+ * The standing of an actor in the Event: the production is who edits the Events
  * of the Group (EventAccessPolicy), the one place that says so.
  */
-export function bondOf(actor: EventActor, participant: boolean): EventBond {
+export function standingOf(actor: EventActor, participant: boolean): EventStanding {
   return { production: EventAccessPolicy.can(actor, 'editEvents'), participant }
 }
 
@@ -47,10 +47,10 @@ export function bondOf(actor: EventActor, participant: boolean): EventBond {
 export function eventItemReaches(
   item: EventItemSnapshot,
   event: ReachEvent,
-  bond: EventBond,
+  standing: EventStanding,
 ): boolean {
-  if (bond.production) return true
-  return bond.participant && isReleased(event) && item.state !== 'DRAFT'
+  if (standing.production) return true
+  return standing.participant && isReleased(event) && item.state !== 'DRAFT'
 }
 
 /**
@@ -69,7 +69,7 @@ export function eventItemReach(
       eventItemReaches(
         item,
         context.event,
-        bondOf({ isSuperAdmin: false, role: m.role }, context.participants.includes(m.userId)),
+        standingOf({ isSuperAdmin: false, role: m.role }, context.participants.includes(m.userId)),
       ),
     )
     .map((m) => m.userId)

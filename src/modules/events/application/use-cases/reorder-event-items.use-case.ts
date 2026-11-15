@@ -5,6 +5,7 @@ import type { ChangeRepository } from '../../domain/change.repository.js'
 import { reorderEventItems } from '../../domain/event-item-order.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
+import type { FieldRepository } from '../../domain/field.repository.js'
 import { assembleSchedule, type Schedule } from '../../domain/schedule.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
@@ -38,6 +39,7 @@ export class ReorderEventItemsUseCase {
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly fields: FieldRepository,
     private readonly changeLog: ChangeRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
@@ -74,6 +76,7 @@ export class ReorderEventItemsUseCase {
       return assembleSchedule({
         timezone: event.period.timezone.value,
         items: items.map((item) => item.snapshot()),
+        fields: (await this.fields.findAllInEvent(event.id)).map((field) => field.snapshot()),
       })
     })
   }

@@ -69,6 +69,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     status: 409,
     message: 'Só os Participants do Event podem ser escolhidos no Audience.',
   },
+  FIELD_ORDER_INCOMPLETE: {
+    status: 409,
+    message: 'A nova ordem precisa trazer todos os Fields do Event item, como estão agora.',
+  },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

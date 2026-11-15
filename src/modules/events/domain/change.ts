@@ -24,8 +24,11 @@ export interface NewChange {
    * production too; `name`,
    * `date`, `time`, `place`, `state` on an Event item, `audience` for a new
    * Audience (before and after `{ kind: 'ALL' }` or `{ kind: 'SELECTED',
-   * userIds }`; only the production sees it), or `item` for its creation
-   * (before null) and its removal (after null).
+   * userIds }`; only the production sees it), `field` for a Field created,
+   * edited or removed (before and after `{ fieldId, kind, name, value }`, null
+   * where it does not exist), `fieldOrder` for a new order of its Fields (the
+   * ids before and after; only the production sees it), or `item` for its
+   * creation (before null) and its removal (after null).
    */
   attribute: string
   before: ChangeValue

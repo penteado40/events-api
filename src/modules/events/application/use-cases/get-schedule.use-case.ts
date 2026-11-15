@@ -17,7 +17,8 @@ export type GetScheduleOutput = Schedule
  * A Group member, or the Super admin, reads the schedule of an Event: the
  * General info and the Timeline, with only the Event items that reach them.
  * The Event is loaded whole as plain data by the read port, each item goes
- * through the reach rule and the schedule is assembled in memory (ADR-0019).
+ * through the reach rule and the schedule is assembled in memory (ADR-0019),
+ * each item with its Fields, in the order of the production.
  * The production (an Owner, or the Super admin) sees every item; a Viewer,
  * only the published and Cancelled ones of a published Event they are a
  * Participant of, and so an empty schedule otherwise: where and when are the
@@ -37,6 +38,7 @@ export class GetScheduleUseCase {
     return assembleSchedule({
       timezone: data.timezone,
       items: data.items.filter((item) => eventItemReaches(item, data, standing)),
+      fields: data.fields,
     })
   }
 }

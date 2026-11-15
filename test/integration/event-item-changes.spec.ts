@@ -7,6 +7,7 @@ import { EditEventItemUseCase } from '../../src/modules/events/application/use-c
 import { ReorderEventItemsUseCase } from '../../src/modules/events/application/use-cases/reorder-event-items.use-case.js'
 import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
+import { FieldRepository } from '../../src/modules/events/domain/field.repository.js'
 import { EventItemRepository } from '../../src/modules/events/domain/event-item.repository.js'
 import { EventRepository } from '../../src/modules/events/domain/event.repository.js'
 import { Clock } from '../../src/shared/application/clock.js'
@@ -188,6 +189,7 @@ describe('Changes of an Event item', () => {
         t.app.get(GroupDirectory),
         t.app.get(EventRepository),
         t.app.get(EventItemRepository),
+        t.app.get(FieldRepository),
         failing,
         t.app.get(UnitOfWork),
         clock,

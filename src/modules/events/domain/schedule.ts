@@ -1,12 +1,21 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { byOrderOfTheProduction } from './event-item-order.js'
+import { byFieldOrder, type FieldKind, type FieldSnapshot } from './field.entity.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
   date: string
   time: string | null
   timezone: string
+}
+
+/** A Field as the schedule shows it: its type, name and value. */
+export interface ScheduleField {
+  id: number
+  kind: FieldKind
+  name: string
+  value: string
 }
 
 /** An Event item as the schedule shows it. */
@@ -17,6 +26,8 @@ export interface ScheduleItem {
   when: EventItemWhen | null
   place: EventItemPlaceValues | null
   state: EventItemState
+  /** Its Fields, in the order of the production. */
+  fields: ScheduleField[]
 }
 
 /** One day of the Timeline: only a date and its items, with no title or state of its own. */
@@ -30,10 +41,14 @@ export interface Schedule {
   timeline: TimelineDay[]
 }
 
-/** What the schedule is assembled from: the Event's default zone and its items, in any order. */
+/**
+ * What the schedule is assembled from: the Event's default zone, its items
+ * and their Fields, in any order. A Field of an item not given is left out.
+ */
 export interface ScheduleSource {
   timezone: string
   items: readonly EventItemSnapshot[]
+  fields: readonly FieldSnapshot[]
 }
 
 /**
@@ -54,9 +69,16 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  * the production is the items' manual position, and the order of creation
  * where two share one; it only breaks ties, never passes over the time. The
  * day of an item is its calendar date, with no exception: the 00:40 transfer
- * after Saturday's show is Sunday's. Pure (ADR-0019).
+ * after Saturday's show is Sunday's. Each item brings its Fields, in the
+ * order of the production. Pure (ADR-0019).
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
+  const fieldsByItem = new Map<number, ScheduleField[]>()
+  for (const field of [...source.fields].sort(byFieldOrder)) {
+    const shown = fieldsByItem.get(field.eventItemId) ?? []
+    shown.push({ id: field.id, kind: field.value.kind, name: field.name, value: field.value.text })
+    fieldsByItem.set(field.eventItemId, shown)
+  }
   const generalInfo: ScheduleItem[] = []
   const days = new Map<string, ScheduleItem[]>()
   // In the order of the production first: the stable sorts below keep it in every tie.
@@ -67,6 +89,7 @@ export function assembleSchedule(source: ScheduleSource): Schedule {
       when: whenOf(item, source.timezone),
       place: item.place === null ? null : { ...item.place },
       state: item.state,
+      fields: fieldsByItem.get(item.id) ?? [],
     }
     if (shown.when === null) {
       generalInfo.push(shown)

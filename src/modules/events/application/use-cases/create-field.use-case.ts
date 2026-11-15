@@ -1,6 +1,12 @@
 import { positionAfter } from '../../domain/event-item-order.js'
 import { fieldChanges } from '../../domain/field-changes.js'
-import { type Field, FieldName, FieldText } from '../../domain/field.entity.js'
+import {
+  type Field,
+  type FieldKind,
+  FieldName,
+  FieldText,
+  textValue,
+} from '../../domain/field.entity.js'
 import type { ActingUser } from '../actor.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { writeFieldsOf } from '../field-write.js'
@@ -10,7 +16,7 @@ export interface CreateFieldInput {
   eventId: number
   itemId: number
   /** The type the Field is born with, for good: a Field never mixes types. */
-  kind: 'TEXT'
+  kind: FieldKind
   name: string
   /** The text; it may be empty. */
   value: string
@@ -39,7 +45,7 @@ export class CreateFieldUseCase {
         {
           eventItemId: item.id,
           name,
-          value: { kind: input.kind, text: text.value },
+          value: textValue(text),
           position: positionAfter(fields),
         },
         stamp,

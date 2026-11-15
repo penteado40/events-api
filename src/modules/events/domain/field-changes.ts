@@ -2,7 +2,13 @@ import { AppError } from '../../../shared/domain/app-error.js'
 import type { ChangeValue, NewChange } from './change.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { eventItemReach, type ItemReachContext } from './event-item-reach.js'
-import { byFieldOrder, type FieldSnapshot } from './field.entity.js'
+import {
+  byOrderOfTheProduction,
+  dealPositions,
+  type ManualPosition,
+  namesEachItemOnce,
+} from './event-item-order.js'
+import type { FieldSnapshot } from './field.entity.js'
 
 /**
  * The Change of a Field, a Change of its Event item (CONTEXT.md, Change):
@@ -35,15 +41,9 @@ export function fieldChanges(
   ]
 }
 
-/** A Field's new manual position. */
-export interface FieldPosition {
-  id: number
-  position: number
-}
-
 export interface FieldReorder {
   /** Only the Fields whose position changes; empty when the order is the same. */
-  positions: FieldPosition[]
+  positions: ManualPosition[]
   /** The Change of the new order, only for the production; empty when the order is the same. */
   changes: NewChange[]
 }
@@ -54,7 +54,7 @@ export interface FieldReorder {
  * an id given twice is VALIDATION_ERROR, an id not of the item is NOT_FOUND,
  * and a Field of the item left out is FIELD_ORDER_INCOMPLETE: the order is of
  * all of them, so one created meanwhile is never ordered blind. The Fields
- * keep the positions they had, dealt again in the new order.
+ * keep the positions they had, dealt again in the new order (dealPositions).
  *
  * The new order is one Change of the item (attribute `fieldOrder`, the ids
  * before and after) that only the production sees (CONTEXT.md, Change).
@@ -65,26 +65,18 @@ export function reorderFields(
   item: EventItemSnapshot,
   reach: ItemReachContext,
 ): FieldReorder {
-  if (orderedIds.length === 0 || new Set(orderedIds).size !== orderedIds.length) {
+  if (orderedIds.length === 0 || !namesEachItemOnce(orderedIds)) {
     throw new AppError('VALIDATION_ERROR')
   }
   const byId = new Map(fields.map((field) => [field.id, field]))
   if (orderedIds.some((id) => !byId.has(id))) throw new AppError('NOT_FOUND')
   if (orderedIds.length !== fields.length) throw new AppError('FIELD_ORDER_INCOMPLETE')
 
-  const current = [...fields].sort(byFieldOrder)
+  const current = [...fields].sort(byOrderOfTheProduction)
   const before = current.map((field) => field.id)
   if (before.every((id, i) => id === orderedIds[i])) return { positions: [], changes: [] }
 
-  // The slots, apart: a tie of the position (two equal) would let the new order slip.
-  const slots: number[] = []
-  for (const field of current) {
-    const last = slots.at(-1)
-    slots.push(last === undefined || field.position > last ? field.position : last + 1)
-  }
-  const positions = orderedIds
-    .map((id, i) => ({ id, position: slots[i] as number }))
-    .filter(({ id, position }) => byId.get(id)?.position !== position)
+  const positions = dealPositions(current, orderedIds)
   const reachOfItem = eventItemReach(item, reach)
   return {
     positions,

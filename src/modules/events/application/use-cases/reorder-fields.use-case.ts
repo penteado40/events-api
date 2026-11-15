@@ -1,5 +1,6 @@
+import { byOrderOfTheProduction } from '../../domain/event-item-order.js'
 import { reorderFields } from '../../domain/field-changes.js'
-import { byFieldOrder, type Field } from '../../domain/field.entity.js'
+import type { Field } from '../../domain/field.entity.js'
 import type { ActingUser } from '../actor.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { writeFieldsOf } from '../field-write.js'
@@ -46,7 +47,7 @@ export class ReorderFieldsUseCase {
         }
         await this.deps.changeLog.create(item.eventId, changes, stamp)
       }
-      return [...fields].sort(byFieldOrder)
+      return [...fields].sort(byOrderOfTheProduction)
     })
   }
 }

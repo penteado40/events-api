@@ -1,7 +1,7 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { byOrderOfTheProduction } from './event-item-order.js'
-import { byFieldOrder, type FieldKind, type FieldSnapshot } from './field.entity.js'
+import type { FieldKind, FieldSnapshot } from './field.entity.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -74,7 +74,7 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
   const fieldsByItem = new Map<number, ScheduleField[]>()
-  for (const field of [...source.fields].sort(byFieldOrder)) {
+  for (const field of [...source.fields].sort(byOrderOfTheProduction)) {
     const shown = fieldsByItem.get(field.eventItemId) ?? []
     shown.push({ id: field.id, kind: field.value.kind, name: field.name, value: field.value.text })
     fieldsByItem.set(field.eventItemId, shown)

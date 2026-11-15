@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
+import { namesEachItemOnce } from '../../domain/event-item-order.js'
 import {
   FIELD_KINDS,
   FIELD_NAME_MAX_LENGTH,
@@ -70,7 +71,7 @@ export class ReorderFieldsDto extends createZodDto(
     fieldIds: z
       .array(z.number().int().positive())
       .min(1)
-      .refine((ids) => new Set(ids).size === ids.length, { message: 'Um Field repetido.' })
+      .refine(namesEachItemOnce, { message: 'Um Field repetido.' })
       .meta({
         description: 'Os ids de todos os Fields do Event item, na nova ordem.',
         example: [3, 1, 2],

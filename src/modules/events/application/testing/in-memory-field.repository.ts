@@ -1,5 +1,6 @@
 import { createdWith, type Stamp } from '../../../../shared/domain/stamp.js'
-import { byFieldOrder, Field, type NewFieldProps } from '../../domain/field.entity.js'
+import { byOrderOfTheProduction } from '../../domain/event-item-order.js'
+import { Field, type NewFieldProps } from '../../domain/field.entity.js'
 import { FieldRepository } from '../../domain/field.repository.js'
 import type { InMemoryEventItemRepository } from './in-memory-event-item.repository.js'
 
@@ -44,6 +45,8 @@ export class InMemoryFieldRepository extends FieldRepository {
 
   /** The Fields of the item, in the order of the production. Helper for the reader and for assertions. */
   ofItem(eventItemId: number): Field[] {
-    return [...this.fields.values()].filter((f) => f.eventItemId === eventItemId).sort(byFieldOrder)
+    return [...this.fields.values()]
+      .filter((f) => f.eventItemId === eventItemId)
+      .sort(byOrderOfTheProduction)
   }
 }

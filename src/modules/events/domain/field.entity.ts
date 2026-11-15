@@ -41,6 +41,11 @@ export class FieldText {
 /** The value of a Field, by its type; a new type adds its own here. */
 export type FieldValue = { kind: 'TEXT'; text: string }
 
+/** The value of a new text Field. */
+export function textValue(text: FieldText): FieldValue {
+  return { kind: 'TEXT', text: text.value }
+}
+
 export interface FieldProps {
   id: number
   eventItemId: number
@@ -151,11 +156,4 @@ export class Field {
       position: this.props.position,
     }
   }
-}
-
-type FieldOrdered = { id: number; position: number }
-
-/** The order of the production of the Fields: the manual position, then the order of creation. */
-export function byFieldOrder(a: FieldOrdered, b: FieldOrdered): number {
-  return a.position - b.position || a.id - b.id
 }

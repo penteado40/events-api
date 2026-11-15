@@ -54,7 +54,7 @@ export class CreateEventUseCase {
       // meanwhile lands either before the copy, and is in it, or after it.
       const members = await this.directory.lockMembers(input.groupId)
       const event = await this.events.create(props, stamp)
-      await this.participants.addMany(
+      await this.participants.create(
         event.id,
         members.map((m) => m.userId),
         stamp,

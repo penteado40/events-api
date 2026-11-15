@@ -1,6 +1,16 @@
-import type { GroupRole } from '../domain/group-member.js'
+import type { GroupMember, GroupRole } from '../domain/group-member.js'
 import type { GroupMemberRepository } from '../domain/group-member.repository.js'
 import type { GroupRepository } from '../domain/group.repository.js'
+
+/** A Group member as other contexts see them: who, and with which role. */
+export interface GroupMemberRole {
+  userId: number
+  role: GroupRole
+}
+
+function memberRole({ userId, role }: GroupMember): GroupMemberRole {
+  return { userId, role }
+}
 
 /**
  * Read-only queries the groups context offers other contexts about a Group:
@@ -25,11 +35,8 @@ export class GroupLookup {
   }
 
   /** Every Group member of the Group (Owners and Viewers), with their role, in the order they joined. */
-  async members(groupId: number): Promise<{ userId: number; role: GroupRole }[]> {
-    return (await this.groupMembers.findByGroup(groupId)).map(({ userId, role }) => ({
-      userId,
-      role,
-    }))
+  async members(groupId: number): Promise<GroupMemberRole[]> {
+    return (await this.groupMembers.findByGroup(groupId)).map(memberRole)
   }
 
   /**
@@ -37,10 +44,7 @@ export class GroupLookup {
    * the order they joined, holding the Group's lock (the one roster writes take)
    * until the running UnitOfWork ends (ADR-0014). Only inside a UnitOfWork.
    */
-  async lockMembers(groupId: number): Promise<{ userId: number; role: GroupRole }[]> {
-    return (await this.groupMembers.lockByGroup(groupId)).map(({ userId, role }) => ({
-      userId,
-      role,
-    }))
+  async lockMembers(groupId: number): Promise<GroupMemberRole[]> {
+    return (await this.groupMembers.lockByGroup(groupId)).map(memberRole)
   }
 }

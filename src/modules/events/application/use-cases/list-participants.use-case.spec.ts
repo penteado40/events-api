@@ -41,10 +41,10 @@ describe('ListParticipantsUseCase', () => {
     eventId = event.id
   })
 
-  it('shows a Viewer who does not go the name, phone and role of each Participant, in the order of the list', async () => {
+  it('shows a Viewer who is not a Participant the name, phone and role of each Participant, in the order of the list', async () => {
     directory.addMember(1, CAIO.id, 'OWNER').addMember(1, BIA.id, 'VIEWER')
     directory.addMember(1, ANA.id, 'VIEWER')
-    await participants.addMany(eventId, [BIA.id, CAIO.id], STAMP)
+    await participants.create(eventId, [BIA.id, CAIO.id], STAMP)
 
     expect(await listParticipants.execute({ actor: ANA, eventId })).toEqual([
       { userId: BIA.id, name: 'Bia', phone: '+5592999990007', role: 'VIEWER' },
@@ -54,7 +54,7 @@ describe('ListParticipantsUseCase', () => {
 
   it('gives the role of now, and null to a Participant who is no longer a Group member', async () => {
     directory.addMember(1, BIA.id, 'OWNER')
-    await participants.addMany(eventId, [BIA.id, CAIO.id], STAMP)
+    await participants.create(eventId, [BIA.id, CAIO.id], STAMP)
 
     expect(await listParticipants.execute({ actor: SUPER_ADMIN, eventId })).toEqual([
       { userId: BIA.id, name: 'Bia', phone: '+5592999990007', role: 'OWNER' },

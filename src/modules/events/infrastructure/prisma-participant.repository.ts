@@ -9,7 +9,7 @@ export class PrismaParticipantRepository extends ParticipantRepository {
     super()
   }
 
-  async addMany(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void> {
+  async create(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void> {
     if (userIds.length === 0) return
     // createMany keeps the order of the rows, so the ids follow the order given.
     await this.unitOfWork.client.participant.createMany({

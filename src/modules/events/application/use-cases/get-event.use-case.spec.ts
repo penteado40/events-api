@@ -46,7 +46,7 @@ describe('GetEventUseCase', () => {
 
   it('tells the Group member whether they are a Participant of the Event', async () => {
     directory.addMember(1, ANA.id, 'VIEWER').addMember(1, 7, 'VIEWER')
-    await participants.addMany(eventId, [7], { by: null, at: new Date() })
+    await participants.create(eventId, [7], { by: null, at: new Date() })
 
     expect((await getEvent.execute({ actor: ANA, eventId })).membership).toEqual({
       isParticipant: false,

@@ -4,7 +4,7 @@ import { ParticipantRepository } from '../../domain/participant.repository.js'
 export class InMemoryParticipantRepository extends ParticipantRepository {
   private readonly participants: { eventId: number; userId: number; stamp: Stamp }[] = []
 
-  async addMany(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void> {
+  async create(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void> {
     for (const userId of userIds) this.participants.push({ eventId, userId, stamp })
   }
 

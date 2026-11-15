@@ -8,7 +8,7 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
  */
 export abstract class ParticipantRepository {
   /** Adds the Users, in the order given, to the Participants of the Event. */
-  abstract addMany(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void>
+  abstract create(eventId: number, userIds: readonly number[], stamp: Stamp): Promise<void>
   /** The User ids of the Participants of the Event, in the order they were added. */
   abstract findByEvent(eventId: number): Promise<number[]>
   abstract isParticipant(eventId: number, userId: number): Promise<boolean>

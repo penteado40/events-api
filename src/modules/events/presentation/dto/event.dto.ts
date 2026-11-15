@@ -1,5 +1,6 @@
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
+import { GROUP_ROLES } from '../../domain/event-access-policy.js'
 import { EVENT_STATES } from '../../domain/event.entity.js'
 import { EVENT_NAME_MAX_LENGTH } from '../../domain/event-name.vo.js'
 import { EVENT_PLACE_MAX_LENGTH } from '../../domain/event-place.vo.js'
@@ -90,7 +91,7 @@ const ParticipantJsonSchema = z.object({
     description: 'E.164, para abrir o WhatsApp.',
     example: '+5592999990002',
   }),
-  role: z.enum(['OWNER', 'VIEWER']).nullable().meta({
+  role: z.enum(GROUP_ROLES).nullable().meta({
     description: 'O papel no Group agora; null para quem já não é Group member.',
     example: 'VIEWER',
   }),

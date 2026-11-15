@@ -5,6 +5,7 @@ import {
   createEvent,
   createGroup,
   createGroupMember,
+  createParticipant,
   createUser,
   sessionTokenFor,
 } from './support/factories.js'
@@ -189,8 +190,9 @@ describe('Participants', () => {
 
   describe('GET /api/v1/events/:id', () => {
     it('tells who asks whether they are a Participant, and gives the Super admin no Membership', async () => {
-      const eventId = await createManausAs(ana.token)
-      await testPrisma().participant.deleteMany({ where: { eventId, userId: duda.id } })
+      // Bia goes, Duda does not: arranged straight in the tables.
+      const eventId = (await createEvent({ groupId })).id
+      await createParticipant({ eventId, userId: bia.id })
 
       const byBia = await t
         .http()

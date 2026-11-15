@@ -22,7 +22,9 @@ export interface NewChange {
    * `participant` for an entry into the Participants (before null, after the
    * User id) and an exit (before the User id, after null), only for the
    * production too; `name`,
-   * `date`, `time`, `place` on an Event item, or `item` for its creation
+   * `date`, `time`, `place`, `state` on an Event item, `audience` for a new
+   * Audience (before and after `{ kind: 'ALL' }` or `{ kind: 'SELECTED',
+   * userIds }`; only the production sees it), or `item` for its creation
    * (before null) and its removal (after null).
    */
   attribute: string

@@ -8,6 +8,7 @@ import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
+import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
 import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { AddParticipantUseCase } from './add-participant.use-case.js'
@@ -40,6 +41,7 @@ describe('AddParticipantUseCase', () => {
     addParticipant = new AddParticipantUseCase({
       directory,
       events,
+      items: new InMemoryEventItemRepository(),
       participants,
       changeLog: changes,
       unitOfWork,

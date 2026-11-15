@@ -33,7 +33,7 @@ export class GetScheduleUseCase {
     const data = await this.reader.load(input.eventId)
     if (!data) throw new AppError('NOT_FOUND')
     const actor = await requireEventsReader(input.actor, data.groupId, this.directory)
-    const standing = standingOf(actor, data.participants.includes(input.actor.id))
+    const standing = standingOf(actor, input.actor.id, data.participants.includes(input.actor.id))
     return assembleSchedule({
       timezone: data.timezone,
       items: data.items.filter((item) => eventItemReaches(item, data, standing)),

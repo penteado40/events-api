@@ -1,9 +1,13 @@
 import type { ChangeValue, NewChange } from './change.js'
+import { EventItemAudience, sameAudience } from './event-item-audience.vo.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { eventItemReach, type ItemReachContext } from './event-item-reach.js'
 
 /** The attributes of an Event item that make Changes on an edit or a move of state, in the order their Changes come. */
-const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as const
+const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state', 'audience'] as const
+
+/** The attributes whose Changes only the production sees (CONTEXT.md, Change). */
+const PRODUCTION_ONLY_ATTRIBUTES: ReadonlySet<string> = new Set(['audience'])
 
 /**
  * The Changes between two snapshots of an Event item, null for an item that
@@ -12,7 +16,11 @@ const EVENT_ITEM_ATTRIBUTES = ['name', 'date', 'time', 'place', 'state'] as cons
  * it exists; an edit is one Change per attribute that changed, none when
  * nothing did. The date and the time are apart: moving the Passagem de som
  * from 15h to 16h changes only the time; publishing a Draft is a Change of
- * the state. The reach of before and of after come from the reach rule
+ * the state. A Change of the Audience only the production sees; who starts
+ * or stops being reached by it notices by the item that shows up or goes
+ * away, never by a value struck through. The Audience stays out of the
+ * Change of a creation or a removal, which the people it reaches see. The
+ * reach of before and of after come from the reach rule
  * (eventItemReach) over the Event, Group members and Participants given.
  * Who made them and when is the Stamp of the change, written with them.
  */
@@ -29,7 +37,7 @@ export function eventItemChanges(
     attribute,
     before: from,
     after: to,
-    productionOnly: false,
+    productionOnly: PRODUCTION_ONLY_ATTRIBUTES.has(attribute),
     reachBefore: reachOf(before),
     reachAfter: reachOf(after),
   })
@@ -56,10 +64,13 @@ function itemValue(item: EventItemSnapshot | null): ChangeValue {
 }
 
 function valueOf(value: EventItemAttributeValue): ChangeValue {
-  return value === null || typeof value === 'string' ? value : { ...value }
+  if (value === null || typeof value === 'string') return value
+  if ('kind' in value) return EventItemAudience.create(value).toValues()
+  return { ...value }
 }
 
 function sameValue(a: EventItemAttributeValue, b: EventItemAttributeValue): boolean {
   if (a === null || b === null || typeof a === 'string' || typeof b === 'string') return a === b
+  if ('kind' in a || 'kind' in b) return 'kind' in a && 'kind' in b && sameAudience(a, b)
   return a.name === b.name && a.address === b.address && a.timezone === b.timezone
 }

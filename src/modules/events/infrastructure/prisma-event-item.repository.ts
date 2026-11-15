@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common'
 import type { EventItem as PrismaEventItem } from '../../../generated/prisma/client.js'
 import { createdWith, type Stamp } from '../../../shared/domain/stamp.js'
 import { PrismaUnitOfWork } from '../../../shared/infrastructure/prisma-unit-of-work.js'
+import {
+  EventItemAudience,
+  type EventItemAudienceValues,
+} from '../domain/event-item-audience.vo.js'
 import { EventItemPlace } from '../domain/event-item-place.vo.js'
 import { EventItemStart } from '../domain/event-item-start.vo.js'
 import {
@@ -11,6 +15,14 @@ import {
 } from '../domain/event-item.entity.js'
 import { EventItemRepository } from '../domain/event-item.repository.js'
 
+/** What every read of an Event item brings along: the people chosen in its Audience, in ascending order. */
+export const WITH_AUDIENCE = {
+  audienceMembers: { select: { userId: true }, orderBy: { userId: 'asc' } },
+} as const
+
+/** A row of an Event item with the people chosen in its Audience. */
+export type EventItemRow = PrismaEventItem & { audienceMembers: { userId: number }[] }
+
 @Injectable()
 export class PrismaEventItemRepository extends EventItemRepository {
   constructor(private readonly unitOfWork: PrismaUnitOfWork) {
@@ -18,7 +30,10 @@ export class PrismaEventItemRepository extends EventItemRepository {
   }
 
   async findInEvent(eventId: number, itemId: number): Promise<EventItem | null> {
-    const row = await this.unitOfWork.client.eventItem.findFirst({ where: { id: itemId, eventId } })
+    const row = await this.unitOfWork.client.eventItem.findFirst({
+      where: { id: itemId, eventId },
+      include: WITH_AUDIENCE,
+    })
     return row ? toDomain(row) : null
   }
 
@@ -28,7 +43,7 @@ export class PrismaEventItemRepository extends EventItemRepository {
     const locked = await tx.$queryRaw<{ id: number }[]>`
       SELECT id FROM event_items WHERE id = ${itemId} AND "eventId" = ${eventId} FOR UPDATE`
     if (locked.length === 0) return null
-    const row = await tx.eventItem.findUnique({ where: { id: itemId } })
+    const row = await tx.eventItem.findUnique({ where: { id: itemId }, include: WITH_AUDIENCE })
     return row ? toDomain(row) : null
   }
 
@@ -36,6 +51,7 @@ export class PrismaEventItemRepository extends EventItemRepository {
     const rows = await this.unitOfWork.client.eventItem.findMany({
       where: { eventId },
       orderBy: { id: 'asc' },
+      include: WITH_AUDIENCE,
     })
     return rows.map(toDomain)
   }
@@ -51,12 +67,14 @@ export class PrismaEventItemRepository extends EventItemRepository {
         ...placeColumns(props.place),
         ...createdWith(stamp),
       },
+      include: WITH_AUDIENCE,
     })
     return toDomain(row)
   }
 
   async save(item: EventItem): Promise<void> {
-    await this.unitOfWork.client.eventItem.update({
+    const client = this.unitOfWork.client
+    await client.eventItem.update({
       where: { id: item.id },
       data: {
         name: item.name,
@@ -64,14 +82,37 @@ export class PrismaEventItemRepository extends EventItemRepository {
         ...placeColumns(item.place),
         state: item.state,
         position: item.position,
+        audienceKind: item.audience.kind,
         updatedAt: item.updatedAt,
         updatedById: item.updatedById,
       },
     })
+    // The people chosen: who stays keeps their row, its Author included; who
+    // comes in is written by the item's last Author, at its last write.
+    const userIds = [...item.audience.userIds]
+    await client.eventItemAudienceMember.deleteMany({
+      where: { eventItemId: item.id, userId: { notIn: userIds } },
+    })
+    if (userIds.length > 0) {
+      await client.eventItemAudienceMember.createMany({
+        data: userIds.map((userId) => ({
+          eventItemId: item.id,
+          userId,
+          ...createdWith({ by: item.updatedById, at: item.updatedAt }),
+        })),
+        skipDuplicates: true,
+      })
+    }
   }
 
   async delete(itemId: number): Promise<void> {
     await this.unitOfWork.client.eventItem.delete({ where: { id: itemId } })
+  }
+
+  async removeFromAudiences(eventId: number, userId: number): Promise<void> {
+    await this.unitOfWork.client.eventItemAudienceMember.deleteMany({
+      where: { userId, eventItem: { eventId } },
+    })
   }
 }
 
@@ -97,7 +138,7 @@ function placeColumns(place: EventItemPlace | null) {
 }
 
 /** A row as the plain data of the schedule (ADR-0019); shared with the read port. */
-export function snapshotOf(row: PrismaEventItem): EventItemSnapshot {
+export function snapshotOf(row: EventItemRow): EventItemSnapshot {
   const hasPlace = row.placeName !== null || row.placeAddress !== null || row.placeTimezone !== null
   return {
     id: row.id,
@@ -109,10 +150,17 @@ export function snapshotOf(row: PrismaEventItem): EventItemSnapshot {
       : null,
     state: row.state,
     position: row.position,
+    audience: audienceOf(row),
   }
 }
 
-function toDomain(row: PrismaEventItem): EventItem {
+function audienceOf(row: EventItemRow): EventItemAudienceValues {
+  return row.audienceKind === 'ALL'
+    ? { kind: 'ALL' }
+    : { kind: 'SELECTED', userIds: row.audienceMembers.map((m) => m.userId) }
+}
+
+function toDomain(row: EventItemRow): EventItem {
   const snapshot = snapshotOf(row)
   return EventItem.restore({
     id: row.id,
@@ -122,6 +170,7 @@ function toDomain(row: PrismaEventItem): EventItem {
     place: snapshot.place === null ? null : EventItemPlace.create(snapshot.place),
     state: row.state,
     position: row.position,
+    audience: EventItemAudience.create(snapshot.audience),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     createdById: row.createdById,

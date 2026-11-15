@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest'
+import type { EventItemAudienceValues } from './event-item-audience.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { eventItemReach, eventItemReaches, type ReachEvent } from './event-item-reach.js'
 
-function item(state: EventItemState): EventItemSnapshot {
-  return { id: 1, name: 'Show', date: null, time: null, place: null, state, position: 1 }
+function item(
+  state: EventItemState,
+  audience: EventItemAudienceValues = { kind: 'ALL' },
+): EventItemSnapshot {
+  return { id: 1, name: 'Show', date: null, time: null, place: null, state, position: 1, audience }
 }
 
 const PUBLISHED: ReachEvent = { state: 'PUBLISHED', cancelledFrom: null }
 const DRAFT: ReachEvent = { state: 'DRAFT', cancelledFrom: null }
 
-const OWNER = { production: true, participant: false }
-const VIEWER_PARTICIPANT = { production: false, participant: true }
-const VIEWER_NOT_PARTICIPANT = { production: false, participant: false }
+const OWNER = { userId: 10, production: true, participant: false }
+const VIEWER_PARTICIPANT = { userId: 11, production: false, participant: true }
+const VIEWER_NOT_PARTICIPANT = { userId: 12, production: false, participant: false }
 
 describe('eventItemReaches', () => {
   it('reaches the production with every item, Draft included, in an Event in Draft too', () => {
@@ -51,6 +55,33 @@ describe('eventItemReaches', () => {
   })
 })
 
+describe('eventItemReaches with the Audience chosen', () => {
+  const chosen = (...userIds: number[]): EventItemAudienceValues => ({ kind: 'SELECTED', userIds })
+
+  it('reaches a Viewer Participant on the list', () => {
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(
+      true,
+    )
+  })
+
+  it('never reaches a Viewer Participant left off the list', () => {
+    expect(eventItemReaches(item('PUBLISHED', chosen(13)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(
+      false,
+    )
+    expect(eventItemReaches(item('CANCELLED', chosen()), PUBLISHED, VIEWER_PARTICIPANT)).toBe(false)
+  })
+
+  it('still reaches the production, on the list or not', () => {
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, OWNER)).toBe(true)
+    expect(eventItemReaches(item('DRAFT', chosen()), DRAFT, OWNER)).toBe(true)
+  })
+
+  it('keeps Draft and an Event in Draft from a Viewer on the list', () => {
+    expect(eventItemReaches(item('DRAFT', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), DRAFT, VIEWER_PARTICIPANT)).toBe(false)
+  })
+})
+
 describe('eventItemReach', () => {
   const members = [
     { userId: 10, role: 'OWNER' as const },
@@ -68,6 +99,16 @@ describe('eventItemReach', () => {
     expect(
       eventItemReach(item('DRAFT'), { event: PUBLISHED, members, participants: [11, 12] }),
     ).toEqual([10])
+  })
+
+  it('lists the Owners and only the Viewers chosen, for an item with the Audience chosen', () => {
+    expect(
+      eventItemReach(item('PUBLISHED', { kind: 'SELECTED', userIds: [12] }), {
+        event: PUBLISHED,
+        members,
+        participants: [10, 11, 12],
+      }),
+    ).toEqual([10, 12])
   })
 
   it('reaches no one with an item that does not exist', () => {

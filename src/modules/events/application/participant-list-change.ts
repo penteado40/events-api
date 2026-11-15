@@ -6,6 +6,7 @@ import type { NewChange } from '../domain/change.js'
 import type { ChangeRepository } from '../domain/change.repository.js'
 import type { GroupMemberRole } from '../domain/event-access-policy.js'
 import { eventReach } from '../domain/event-reach.js'
+import type { EventItemRepository } from '../domain/event-item.repository.js'
 import type { EventRepository } from '../domain/event.repository.js'
 import type { ParticipantRepository } from '../domain/participant.repository.js'
 import type { ActingUser } from './actor.js'
@@ -20,6 +21,8 @@ import type { GroupDirectory } from './ports/group-directory.js'
 export abstract class ParticipantWriteDeps {
   abstract readonly directory: GroupDirectory
   abstract readonly events: EventRepository
+  /** The Event items, whose Audiences chosen who leaves the list leaves too. */
+  abstract readonly items: EventItemRepository
   abstract readonly participants: ParticipantRepository
   abstract readonly changeLog: ChangeRepository
   abstract readonly unitOfWork: UnitOfWork

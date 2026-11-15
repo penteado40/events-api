@@ -90,11 +90,12 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Editar um Event item',
     description:
-      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar vai inteiro. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. Um item Cancelled está congelado até ser descancelado: 409 EVENT_ITEM_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
+      'O Super admin ou um Owner do Group do Event. O que não é enviado não muda; null apaga a data, a hora ou o lugar, e o lugar e o Audience vão inteiros. O que sobra não pode ter hora sem data: 400 EVENT_ITEM_TIME_WITHOUT_DATE. O Audience é "Todos" ou pessoas escolhidas só entre os Participants do Event: quem não é Participant, 409 NOT_A_PARTICIPANT. Mudar o Audience é uma Change que só a produção vê. Um item Cancelled está congelado até ser descancelado: 409 EVENT_ITEM_CANCELLED. Item de outro Event: 404. Quem não é Group member do Group recebe 404; um Viewer, 403. Num Event Cancelled, congelado: 409 EVENT_CANCELLED.',
   })
   @ApiOkResponse({ type: EventItemResponseDto })
   @ApiErrors(
     'EVENT_ITEM_TIME_WITHOUT_DATE',
+    'NOT_A_PARTICIPANT',
     'EVENT_ITEM_CANCELLED',
     'EVENT_CANCELLED',
     'FORBIDDEN',

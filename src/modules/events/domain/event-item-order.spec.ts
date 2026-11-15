@@ -13,6 +13,7 @@ function item(id: number, name: string, over: Partial<EventItemSnapshot> = {}): 
     place: null,
     state: 'PUBLISHED',
     position: id,
+    audience: { kind: 'ALL' },
     ...over,
   }
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AppError, type ErrorCode } from '../../../shared/domain/app-error.js'
+import { EventItemAudience } from './event-item-audience.vo.js'
 import { EventItemName } from './event-item-name.vo.js'
 import { EventItemStart } from './event-item-start.vo.js'
 import { EventItem, type EventItemState } from './event-item.entity.js'
@@ -17,6 +18,7 @@ function itemIn(state: EventItemState): EventItem {
     place: null,
     state,
     position: 1,
+    audience: EventItemAudience.all(),
     createdAt: CREATED_AT,
     updatedAt: CREATED_AT,
     createdById: null,

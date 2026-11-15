@@ -65,6 +65,10 @@ export const ERROR_CATALOG: Record<ErrorCode, CatalogEntry> = {
     message: 'O Event está cancelado: nada nele muda até ser descancelado.',
   },
   EVENT_NOT_CANCELLED: { status: 409, message: 'O Event não está cancelado.' },
+  NOT_A_PARTICIPANT: {
+    status: 409,
+    message: 'Só os Participants do Event podem ser escolhidos no Audience.',
+  },
   RATE_LIMITED: {
     status: 429,
     message: 'Muitas tentativas. Tente de novo em alguns minutos.',

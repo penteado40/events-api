@@ -17,6 +17,14 @@ export abstract class EventItemRepository {
   abstract findAllInEvent(eventId: number): Promise<EventItem[]>
   /** A new Event item, in the state and at the position it is given. */
   abstract create(props: NewEventItemProps, stamp: Stamp): Promise<EventItem>
+  /** Writes the item as it is, its Audience included: the people chosen are replaced at once. */
   abstract save(item: EventItem): Promise<void>
   abstract delete(itemId: number): Promise<void>
+  /**
+   * Takes the User off the Audiences chosen of every Event item of the Event
+   * (CONTEXT.md, Participant: who leaves the Participants leaves the
+   * Audiences). An Audience "Todos" follows the list by itself; an item
+   * whose list is left empty keeps the Audience chosen, reaching no one else.
+   */
+  abstract removeFromAudiences(eventId: number, userId: number): Promise<void>
 }

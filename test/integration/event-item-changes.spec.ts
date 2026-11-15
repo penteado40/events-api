@@ -8,6 +8,7 @@ import type { NewChange } from '../../src/modules/events/domain/change.js'
 import { ChangeRepository } from '../../src/modules/events/domain/change.repository.js'
 import { EventItemRepository } from '../../src/modules/events/domain/event-item.repository.js'
 import { EventRepository } from '../../src/modules/events/domain/event.repository.js'
+import { ParticipantRepository } from '../../src/modules/events/domain/participant.repository.js'
 import { Clock } from '../../src/shared/application/clock.js'
 import { FixedClock } from '../../src/shared/application/testing/fixed-clock.js'
 import { UnitOfWork } from '../../src/shared/application/unit-of-work.js'
@@ -27,8 +28,8 @@ const NOW = new Date('2026-11-13T15:00:00.000Z')
 
 /**
  * Every write of an Event item writes its Changes in the same transaction
- * (amendment of ADR-0010): both commit or neither does. Until the reach rule
- * covers the Viewers, an Event item reaches the Owners.
+ * (amendment of ADR-0010): both commit or neither does. In an Event in
+ * Draft, an Event item reaches only the Owners (the reach rule).
  */
 describe('Changes of an Event item', () => {
   let t: TestApp
@@ -182,11 +183,21 @@ describe('Changes of an Event item', () => {
     })
 
     const actor = () => ({ id: ownerId, isSuperAdmin: false })
+    const reorderDeps = () =>
+      [
+        t.app.get(GroupDirectory),
+        t.app.get(EventRepository),
+        t.app.get(EventItemRepository),
+        failing,
+        t.app.get(UnitOfWork),
+        clock,
+      ] as const
     const deps = () =>
       [
         t.app.get(GroupDirectory),
         t.app.get(EventRepository),
         t.app.get(EventItemRepository),
+        t.app.get(ParticipantRepository),
         failing,
         t.app.get(UnitOfWork),
         clock,
@@ -243,7 +254,7 @@ describe('Changes of an Event item', () => {
       const second = (await createItem({ name: 'Contatos da produção' })).body.data.id as number
 
       await expect(
-        new ReorderEventItemsUseCase(...deps()).execute({
+        new ReorderEventItemsUseCase(...reorderDeps()).execute({
           actor: actor(),
           eventId,
           itemIds: [second, first],

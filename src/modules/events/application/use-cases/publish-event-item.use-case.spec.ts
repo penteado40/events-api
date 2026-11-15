@@ -14,6 +14,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { PublishEventItemUseCase } from './publish-event-item.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
@@ -24,6 +25,7 @@ describe('PublishEventItemUseCase', () => {
   let events: InMemoryEventRepository
   let items: InMemoryEventItemRepository
   let changeLog: InMemoryChangeRepository
+  let participants: InMemoryParticipantRepository
   let publishItem: PublishEventItemUseCase
   let eventId: number
 
@@ -32,10 +34,12 @@ describe('PublishEventItemUseCase', () => {
     events = new InMemoryEventRepository()
     items = new InMemoryEventItemRepository()
     changeLog = new InMemoryChangeRepository()
+    participants = new InMemoryParticipantRepository(events)
     publishItem = new PublishEventItemUseCase(
       directory,
       events,
       items,
+      participants,
       changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),
@@ -101,6 +105,25 @@ describe('PublishEventItemUseCase', () => {
         reachAfter: [ANA.id],
         by: ANA.id,
         at: NOW,
+      }),
+    ])
+  })
+
+  it('reaches the Participants once published in a published Event, and only the Owners before', async () => {
+    directory.addMember(1, ANA.id, 'OWNER').addMember(1, 3, 'VIEWER').addMember(1, 4, 'VIEWER')
+    await participants.create(eventId, [3], { by: null, at: AT })
+    const event = await events.findById(eventId)
+    event!.publish({ by: null, at: AT })
+    await events.save(event!)
+    const itemId = await itemIn('DRAFT')
+
+    await publishItem.execute({ actor: ANA, eventId, itemId })
+
+    expect(changeLog.ofEvent(eventId)).toEqual([
+      expect.objectContaining({
+        attribute: 'state',
+        reachBefore: [ANA.id],
+        reachAfter: [ANA.id, 3],
       }),
     ])
   })

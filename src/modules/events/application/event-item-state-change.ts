@@ -6,6 +6,7 @@ import { eventItemChanges } from '../domain/event-item-changes.js'
 import type { EventItem } from '../domain/event-item.entity.js'
 import type { EventItemRepository } from '../domain/event-item.repository.js'
 import type { EventRepository } from '../domain/event.repository.js'
+import type { ParticipantRepository } from '../domain/participant.repository.js'
 import type { ActingUser } from './actor.js'
 import { requireEventsEditor } from './event-access.js'
 import { type EventItemView, itemViewOf } from './event-item-view.js'
@@ -15,6 +16,7 @@ export interface EventItemStateChangeDeps {
   directory: GroupDirectory
   events: EventRepository
   items: EventItemRepository
+  participants: ParticipantRepository
   changeLog: ChangeRepository
   unitOfWork: UnitOfWork
 }
@@ -24,8 +26,8 @@ export interface EventItemStateChangeDeps {
  * Owner of its Group or the Super admin. A Cancelled Event is frozen:
  * EVENT_CANCELLED, checked under the Event's lock. The move is a Change of the
  * state of the item, written in the same unit of work (amendment of ADR-0010),
- * with the reach of before and of after from the reach rule over the Group
- * members read under the Group's lock. The role is checked before the state:
+ * with the reach of before and of after from the reach rule over the Event,
+ * its Participants and the Group members read under the Group's lock. The role is checked before the state:
  * a Viewer is FORBIDDEN, never a 409. The stamp is the use case's.
  */
 export async function changeEventItemState(
@@ -49,10 +51,15 @@ export async function changeEventItemState(
     // Under the lock, of two moves that race, the second sees the first's state; a delete leaves NOT_FOUND.
     const item = await deps.items.lockInEvent(event.id, target.itemId)
     if (!item) throw new AppError('NOT_FOUND')
+    const people = {
+      event: frozen,
+      members,
+      participants: await deps.participants.findByEvent(event.id),
+    }
     const before = item.snapshot()
     move(item, stamp)
     await deps.items.save(item)
-    await deps.changeLog.create(event.id, eventItemChanges(before, item.snapshot(), members), stamp)
+    await deps.changeLog.create(event.id, eventItemChanges(before, item.snapshot(), people), stamp)
     return itemViewOf(item, event.period.timezone.value)
   })
 }

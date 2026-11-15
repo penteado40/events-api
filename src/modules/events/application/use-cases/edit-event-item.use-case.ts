@@ -9,6 +9,7 @@ import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
+import type { ParticipantRepository } from '../../domain/participant.repository.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
@@ -39,13 +40,15 @@ export type EditEventItemOutput = EventItemView
  * Each attribute that changed becomes a Change, written in the same unit of
  * work as the item (amendment of ADR-0010); an edit that changes nothing
  * writes nothing. The reach of before and of after comes from the reach rule
- * over the Group members, read under the Group's lock.
+ * over the Event, its Participants and the Group members, read under the
+ * Group's lock.
  */
 export class EditEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly participants: ParticipantRepository,
     private readonly changeLog: ChangeRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
@@ -75,12 +78,17 @@ export class EditEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
+      const people = {
+        event: frozen,
+        members,
+        participants: await this.participants.findByEvent(event.id),
+      }
       // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
       const item = await this.items.lockInEvent(event.id, input.itemId)
       if (!item) throw new AppError('NOT_FOUND')
       const before = item.snapshot()
       item.edit(edit, stamp)
-      const changes = eventItemChanges(before, item.snapshot(), members)
+      const changes = eventItemChanges(before, item.snapshot(), people)
       if (changes.length > 0) {
         await this.items.save(item)
         await this.changeLog.create(event.id, changes, stamp)

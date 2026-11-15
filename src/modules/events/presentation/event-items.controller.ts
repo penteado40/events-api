@@ -191,10 +191,10 @@ export class EventItemsController {
   @ApiOperation({
     summary: 'Ler a programação do Event',
     description:
-      'O Super admin ou um Owner do Group do Event lê a programação inteira: a General info (itens sem data, na ordem da produção) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção). O dia de um item é a data dele no calendário. Cada item traz o estado: DRAFT (só os Owners o veem), PUBLISHED ou CANCELLED (continua na programação, com o selo de cancelado). Quem não é Group member do Group recebe 404; um Viewer, 403 por enquanto.',
+      'Um Group member ou o Super admin lê a programação do Event, só com os itens que o alcançam (a regra de alcance): o Super admin e os Owners veem todos, e um Viewer, só os publicados e os cancelados de um Event publicado de que é Participant; para o Viewer que não é Participant, ou num Event em Draft, a programação vem vazia (onde e quando são do Event). A programação tem a General info (itens sem data, na ordem da produção) e a Timeline (só os dias com itens, em ordem de data, mesmo fora do período; em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção). O dia de um item é a data dele no calendário. Cada item traz o estado: DRAFT (só os Owners o veem), PUBLISHED ou CANCELLED (continua na programação, com o selo de cancelado). Quem não é Group member do Group recebe 404.',
   })
   @ApiOkResponse({ type: ScheduleResponseDto })
-  @ApiErrors('FORBIDDEN', 'NOT_FOUND')
+  @ApiErrors('NOT_FOUND')
   async schedule(
     @CurrentUser() actor: User,
     @Param('id', ParseIdPipe) eventId: number,

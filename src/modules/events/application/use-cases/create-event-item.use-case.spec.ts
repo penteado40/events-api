@@ -9,6 +9,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import { CreateEventItemUseCase } from './create-event-item.use-case.js'
 
@@ -31,6 +32,7 @@ describe('CreateEventItemUseCase', () => {
       directory,
       events,
       items,
+      new InMemoryParticipantRepository(events),
       changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),

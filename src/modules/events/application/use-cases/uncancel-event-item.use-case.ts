@@ -3,6 +3,7 @@ import type { UnitOfWork } from '../../../../shared/application/unit-of-work.js'
 import type { ChangeRepository } from '../../domain/change.repository.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
+import type { ParticipantRepository } from '../../domain/participant.repository.js'
 import type { ActingUser } from '../actor.js'
 import { changeEventItemState, type EventItemStateChangeDeps } from '../event-item-state-change.js'
 import type { EventItemView } from '../event-item-view.js'
@@ -31,11 +32,12 @@ export class UncancelEventItemUseCase {
     directory: GroupDirectory,
     events: EventRepository,
     items: EventItemRepository,
+    participants: ParticipantRepository,
     changeLog: ChangeRepository,
     unitOfWork: UnitOfWork,
     clock: Clock,
   ) {
-    this.deps = { directory, events, items, changeLog, unitOfWork }
+    this.deps = { directory, events, items, participants, changeLog, unitOfWork }
     this.clock = clock
   }
 

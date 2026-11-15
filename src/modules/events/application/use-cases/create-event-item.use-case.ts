@@ -10,6 +10,7 @@ import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventItem } from '../../domain/event-item.entity.js'
 import type { EventItemRepository } from '../../domain/event-item.repository.js'
 import type { EventRepository } from '../../domain/event.repository.js'
+import type { ParticipantRepository } from '../../domain/participant.repository.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
@@ -37,14 +38,16 @@ export type CreateEventItemOutput = EventItemView
  * zone the Event's applies. A Cancelled Event is frozen: EVENT_CANCELLED.
  *
  * The creation is a Change of the item, written in the same unit of work
- * (amendment of ADR-0010), reaching whom the reach rule says, over the Group
- * members read under the Group's lock; before it, the item reached no one.
+ * (amendment of ADR-0010), reaching whom the reach rule says, over the Event
+ * and its Participants and the Group members read under the Group's lock;
+ * before it, the item reached no one.
  */
 export class CreateEventItemUseCase {
   constructor(
     private readonly directory: GroupDirectory,
     private readonly events: EventRepository,
     private readonly items: EventItemRepository,
+    private readonly participants: ParticipantRepository,
     private readonly changeLog: ChangeRepository,
     private readonly unitOfWork: UnitOfWork,
     private readonly clock: Clock,
@@ -71,12 +74,17 @@ export class CreateEventItemUseCase {
       const frozen = await this.events.lockById(event.id)
       if (!frozen) throw new AppError('NOT_FOUND')
       frozen.assertWritable()
+      const people = {
+        event: frozen,
+        members,
+        participants: await this.participants.findByEvent(event.id),
+      }
       // Last in the order of the production; the lock keeps two creations off the same position.
       const position = positionAfter(await this.items.findAllInEvent(event.id))
       // Under the lock: a publish of the Event that came first makes it born in Draft.
       const state = EventItem.bornIn(frozen.state)
       const item = await this.items.create({ ...props, state, position }, stamp)
-      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), members), stamp)
+      await this.changeLog.create(event.id, eventItemChanges(null, item.snapshot(), people), stamp)
       return itemViewOf(item, event.period.timezone.value)
     })
   }

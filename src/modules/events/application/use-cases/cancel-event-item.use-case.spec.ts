@@ -14,6 +14,7 @@ import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { CancelEventItemUseCase } from './cancel-event-item.use-case.js'
 
 const AT = new Date('2026-10-01T12:00:00.000Z')
@@ -36,6 +37,7 @@ describe('CancelEventItemUseCase', () => {
       directory,
       events,
       items,
+      new InMemoryParticipantRepository(events),
       changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),

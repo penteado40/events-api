@@ -6,6 +6,7 @@ import {
   createEvent,
   createGroup,
   createGroupMember,
+  createParticipant,
   createUser,
   sessionTokenFor,
 } from './support/factories.js'
@@ -21,6 +22,7 @@ describe('Event items and the schedule', () => {
   let adminToken: string
   let ownerId: number
   let ownerToken: string
+  let viewerId: number
   let viewerToken: string
   let outsiderToken: string
   let eventId: number
@@ -42,6 +44,7 @@ describe('Event items and the schedule', () => {
     const viewer = await createUser()
     const outsider = await createUser()
     ownerId = owner.id
+    viewerId = viewer.id
     await createGroupMember({ groupId, userId: owner.id, role: 'OWNER' })
     await createGroupMember({ groupId, userId: viewer.id, role: 'VIEWER' })
     await createGroupMember({ groupId: otherGroupId, userId: outsider.id, role: 'OWNER' })
@@ -718,10 +721,97 @@ describe('Event items and the schedule', () => {
       expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
     })
 
-    it('answers 403 to a Viewer and 404 to who is not a Group member', async () => {
-      expect((await t.http().get(scheduleUrl()).auth(viewerToken, { type: 'bearer' })).status).toBe(
-        403,
-      )
+    const asViewer = () => t.http().get(scheduleUrl()).auth(viewerToken, { type: 'bearer' })
+    const namesIn = (data: {
+      generalInfo: { name: string }[]
+      timeline: { items: { name: string }[] }[]
+    }) => [
+      ...data.generalInfo.map((i) => i.name),
+      ...data.timeline.flatMap((day) => day.items.map((i) => i.name)),
+    ]
+
+    /** Publishes the Event, then adds an item (born in Draft) and cancels the Passagem de som. */
+    async function publishWithDraftAndCancelled(): Promise<void> {
+      const post = (url: string) => t.http().post(url).auth(ownerToken, { type: 'bearer' })
+      expect((await post(`/api/v1/events/${eventId}/publish`)).status).toBe(200)
+      const draft = await createItem({ name: 'Bis', date: '2026-11-14', time: '22:00' })
+      expect(draft.body.data.state).toBe('DRAFT')
+      const owner = await t.http().get(scheduleUrl()).auth(ownerToken, { type: 'bearer' })
+      const soundcheck = owner.body.data.timeline[1].items[1]
+      expect(soundcheck.name).toBe('Passagem de som')
+      expect((await post(`${itemUrl(soundcheck.id)}/cancel`)).status).toBe(200)
+    }
+
+    it('gives a Viewer Participant of a published Event only the published and the Cancelled items', async () => {
+      await createParticipant({ eventId, userId: viewerId })
+      await publishWithDraftAndCancelled()
+
+      const res = await asViewer()
+
+      expect(res.status).toBe(200)
+      expect(namesIn(res.body.data)).toEqual([
+        'O que levar',
+        'Contatos da produção',
+        'Técnica viaja para Manaus',
+        'Almoço (horário a confirmar)',
+        'Passagem de som',
+        'Show no Teatro Amazonas',
+        'Translado para o hotel',
+      ])
+      expect(res.body.data.timeline[1].items[1]).toMatchObject({
+        name: 'Passagem de som',
+        state: 'CANCELLED',
+      })
+      const owner = await t.http().get(scheduleUrl()).auth(ownerToken, { type: 'bearer' })
+      expect(namesIn(owner.body.data)).toContain('Bis')
+    })
+
+    it('gives a Viewer Participant of an Event in Draft an empty schedule', async () => {
+      await createParticipant({ eventId, userId: viewerId })
+
+      const res = await asViewer()
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
+    })
+
+    it('gives a Viewer who is not a Participant an empty schedule, even of a published Event', async () => {
+      await publishWithDraftAndCancelled()
+
+      const res = await asViewer()
+
+      expect(res.status).toBe(200)
+      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
+    })
+
+    it('records in the Changes of an item the reach of the reach rule, the Viewer Participant included once published', async () => {
+      await createParticipant({ eventId, userId: viewerId })
+      await publishWithDraftAndCancelled()
+
+      const changes = await testPrisma().change.findMany({
+        where: { eventId, eventItemId: { not: null } },
+        orderBy: { id: 'asc' },
+        select: { attribute: true, after: true, reachBefore: true, reachAfter: true },
+      })
+
+      // The items created in the Event in Draft reached only the Owner.
+      expect(changes[0]).toMatchObject({
+        attribute: 'item',
+        reachBefore: [],
+        reachAfter: [ownerId],
+      })
+      // Born in Draft in the published Event: only the Owner.
+      expect(changes.at(-2)).toMatchObject({ attribute: 'item', reachAfter: [ownerId] })
+      // The cancel of a published item: the Participant before and after.
+      expect(changes.at(-1)).toMatchObject({
+        attribute: 'state',
+        after: 'CANCELLED',
+        reachBefore: [ownerId, viewerId],
+        reachAfter: [ownerId, viewerId],
+      })
+    })
+
+    it('answers 404 to who is not a Group member', async () => {
       expect(
         (await t.http().get(scheduleUrl()).auth(outsiderToken, { type: 'bearer' })).status,
       ).toBe(404)

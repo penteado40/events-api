@@ -21,14 +21,18 @@ export class FakeGroupDirectory extends GroupDirectory {
     return this.groups.has(groupId)
   }
 
-  /** The in-memory unit of work already runs one unit at a time: no lock to take. */
-  async lockMembers(groupId: number): Promise<GroupMemberRole[]> {
+  async members(groupId: number): Promise<GroupMemberRole[]> {
     const members: GroupMemberRole[] = []
     for (const [key, role] of this.roles) {
       const [group, userId] = key.split(':').map(Number)
       if (group === groupId) members.push({ userId: userId!, role })
     }
     return members
+  }
+
+  /** The in-memory unit of work already runs one unit at a time: no lock to take. */
+  async lockMembers(groupId: number): Promise<GroupMemberRole[]> {
+    return this.members(groupId)
   }
 
   async roleIn(groupId: number, userId: number): Promise<GroupRole | null> {

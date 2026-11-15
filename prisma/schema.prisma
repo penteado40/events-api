@@ -81,8 +81,11 @@ model User {
   updatedChanges         Change[]         @relation("ChangeUpdated")
   createdEventItems      EventItem[]      @relation("EventItemCreated")
   updatedEventItems      EventItem[]      @relation("EventItemUpdated")
+  createdParticipants    Participant[]    @relation("ParticipantCreated")
+  updatedParticipants    Participant[]    @relation("ParticipantUpdated")
 
   groupMembers GroupMember[] @relation("GroupMemberUser")
+  participants Participant[] @relation("ParticipantUser")
 
   @@map("users")
 }
@@ -185,9 +188,10 @@ model Event {
   createdBy     User?       @relation("EventCreated", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy     User?       @relation("EventUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  changes Change[]
-  items   EventItem[]
+  group        Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  changes      Change[]
+  items        EventItem[]
+  participants Participant[]
 
   @@index([groupId, startDate])
   @@map("events")
@@ -264,4 +268,26 @@ model EventItem {
 
   @@index([eventId])
   @@map("event_items")
+}
+
+// A User who goes to an Event: the list of Participants, a cut of the Group.
+// Born as a copy of the Group members when the Event is created; who joins the
+// Group later is not added. The id keeps the order of the list.
+model Participant {
+  id          Int      @id @default(autoincrement())
+  eventId     Int
+  userId      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("ParticipantCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("ParticipantUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation("ParticipantUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@map("participants")
 }

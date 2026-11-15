@@ -104,3 +104,10 @@ export async function createEvent(options: {
     },
   })
 }
+
+/** A Participant written straight to the table, to arrange state without the routes. */
+export async function createParticipant(options: { eventId: number; userId: number }) {
+  return testPrisma().participant.create({
+    data: { eventId: options.eventId, userId: options.userId },
+  })
+}

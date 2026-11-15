@@ -16,6 +16,10 @@ export class InProcessGroupDirectory extends GroupDirectory {
     return this.lookup.roleIn(groupId, userId)
   }
 
+  members(groupId: number): Promise<GroupMemberRole[]> {
+    return this.lookup.members(groupId)
+  }
+
   lockMembers(groupId: number): Promise<GroupMemberRole[]> {
     return this.lookup.lockMembers(groupId)
   }

@@ -1,5 +1,6 @@
 /** The role of a Group member, as the groups context reports it through the GroupDirectory. */
-export type GroupRole = 'OWNER' | 'VIEWER'
+export const GROUP_ROLES = ['OWNER', 'VIEWER'] as const
+export type GroupRole = (typeof GROUP_ROLES)[number]
 
 /** A Group member as the groups context reports them: who, and with which role. */
 export interface GroupMemberRole {

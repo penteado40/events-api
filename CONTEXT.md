@@ -164,7 +164,7 @@ Link pessoal pelo qual um Event guest entra na plataforma sem senha, já como o 
 _Avoid_: link mágico, convite, link público, Activation link (esse é a primeira entrada de um Pending user)
 
 **Membership** (vínculo):
-Os vínculos de quem está fazendo a requisição, vistos a partir dele: o papel no Group e os Events de que é Event manager ou Event guest. O Super admin não tem Membership.
+Os vínculos de quem está fazendo a requisição, vistos a partir dele: o papel no Group, por Event se é Participant dele, e os Events de que é Event manager ou Event guest. O Super admin não tem Membership.
 _Avoid_: viewer (Viewer é um papel), papel do usuário, acesso
 
 ## Emails

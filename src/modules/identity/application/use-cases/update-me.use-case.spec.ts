@@ -5,6 +5,7 @@ import { Email } from '../../../../shared/domain/email.vo.js'
 import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import { SCRIPT_STAMP, signedIn } from '../testing/identity-fixtures.js'
+import { FakeEventParticipations } from '../testing/fake-event-participations.js'
 import { FakeGroupMembers } from '../testing/fake-group-members.js'
 import { InMemoryUserRepository } from '../testing/in-memory-user.repository.js'
 import { UpdateMeUseCase } from './update-me.use-case.js'
@@ -20,7 +21,12 @@ describe('UpdateMeUseCase', () => {
   beforeEach(async () => {
     users = new InMemoryUserRepository()
     groupMembers = new FakeGroupMembers()
-    updateMe = new UpdateMeUseCase(users, groupMembers, new FixedClock(NOW))
+    updateMe = new UpdateMeUseCase(
+      users,
+      groupMembers,
+      new FakeEventParticipations(),
+      new FixedClock(NOW),
+    )
     ana = await signedIn(
       users,
       await users.create(
@@ -66,7 +72,9 @@ describe('UpdateMeUseCase', () => {
     expect(me).toEqual({
       user: ana,
       isSuperAdmin: false,
-      memberships: [{ groupId: 1, groupName: 'Vocal Livre', role: 'VIEWER' }],
+      memberships: [
+        { groupId: 1, groupName: 'Vocal Livre', role: 'VIEWER', participantEventIds: [] },
+      ],
     })
   })
 

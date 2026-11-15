@@ -88,7 +88,9 @@ describe('docs with DOCS_ENABLED=true', () => {
         expect(data.properties!['isSuperAdmin']).toMatchObject({ type: 'boolean', example: false })
         expect(data.properties!['memberships']).toMatchObject({
           type: 'array',
-          example: [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }],
+          example: [
+            { groupId: 1, groupName: 'Vocal Livre', role: 'OWNER', participantEventIds: [1, 3] },
+          ],
         })
       }
     })
@@ -109,6 +111,21 @@ describe('docs with DOCS_ENABLED=true', () => {
       expect(codesOf('403')).toEqual(['FORBIDDEN'])
       expect(codesOf('404')).toEqual(['NOT_FOUND'])
       expect(codesOf('409')).toEqual(['EVENT_ITEM_ORDER_INCOMPLETE', 'EVENT_CANCELLED'])
+    })
+
+    // Any Group member reads the list, so no 403: only the 404 that hides the Event.
+    it('documents the errors the list of Participants answers', () => {
+      const operation = (
+        doc.paths['/api/v1/events/{id}/participants'] as Record<string, OperationObject>
+      ).get!
+      const statuses = Object.keys(operation.responses)
+      const codesOf = (status: string) =>
+        Object.keys(
+          (operation.responses[status] as ResponseObject).content!['application/json']!.examples!,
+        )
+
+      expect(statuses).not.toContain('403')
+      expect(codesOf('404')).toEqual(['NOT_FOUND'])
     })
 
     it('documents the errors the publication of an Event item answers', () => {

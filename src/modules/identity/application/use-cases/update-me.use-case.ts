@@ -3,6 +3,7 @@ import { Phone } from '../../../../shared/domain/phone.vo.js'
 import type { User } from '../../domain/user.entity.js'
 import type { UserRepository } from '../../domain/user.repository.js'
 import { type Me, meOf } from '../me.js'
+import type { EventParticipations } from '../ports/event-participations.js'
 import type { GroupMembers } from '../ports/group-members.js'
 
 export interface UpdateMeInput {
@@ -18,6 +19,7 @@ export class UpdateMeUseCase {
   constructor(
     private readonly users: UserRepository,
     private readonly groupMembers: GroupMembers,
+    private readonly participations: EventParticipations,
     private readonly clock: Clock,
   ) {}
 
@@ -26,6 +28,6 @@ export class UpdateMeUseCase {
     const { actor } = input
     actor.editProfile({ name: input.name, phone }, { by: actor.id, at: this.clock.now() })
     await this.users.save(actor)
-    return meOf(actor, this.groupMembers)
+    return meOf(actor, this.groupMembers, this.participations)
   }
 }

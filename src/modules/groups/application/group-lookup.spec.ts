@@ -35,10 +35,13 @@ describe('GroupLookup', () => {
     members.add({ groupId: 2, userId: 6, role: 'OWNER' })
     members.add({ groupId: 1, userId: ANA.id, role: 'OWNER' })
 
-    expect(await lookup.lockMembers(1)).toEqual([
-      { userId: 5, role: 'VIEWER' },
-      { userId: ANA.id, role: 'OWNER' },
-    ])
+    for (const read of [lookup.members(1), lookup.lockMembers(1)]) {
+      expect(await read).toEqual([
+        { userId: 5, role: 'VIEWER' },
+        { userId: ANA.id, role: 'OWNER' },
+      ])
+    }
+    expect(await lookup.members(42)).toEqual([])
     expect(await lookup.lockMembers(42)).toEqual([])
   })
 

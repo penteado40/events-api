@@ -35,11 +35,19 @@ export const MeJsonSchema = UserJsonSchema.extend({
         groupId: z.number().int().meta({ example: 1 }),
         groupName: z.string().meta({ example: 'Vocal Livre' }),
         role: z.enum(GROUP_ROLES).meta({ example: 'OWNER' }),
+        participantEventIds: z.array(z.number().int()).meta({
+          description:
+            'Os Events do Group de que o User é Participant, na ordem em que foram criados. Quem entrou no Group depois de um Event ser criado não é Participant dele.',
+          example: [1, 3],
+        }),
       }),
     )
     .meta({
-      description: 'Os Groups de que o User é Group member e o papel em cada um.',
-      example: [{ groupId: 1, groupName: 'Vocal Livre', role: 'OWNER' }],
+      description:
+        'Os Groups de que o User é Group member, o papel em cada um e, por Event, se é Participant.',
+      example: [
+        { groupId: 1, groupName: 'Vocal Livre', role: 'OWNER', participantEventIds: [1, 3] },
+      ],
     }),
 })
 

@@ -5,6 +5,7 @@ import { AppConfig } from '../../shared/infrastructure/app-config.js'
 import { EmailsModule } from '../emails/index.js'
 import { ActivationLinkMailer } from './application/ports/activation-link-mailer.js'
 import { AuthVerifier } from './application/ports/auth-verifier.js'
+import { EventParticipations } from './application/ports/event-participations.js'
 import { GroupMembers } from './application/ports/group-members.js'
 import { IdentityWebhookVerifier } from './application/ports/identity-webhook-verifier.js'
 import { ActivationLinks } from './application/activation-links.js'
@@ -32,6 +33,8 @@ export interface IdentityModuleOptions {
    * port and the AppModule hands it the implementation (docs/arquitetura.md §5.5).
    */
   groupMembers: Type | DynamicModule
+  /** A module that provides and exports EventParticipations, for the same reason: events depends on identity. */
+  eventParticipations: Type | DynamicModule
 }
 
 /**
@@ -83,14 +86,19 @@ export interface IdentityModuleOptions {
     },
     {
       provide: GetMeUseCase,
-      useFactory: (groupMembers: GroupMembers) => new GetMeUseCase(groupMembers),
-      inject: [GroupMembers],
+      useFactory: (groupMembers: GroupMembers, participations: EventParticipations) =>
+        new GetMeUseCase(groupMembers, participations),
+      inject: [GroupMembers, EventParticipations],
     },
     {
       provide: UpdateMeUseCase,
-      useFactory: (users: UserRepository, groupMembers: GroupMembers, clock: Clock) =>
-        new UpdateMeUseCase(users, groupMembers, clock),
-      inject: [UserRepository, GroupMembers, Clock],
+      useFactory: (
+        users: UserRepository,
+        groupMembers: GroupMembers,
+        participations: EventParticipations,
+        clock: Clock,
+      ) => new UpdateMeUseCase(users, groupMembers, participations, clock),
+      inject: [UserRepository, GroupMembers, EventParticipations, Clock],
     },
     {
       provide: AuthenticateUseCase,
@@ -103,6 +111,9 @@ export interface IdentityModuleOptions {
 })
 export class IdentityModule {
   static forRoot(options: IdentityModuleOptions): DynamicModule {
-    return { module: IdentityModule, imports: [options.groupMembers] }
+    return {
+      module: IdentityModule,
+      imports: [options.groupMembers, options.eventParticipations],
+    }
   }
 }

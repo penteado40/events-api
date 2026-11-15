@@ -37,14 +37,14 @@ describe('RemoveParticipantUseCase', () => {
     participants = new InMemoryParticipantRepository(events)
     changes = new InMemoryChangeRepository()
     unitOfWork = new InMemoryUnitOfWork()
-    removeParticipant = new RemoveParticipantUseCase(
+    removeParticipant = new RemoveParticipantUseCase({
       directory,
       events,
       participants,
-      changes,
+      changeLog: changes,
       unitOfWork,
-      new FixedClock(NOW),
-    )
+      clock: new FixedClock(NOW),
+    })
     const event = await events.create(
       {
         groupId: 1,

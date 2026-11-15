@@ -3,7 +3,7 @@ import { ParticipantRepository } from '../../domain/participant.repository.js'
 import type { InMemoryEventRepository } from './in-memory-event.repository.js'
 
 export class InMemoryParticipantRepository extends ParticipantRepository {
-  private participants: { eventId: number; userId: number; stamp: Stamp }[] = []
+  private readonly participants: { eventId: number; userId: number; stamp: Stamp }[] = []
 
   /** The Events, to know the Group of each one. */
   constructor(private readonly events: InMemoryEventRepository) {
@@ -15,9 +15,8 @@ export class InMemoryParticipantRepository extends ParticipantRepository {
   }
 
   async remove(eventId: number, userId: number): Promise<void> {
-    this.participants = this.participants.filter(
-      (p) => p.eventId !== eventId || p.userId !== userId,
-    )
+    const index = this.participants.findIndex((p) => p.eventId === eventId && p.userId === userId)
+    if (index >= 0) this.participants.splice(index, 1)
   }
 
   async findByEvent(eventId: number): Promise<number[]> {

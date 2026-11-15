@@ -4,6 +4,7 @@ import { UnitOfWork } from '../../shared/application/unit-of-work.js'
 import { GroupLookup, GroupsQueriesModule } from '../groups/index.js'
 import { IdentityQueriesModule, UserLookup } from '../identity/index.js'
 import { EventItemWriteDeps } from './application/event-item-write-deps.js'
+import { ParticipantWriteDeps } from './application/participant-list-change.js'
 import { EventScheduleReader } from './application/ports/event-schedule-reader.js'
 import { GroupDirectory } from './application/ports/group-directory.js'
 import { UserDirectory } from './application/ports/user-directory.js'
@@ -96,7 +97,7 @@ import { EventsController } from './presentation/events.controller.js'
       inject: [GroupDirectory, EventRepository, ParticipantRepository, UserDirectory],
     },
     {
-      provide: AddParticipantUseCase,
+      provide: ParticipantWriteDeps,
       useFactory: (
         directory: GroupDirectory,
         events: EventRepository,
@@ -104,7 +105,14 @@ import { EventsController } from './presentation/events.controller.js'
         changeLog: ChangeRepository,
         unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new AddParticipantUseCase(directory, events, participants, changeLog, unitOfWork, clock),
+      ): ParticipantWriteDeps => ({
+        directory,
+        events,
+        participants,
+        changeLog,
+        unitOfWork,
+        clock,
+      }),
       inject: [
         GroupDirectory,
         EventRepository,
@@ -115,24 +123,14 @@ import { EventsController } from './presentation/events.controller.js'
       ],
     },
     {
+      provide: AddParticipantUseCase,
+      useFactory: (deps: ParticipantWriteDeps) => new AddParticipantUseCase(deps),
+      inject: [ParticipantWriteDeps],
+    },
+    {
       provide: RemoveParticipantUseCase,
-      useFactory: (
-        directory: GroupDirectory,
-        events: EventRepository,
-        participants: ParticipantRepository,
-        changeLog: ChangeRepository,
-        unitOfWork: UnitOfWork,
-        clock: Clock,
-      ) =>
-        new RemoveParticipantUseCase(directory, events, participants, changeLog, unitOfWork, clock),
-      inject: [
-        GroupDirectory,
-        EventRepository,
-        ParticipantRepository,
-        ChangeRepository,
-        UnitOfWork,
-        Clock,
-      ],
+      useFactory: (deps: ParticipantWriteDeps) => new RemoveParticipantUseCase(deps),
+      inject: [ParticipantWriteDeps],
     },
     {
       provide: EditEventUseCase,

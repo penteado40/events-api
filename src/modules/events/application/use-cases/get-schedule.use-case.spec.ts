@@ -180,7 +180,7 @@ describe('GetScheduleUseCase', () => {
         {
           eventItemId: 2,
           name: FieldName.create('Carro 1 - EC'),
-          value: { kind: 'PEOPLE', userIds },
+          value: { kind: 'PEOPLE', people: userIds.map((userId) => ({ userId })) },
           position: 1,
         },
         { by: null, at: AT },

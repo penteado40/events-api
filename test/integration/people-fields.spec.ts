@@ -82,12 +82,9 @@ describe('People Fields of an Event item', () => {
 
   const fieldsUrl = `/api/v1/events/:event/items/:item/fields`
   const url = () => fieldsUrl.replace(':event', String(eventId)).replace(':item', String(itemId))
-  const createCar = (userIds: unknown, name = 'Carro 1 - EC') =>
-    t
-      .http()
-      .post(url())
-      .auth(ownerToken, { type: 'bearer' })
-      .send({ kind: 'PEOPLE', name, userIds })
+  const users = (...ids: number[]) => ids.map((userId) => ({ userId }))
+  const createCar = (people: unknown, name = 'Carro 1 - EC') =>
+    t.http().post(url()).auth(ownerToken, { type: 'bearer' }).send({ kind: 'PEOPLE', name, people })
   const editField = (fieldId: number, body: object) =>
     t.http().patch(`${url()}/${fieldId}`).auth(ownerToken, { type: 'bearer' }).send(body)
   const itemsSeenBy = async (token: string) => {
@@ -107,7 +104,7 @@ describe('People Fields of an Event item', () => {
     })
 
   it('lets an Owner add a people Field, answering the people by name, in the order given', async () => {
-    const res = await createCar([jacqueId, matiasId])
+    const res = await createCar(users(jacqueId, matiasId))
 
     expect(res.status).toBe(201)
     expect(res.body.data).toEqual({
@@ -133,7 +130,7 @@ describe('People Fields of an Event item', () => {
   })
 
   it('refuses who is not a Participant with 409 NOT_A_PARTICIPANT, writing nothing', async () => {
-    const res = await createCar([matiasId, strangerId])
+    const res = await createCar(users(matiasId, strangerId))
 
     expect(res.status).toBe(409)
     expect(res.body).toEqual(errorOf('NOT_A_PARTICIPANT'))
@@ -142,7 +139,7 @@ describe('People Fields of an Event item', () => {
   })
 
   it('refuses a person twice, a text value and people in a text Field with 400', async () => {
-    expect((await createCar([matiasId, matiasId])).status).toBe(400)
+    expect((await createCar(users(matiasId, matiasId))).status).toBe(400)
     const mixed = await t
       .http()
       .post(url())
@@ -154,13 +151,13 @@ describe('People Fields of an Event item', () => {
       .post(url())
       .auth(ownerToken, { type: 'bearer' })
       .send({ kind: 'TEXT', name: 'Obs', value: '' })
-    expect((await editField(text.body.data.id, { userIds: [matiasId] })).status).toBe(400)
+    expect((await editField(text.body.data.id, { people: users(matiasId) })).status).toBe(400)
   })
 
   it('lets a Viewer out of the Audience chosen see the item while in the Field, and not once taken out', async () => {
     expect(await itemsSeenBy(matiasToken)).toEqual([])
 
-    const car = (await createCar([matiasId])).body.data.id as number
+    const car = (await createCar(users(matiasId))).body.data.id as number
 
     const seen = await itemsSeenBy(matiasToken)
     expect(seen.map((i: { id: number }) => i.id)).toEqual([itemId])
@@ -173,36 +170,36 @@ describe('People Fields of an Event item', () => {
       },
     ])
 
-    expect((await editField(car, { userIds: [jacqueId] })).status).toBe(200)
+    expect((await editField(car, { people: users(jacqueId) })).status).toBe(200)
 
     expect(await itemsSeenBy(matiasToken)).toEqual([])
   })
 
   it('edits the people and their order, recording each as a Change with the reach before and after', async () => {
-    const car = (await createCar([matiasId])).body.data.id as number
+    const car = (await createCar(users(matiasId))).body.data.id as number
 
-    const res = await editField(car, { userIds: [jacqueId, matiasId] })
+    const res = await editField(car, { people: users(jacqueId, matiasId) })
     expect(res.status).toBe(200)
     expect(res.body.data.value).toEqual([
       { userId: jacqueId, name: 'Jacque' },
       { userId: matiasId, name: 'Matias' },
     ])
-    expect((await editField(car, { userIds: [jacqueId] })).status).toBe(200)
+    expect((await editField(car, { people: users(jacqueId) })).status).toBe(200)
 
     expect(await fieldChanges()).toEqual([
       expect.objectContaining({
         before: null,
-        after: { fieldId: car, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [matiasId] },
+        after: { fieldId: car, kind: 'PEOPLE', name: 'Carro 1 - EC', value: users(matiasId) },
         reachBefore: [ownerId],
         reachAfter: [ownerId, matiasId],
       }),
       expect.objectContaining({
-        before: { fieldId: car, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [matiasId] },
+        before: { fieldId: car, kind: 'PEOPLE', name: 'Carro 1 - EC', value: users(matiasId) },
         after: {
           fieldId: car,
           kind: 'PEOPLE',
           name: 'Carro 1 - EC',
-          value: [jacqueId, matiasId],
+          value: users(jacqueId, matiasId),
         },
         reachBefore: [ownerId, matiasId],
         reachAfter: [ownerId, matiasId, jacqueId],
@@ -218,9 +215,9 @@ describe('People Fields of an Event item', () => {
   })
 
   it('refuses editing in who is not a Participant with 409 NOT_A_PARTICIPANT, keeping the Field', async () => {
-    const car = (await createCar([matiasId])).body.data.id as number
+    const car = (await createCar(users(matiasId))).body.data.id as number
 
-    const res = await editField(car, { userIds: [strangerId] })
+    const res = await editField(car, { people: users(strangerId) })
 
     expect(res.status).toBe(409)
     expect(res.body).toEqual(errorOf('NOT_A_PARTICIPANT'))
@@ -229,12 +226,157 @@ describe('People Fields of an Event item', () => {
   })
 
   it('takes the people out with their Field', async () => {
-    const car = (await createCar([matiasId])).body.data.id as number
+    const car = (await createCar(users(matiasId))).body.data.id as number
 
     const res = await t.http().delete(`${url()}/${car}`).auth(ownerToken, { type: 'bearer' })
 
     expect(res.status).toBe(204)
     expect(await testPrisma().eventItemFieldPerson.count()).toBe(0)
     expect(await itemsSeenBy(matiasToken)).toEqual([])
+  })
+
+  describe('a loose name', () => {
+    it('goes in among the Users, in one ordered list, read with the name only', async () => {
+      const res = await createCar([{ userId: matiasId }, { name: ' Seu Raimundo ' }], 'Motorista')
+
+      expect(res.status).toBe(201)
+      expect(res.body.data.value).toEqual([
+        { userId: matiasId, name: 'Matias' },
+        { name: 'Seu Raimundo' },
+      ])
+      const seen = await itemsSeenBy(matiasToken)
+      expect(seen[0].fields[0].value).toEqual([
+        { userId: matiasId, name: 'Matias' },
+        { name: 'Seu Raimundo' },
+      ])
+      const rows = await testPrisma().eventItemFieldPerson.findMany({
+        where: { fieldId: res.body.data.id },
+        orderBy: { position: 'asc' },
+      })
+      expect(rows).toMatchObject([
+        { userId: matiasId, name: null, position: 1 },
+        { userId: null, name: 'Seu Raimundo', position: 2, createdById: ownerId },
+      ])
+    })
+
+    it('never becomes a User nor reaches anyone', async () => {
+      const usersBefore = await testPrisma().user.count()
+
+      const car = (await createCar([{ name: 'Seu Raimundo' }])).body.data.id as number
+
+      expect(await testPrisma().user.count()).toBe(usersBefore)
+      expect(await itemsSeenBy(matiasToken)).toEqual([])
+      expect(await fieldChanges()).toEqual([
+        expect.objectContaining({
+          before: null,
+          after: {
+            fieldId: car,
+            kind: 'PEOPLE',
+            name: 'Carro 1 - EC',
+            value: [{ name: 'Seu Raimundo' }],
+          },
+          reachBefore: [ownerId],
+          reachAfter: [ownerId],
+        }),
+      ])
+    })
+
+    it('records putting, renaming and taking out a loose name as Changes, the reach as it was', async () => {
+      const car = (await createCar(users(matiasId))).body.data.id as number
+
+      const put = await editField(car, { people: [{ userId: matiasId }, { name: 'Raimundo' }] })
+      expect(put.status).toBe(200)
+      const renamed = await editField(car, {
+        people: [{ name: 'Seu Raimundo' }, { userId: matiasId }],
+      })
+      expect(renamed.body.data.value).toEqual([
+        { name: 'Seu Raimundo' },
+        { userId: matiasId, name: 'Matias' },
+      ])
+      expect((await editField(car, { people: users(matiasId) })).status).toBe(200)
+
+      const car1 = (value: unknown) => ({
+        fieldId: car,
+        kind: 'PEOPLE',
+        name: 'Carro 1 - EC',
+        value,
+      })
+      const [, ...edits] = await fieldChanges()
+      expect(edits).toEqual([
+        expect.objectContaining({
+          before: car1(users(matiasId)),
+          after: car1([{ userId: matiasId }, { name: 'Raimundo' }]),
+          reachBefore: [ownerId, matiasId],
+          reachAfter: [ownerId, matiasId],
+        }),
+        expect.objectContaining({
+          before: car1([{ userId: matiasId }, { name: 'Raimundo' }]),
+          after: car1([{ name: 'Seu Raimundo' }, { userId: matiasId }]),
+          reachBefore: [ownerId, matiasId],
+          reachAfter: [ownerId, matiasId],
+        }),
+        expect.objectContaining({
+          before: car1([{ name: 'Seu Raimundo' }, { userId: matiasId }]),
+          after: car1(users(matiasId)),
+          reachBefore: [ownerId, matiasId],
+          reachAfter: [ownerId, matiasId],
+        }),
+      ])
+      const rows = await testPrisma().eventItemFieldPerson.findMany({ where: { fieldId: car } })
+      expect(rows.map((p) => [p.userId, p.name, p.position])).toEqual([[matiasId, null, 1]])
+    })
+
+    it('refuses the same loose name twice, ignoring case, with 400, writing nothing', async () => {
+      const res = await createCar([{ name: 'Raimundo' }, { name: 'raimundo' }])
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+      expect(await testPrisma().eventItemField.count()).toBe(0)
+    })
+
+    it('keeps a loose name once per Field in the database, ignoring case', async () => {
+      const car = (await createCar([{ name: 'Raimundo' }])).body.data.id as number
+
+      await expect(
+        testPrisma().eventItemFieldPerson.create({
+          data: { fieldId: car, name: 'raimundo', position: 2 },
+        }),
+      ).rejects.toThrow()
+    })
+
+    it('renames a loose name by its case alone, as a Change', async () => {
+      const car = (await createCar([{ name: 'raimundo' }, { userId: matiasId }])).body.data
+        .id as number
+
+      const res = await editField(car, { people: [{ name: 'Raimundo' }, { userId: matiasId }] })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.value).toEqual([
+        { name: 'Raimundo' },
+        { userId: matiasId, name: 'Matias' },
+      ])
+      const rows = await testPrisma().eventItemFieldPerson.findMany({
+        where: { fieldId: car },
+        orderBy: { position: 'asc' },
+      })
+      expect(rows.map((p) => [p.userId, p.name, p.position])).toEqual([
+        [null, 'Raimundo', 1],
+        [matiasId, null, 2],
+      ])
+      const [, renamed] = await fieldChanges()
+      expect(renamed).toEqual(
+        expect.objectContaining({
+          before: expect.objectContaining({ value: [{ name: 'raimundo' }, { userId: matiasId }] }),
+          after: expect.objectContaining({ value: [{ name: 'Raimundo' }, { userId: matiasId }] }),
+        }),
+      )
+    })
+
+    it('refuses an empty loose name with 400, writing nothing', async () => {
+      expect((await createCar([{ name: '   ' }])).status).toBe(400)
+      expect((await createCar([{ name: '' }])).status).toBe(400)
+      expect((await createCar([{ userId: matiasId, name: 'Matias' }])).status).toBe(400)
+      expect(await testPrisma().eventItemField.count()).toBe(0)
+    })
   })
 })

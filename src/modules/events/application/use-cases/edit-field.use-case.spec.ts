@@ -19,7 +19,7 @@ describe('EditFieldUseCase', () => {
   })
 
   const edit = (
-    change: { name?: string; value?: string; userIds?: number[] },
+    change: { name?: string; value?: string; people?: ({ userId: number } | { name: string })[] },
     actor = ANA,
     id = fieldId,
   ) =>
@@ -108,7 +108,7 @@ describe('EditFieldUseCase', () => {
   })
 
   it('refuses people for a text Field with VALIDATION_ERROR', async () => {
-    await expect(edit({ userIds: [] })).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+    await expect(edit({ people: [] })).rejects.toEqual(new AppError('VALIDATION_ERROR'))
   })
 
   describe('a people Field', () => {
@@ -126,12 +126,14 @@ describe('EditFieldUseCase', () => {
       carId = await arranged.addPeopleField('Carro 1 - EC', [MATIAS_ID])
     })
 
-    const editCar = (userIds: number[]) => edit({ userIds }, ANA, carId)
+    const users = (...ids: number[]) => ids.map((userId) => ({ userId }))
+    const editCar = (people: ({ userId: number } | { name: string })[]) =>
+      edit({ people }, ANA, carId)
 
     it('puts people in, in the new order, and answers them by name', async () => {
-      const { field, shown } = await editCar([JACQUE_ID, MATIAS_ID])
+      const { field, shown } = await editCar(users(JACQUE_ID, MATIAS_ID))
 
-      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [JACQUE_ID, MATIAS_ID] })
+      expect(field.value).toEqual({ kind: 'PEOPLE', people: users(JACQUE_ID, MATIAS_ID) })
       expect(shown.value).toEqual([
         { userId: JACQUE_ID, name: 'Jacque' },
         { userId: MATIAS_ID, name: 'Matias' },
@@ -139,17 +141,17 @@ describe('EditFieldUseCase', () => {
     })
 
     it('records putting someone in as a Change with the reach before and after', async () => {
-      await editCar([MATIAS_ID, JACQUE_ID])
+      await editCar(users(MATIAS_ID, JACQUE_ID))
 
       expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
         expect.objectContaining({
           attribute: 'field',
-          before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [MATIAS_ID] },
+          before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: users(MATIAS_ID) },
           after: {
             fieldId: carId,
             kind: 'PEOPLE',
             name: 'Carro 1 - EC',
-            value: [MATIAS_ID, JACQUE_ID],
+            value: users(MATIAS_ID, JACQUE_ID),
           },
           reachBefore: [ANA.id, MATIAS_ID],
           reachAfter: [ANA.id, MATIAS_ID, JACQUE_ID],
@@ -179,31 +181,93 @@ describe('EditFieldUseCase', () => {
     })
 
     it('writes nothing for the same people in the same order', async () => {
-      await editCar([MATIAS_ID])
+      await editCar(users(MATIAS_ID))
 
       expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])
     })
 
     it('refuses who is not a Participant with NOT_A_PARTICIPANT, keeping the Field', async () => {
-      await expect(editCar([MATIAS_ID, 99])).rejects.toEqual(new AppError('NOT_A_PARTICIPANT'))
+      await expect(editCar(users(MATIAS_ID, 99))).rejects.toEqual(new AppError('NOT_A_PARTICIPANT'))
       expect(arranged.deps.fields.ofItem(arranged.itemId)[1]?.value).toEqual({
         kind: 'PEOPLE',
-        userIds: [MATIAS_ID],
+        people: users(MATIAS_ID),
       })
     })
 
     it('keeps who left the Event in the Field while someone else comes in', async () => {
       await arranged.deps.participants.remove(arranged.eventId, MATIAS_ID)
 
-      const { field } = await editCar([MATIAS_ID, JACQUE_ID])
+      const { field } = await editCar(users(MATIAS_ID, JACQUE_ID))
 
-      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [MATIAS_ID, JACQUE_ID] })
+      expect(field.value).toEqual({ kind: 'PEOPLE', people: users(MATIAS_ID, JACQUE_ID) })
     })
 
     it('refuses a text value for a people Field with VALIDATION_ERROR', async () => {
       await expect(edit({ value: 'Matias' }, ANA, carId)).rejects.toEqual(
         new AppError('VALIDATION_ERROR'),
       )
+    })
+
+    it('puts a loose name in, records it as a Change, and leaves the reach as the Users make it', async () => {
+      const { shown } = await editCar([{ userId: MATIAS_ID }, { name: 'Seu Raimundo' }])
+
+      expect(shown.value).toEqual([{ userId: MATIAS_ID, name: 'Matias' }, { name: 'Seu Raimundo' }])
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+        expect.objectContaining({
+          attribute: 'field',
+          before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: users(MATIAS_ID) },
+          after: {
+            fieldId: carId,
+            kind: 'PEOPLE',
+            name: 'Carro 1 - EC',
+            value: [{ userId: MATIAS_ID }, { name: 'Seu Raimundo' }],
+          },
+          reachBefore: [ANA.id, MATIAS_ID],
+          reachAfter: [ANA.id, MATIAS_ID],
+        }),
+      ])
+    })
+
+    it('renames and takes out a loose name, each a Change that leaves the reach as it is', async () => {
+      const loose = await arranged.addPeopleField('Motorista', ['Raimundo'])
+
+      await edit({ people: [{ name: 'Seu Raimundo' }] }, ANA, loose)
+      await edit({ people: [] }, ANA, loose)
+
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+        expect.objectContaining({
+          before: {
+            fieldId: loose,
+            kind: 'PEOPLE',
+            name: 'Motorista',
+            value: [{ name: 'Raimundo' }],
+          },
+          after: {
+            fieldId: loose,
+            kind: 'PEOPLE',
+            name: 'Motorista',
+            value: [{ name: 'Seu Raimundo' }],
+          },
+          reachBefore: [ANA.id, MATIAS_ID],
+          reachAfter: [ANA.id, MATIAS_ID],
+        }),
+        expect.objectContaining({
+          before: {
+            fieldId: loose,
+            kind: 'PEOPLE',
+            name: 'Motorista',
+            value: [{ name: 'Seu Raimundo' }],
+          },
+          after: { fieldId: loose, kind: 'PEOPLE', name: 'Motorista', value: [] },
+          reachBefore: [ANA.id, MATIAS_ID],
+          reachAfter: [ANA.id, MATIAS_ID],
+        }),
+      ])
+    })
+
+    it('refuses an empty loose name with VALIDATION_ERROR, keeping the Field', async () => {
+      await expect(editCar([{ name: '' }])).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])
     })
   })
 })

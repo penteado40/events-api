@@ -63,9 +63,15 @@ export async function arrangeFieldWrites(now: Date) {
     async addField(name: string, text = ''): Promise<number> {
       return addFieldOf(name, { kind: 'TEXT', text })
     },
-    /** A people Field already in the item, written before the spec. */
-    async addPeopleField(name: string, userIds: number[]): Promise<number> {
-      return addFieldOf(name, { kind: 'PEOPLE', userIds })
+    /**
+     * A people Field already in the item, written before the spec: User ids,
+     * or loose names.
+     */
+    async addPeopleField(name: string, people: (number | string)[]): Promise<number> {
+      return addFieldOf(name, {
+        kind: 'PEOPLE',
+        people: people.map((p) => (typeof p === 'number' ? { userId: p } : { name: p })),
+      })
     },
     /** Viewers who are Participants of the Event, by id. */
     async addParticipants(...userIds: number[]): Promise<void> {

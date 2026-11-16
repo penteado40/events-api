@@ -41,7 +41,7 @@ export class FieldsController {
   @HttpCode(201)
   @ApiOperation({
     summary: 'Criar um Field num Event item',
-    description: `O Super admin ou um Owner do Group do Event adiciona ao Event item um Field com nome e valor, por último entre os Fields dele. O tipo é escolhido ao criar e não muda: TEXT, com o texto em value (lista, telefone e link são texto), ou PEOPLE, com os User ids em userIds, na ordem. O valor pode ser vazio. Só Participants do Event entram num Field PEOPLE: quem não é, 409 NOT_A_PARTICIPANT. Quem está num Field PEOPLE está no Audience do item enquanto estiver nele, mesmo fora do Audience escolhido. A criação é uma Change do item, que quem ele alcança vê, com o alcance de antes e o de depois. Responde as pessoas com o nome, na ordem. ${ACCESS}`,
+    description: `O Super admin ou um Owner do Group do Event adiciona ao Event item um Field com nome e valor, por último entre os Fields dele. O tipo é escolhido ao criar e não muda: TEXT, com o texto em value (lista, telefone e link são texto), ou PEOPLE, com as pessoas em people, na ordem, numa só lista: { userId } para um User, { name } para um nome solto de quem não tem login (o motorista local). O valor pode ser vazio. Só Participants do Event entram como User num Field PEOPLE: quem não é, 409 NOT_A_PARTICIPANT; um nome solto vazio, 400. Quem está num Field PEOPLE como User está no Audience do item enquanto estiver nele, mesmo fora do Audience escolhido; um nome solto nunca vira User e não alcança ninguém. A criação é uma Change do item, que quem ele alcança vê, com o alcance de antes e o de depois. Responde as pessoas com o nome, na ordem; um nome solto só com o nome. ${ACCESS}`,
   })
   @ApiCreatedResponse({ type: FieldResponseDto })
   @ApiErrors(
@@ -92,7 +92,7 @@ export class FieldsController {
   @Patch(':fieldId')
   @ApiOperation({
     summary: 'Editar um Field de um Event item',
-    description: `O Super admin ou um Owner do Group do Event muda o nome ou o valor do Field: o texto de um TEXT (value) ou as pessoas de um PEOPLE (userIds, a lista inteira, na nova ordem); o que não é enviado não muda, e o tipo nunca muda: o valor do outro tipo, 400 VALIDATION_ERROR. Só Participants do Event entram: quem não é, 409 NOT_A_PARTICIPANT. Quem é posto no Field passa a ser alcançado pelo item; quem é tirado, se não está no Audience escolhido, deixa de ser. A edição é uma Change do item, com o antes e o depois e o alcance de antes e o de depois, que quem ele alcança vê; uma edição que não muda nada não grava nada. ${ACCESS}`,
+    description: `O Super admin ou um Owner do Group do Event muda o nome ou o valor do Field: o texto de um TEXT (value) ou as pessoas de um PEOPLE (people, a lista inteira de Users e nomes soltos, na nova ordem; renomear um nome solto é mandar a lista com o nome novo); o que não é enviado não muda, e o tipo nunca muda: o valor do outro tipo, 400 VALIDATION_ERROR. Só Participants do Event entram como User: quem não é, 409 NOT_A_PARTICIPANT. Quem é posto no Field passa a ser alcançado pelo item; quem é tirado, se não está no Audience escolhido, deixa de ser. Pôr, renomear e tirar um nome solto são Changes do item que não mudam o alcance. A edição é uma Change do item, com o antes e o depois e o alcance de antes e o de depois, que quem ele alcança vê; uma edição que não muda nada não grava nada. ${ACCESS}`,
   })
   @ApiOkResponse({ type: FieldResponseDto })
   @ApiErrors(

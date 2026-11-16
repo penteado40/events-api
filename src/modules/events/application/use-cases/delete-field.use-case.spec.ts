@@ -72,7 +72,7 @@ describe('DeleteFieldUseCase', () => {
 
     expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
       expect.objectContaining({
-        before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [4] },
+        before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [{ userId: 4 }] },
         after: null,
         reachBefore: [ANA.id, 4],
         reachAfter: [ANA.id],

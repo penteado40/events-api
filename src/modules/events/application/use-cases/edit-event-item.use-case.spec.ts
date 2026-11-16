@@ -289,7 +289,7 @@ describe('EditEventItemUseCase', () => {
         {
           eventItemId: itemId,
           name: FieldName.create('Carro 1 - EC'),
-          value: { kind: 'PEOPLE', userIds: [DUDA] },
+          value: { kind: 'PEOPLE', people: [{ userId: DUDA }] },
           position: 1,
         },
         { by: null, at: CREATED_AT },

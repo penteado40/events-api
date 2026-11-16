@@ -25,7 +25,10 @@ export interface CreateFieldInput {
   name: string
   /** The text of a TEXT Field; it may be empty. Only for TEXT. */
   value?: string
-  /** The people of a PEOPLE Field, Users and loose names, in order; it may be empty. Only for PEOPLE. */
+  /**
+   * The people of a PEOPLE Field, Users and loose names, in order; it may be
+   * empty. Only for PEOPLE.
+   */
   people?: PersonEntry[]
 }
 
@@ -38,10 +41,11 @@ export type CreateFieldOutput = FieldView
  * Matias, Jacque", in the order given). Only Participants of the Event go in
  * a people Field as Users (NOT_A_PARTICIPANT), read under the Event's lock;
  * whoever is in it is in the item's Audience while there. A loose name of
- * someone with no login goes in too, never becoming a User nor reaching anyone. Frozen in a Cancelled Event or
- * item (writeFieldsOf). The new Field is a Change of the item that the people
- * it reaches see, with the reach before and after (fieldChanges), written in
- * the same unit of work (amendment of ADR-0010).
+ * someone with no login goes in too, never becoming a User nor reaching
+ * anyone. Frozen in a Cancelled Event or item (writeFieldsOf). The new
+ * Field is a Change of the item that the people it reaches see, with the
+ * reach before and after (fieldChanges), written in the same unit of work
+ * (amendment of ADR-0010).
  */
 export class CreateFieldUseCase {
   constructor(private readonly deps: EventItemWriteDeps) {}

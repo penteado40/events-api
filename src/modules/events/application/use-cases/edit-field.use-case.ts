@@ -20,7 +20,10 @@ export interface EditFieldInput {
   name?: string
   /** The new text of a TEXT Field. */
   value?: string
-  /** The new people of a PEOPLE Field, Users and loose names, the whole list, in its new order. */
+  /**
+   * The new people of a PEOPLE Field, Users and loose names, the whole list,
+   * in its new order.
+   */
   people?: PersonEntry[]
 }
 
@@ -31,9 +34,10 @@ export type EditFieldOutput = FieldView
  * Field of an Event item: the text of a text Field, or the people of a
  * people Field, the whole list in its new order, Users and loose names (a
  * loose name renamed is the list with the new name): every User who comes in
- * must be a Participant of the Event (NOT_A_PARTICIPANT), and who was already in stays
- * even after leaving the Event; what is left out stays as it is, and a value of
- * the other type is VALIDATION_ERROR. A Field of another item is NOT_FOUND.
+ * must be a Participant of the Event (NOT_A_PARTICIPANT), and who was
+ * already in stays even after leaving the Event; what is left out stays as
+ * it is, and a value of the other type is VALIDATION_ERROR. A Field of
+ * another item is NOT_FOUND.
  * Frozen in a Cancelled Event or item (writeFieldsOf). The edit is a Change
  * of the item, with the Field and the reach before and after (fieldChanges):
  * whoever is put in a people Field starts being reached by the item, whoever

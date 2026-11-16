@@ -63,7 +63,10 @@ export async function arrangeFieldWrites(now: Date) {
     async addField(name: string, text = ''): Promise<number> {
       return addFieldOf(name, { kind: 'TEXT', text })
     },
-    /** A people Field already in the item, written before the spec: User ids, or loose names. */
+    /**
+     * A people Field already in the item, written before the spec: User ids,
+     * or loose names.
+     */
     async addPeopleField(name: string, people: (number | string)[]): Promise<number> {
       return addFieldOf(name, {
         kind: 'PEOPLE',

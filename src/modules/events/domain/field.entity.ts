@@ -90,7 +90,10 @@ export class FieldPeople {
   }
 }
 
-/** One entry as given, checked: a positive User id, or a loose name trimmed, from 1 to 100 characters. */
+/**
+ * One entry as given, checked: a positive User id, or a loose name trimmed,
+ * from 1 to 100 characters.
+ */
 function entryOf(entry: PersonEntry): PersonEntry {
   if (isUserEntry(entry)) {
     if (!Number.isInteger(entry.userId) || entry.userId <= 0) throw new AppError('VALIDATION_ERROR')

@@ -15,7 +15,10 @@ import { FieldRepository } from '../domain/field.repository.js'
 /** The order of the production of the Fields, for a stable read; the assembly sorts again. */
 export const FIELD_ORDER = [{ position: 'asc' }, { id: 'asc' }] as const
 
-/** What every read of a Field brings along: the people of a people Field, Users and loose names, in their order. */
+/**
+ * What every read of a Field brings along: the people of a people Field,
+ * Users and loose names, in their order.
+ */
 export const WITH_PEOPLE = {
   people: { select: { userId: true, name: true }, orderBy: { position: 'asc' } },
 } as const
@@ -128,7 +131,10 @@ function peopleOf(value: FieldValue): PersonEntry[] {
   return value.kind === 'PEOPLE' ? value.people : []
 }
 
-/** An entry in its columns: a User in userId, a loose name in name, the other one null. */
+/**
+ * An entry in its columns: a User in userId, a loose name in name, the other
+ * one null.
+ */
 function entryColumns(entry: PersonEntry) {
   return isUserEntry(entry)
     ? { userId: entry.userId, name: null }

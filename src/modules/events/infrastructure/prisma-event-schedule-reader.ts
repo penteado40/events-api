@@ -6,7 +6,7 @@ import {
 } from '../application/ports/event-schedule-reader.js'
 import { snapshotOf, WITH_AUDIENCE } from './prisma-event-item.repository.js'
 import { cancelledFromOf } from './prisma-event.repository.js'
-import { FIELD_ORDER, fieldSnapshotOf } from './prisma-field.repository.js'
+import { FIELD_ORDER, fieldSnapshotOf, WITH_PEOPLE } from './prisma-field.repository.js'
 
 /** Loads one Event with all its Event items, their Audiences and Fields, and its Participants in one query, as plain data (ADR-0019). */
 @Injectable()
@@ -28,7 +28,10 @@ export class PrismaEventScheduleReader extends EventScheduleReader {
         // In the order of the production; the assembly sorts again, so this is only for a stable read.
         items: {
           orderBy: [{ position: 'asc' }, { id: 'asc' }],
-          include: { ...WITH_AUDIENCE, fields: { orderBy: [...FIELD_ORDER] } },
+          include: {
+            ...WITH_AUDIENCE,
+            fields: { orderBy: [...FIELD_ORDER], include: WITH_PEOPLE },
+          },
         },
       },
     })

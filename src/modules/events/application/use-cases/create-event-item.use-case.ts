@@ -69,7 +69,8 @@ export class CreateEventItemUseCase {
       const item = await this.deps.items.create({ ...props, state, position }, stamp)
       await this.deps.changeLog.create(
         event.id,
-        eventItemChanges(null, item.snapshot(), reach),
+        // A new item has no Fields yet.
+        eventItemChanges(null, item.snapshot(), reach, []),
         stamp,
       )
       return itemViewOf(item, event.period.timezone.value)

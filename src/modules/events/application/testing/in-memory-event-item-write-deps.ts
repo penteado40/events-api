@@ -2,6 +2,7 @@ import { FixedClock } from '../../../../shared/application/testing/fixed-clock.j
 import { InMemoryUnitOfWork } from '../../../../shared/application/testing/in-memory-unit-of-work.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { FakeGroupDirectory } from './fake-group-directory.js'
+import { FakeUserDirectory } from './fake-user-directory.js'
 import { InMemoryChangeRepository } from './in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from './in-memory-event-item.repository.js'
 import { InMemoryEventRepository } from './in-memory-event.repository.js'
@@ -18,6 +19,7 @@ export function inMemoryEventItemWriteDeps(now: Date) {
     items,
     participants: new InMemoryParticipantRepository(events),
     fields: new InMemoryFieldRepository(items),
+    users: new FakeUserDirectory(),
     changeLog: new InMemoryChangeRepository(),
     unitOfWork: new InMemoryUnitOfWork(),
     clock: new FixedClock(now),

@@ -21,17 +21,21 @@ const PRODUCTION_ONLY_ATTRIBUTES: ReadonlySet<string> = new Set(['audience'])
  * away, never by a value struck through. The Audience stays out of the
  * Change of a creation or a removal, which the people it reaches see. The
  * reach of before and of after come from the reach rule
- * (eventItemReach) over the Event, Group members and Participants given.
+ * (eventItemReach) over the Event, Group members and Participants given,
+ * and the people in the item's Fields, which an item write does not change.
  * Who made them and when is the Stamp of the change, written with them.
  */
 export function eventItemChanges(
   before: EventItemSnapshot | null,
   after: EventItemSnapshot | null,
   reach: ItemReachContext,
+  /** The User ids in the people Fields of the item (peopleInFields); none for a new item. */
+  peopleInFields: readonly number[],
 ): NewChange[] {
   const item = after ?? before
   if (item === null) return []
-  const reachOf = (snapshot: EventItemSnapshot | null): number[] => eventItemReach(snapshot, reach)
+  const reachOf = (snapshot: EventItemSnapshot | null): number[] =>
+    eventItemReach(snapshot, reach, peopleInFields)
   const change = (attribute: string, from: ChangeValue, to: ChangeValue): NewChange => ({
     eventItemId: item.id,
     attribute,

@@ -62,4 +62,21 @@ describe('DeleteFieldUseCase', () => {
     await expect(remove(SUPER_ADMIN)).rejects.toEqual(new AppError('EVENT_ITEM_CANCELLED'))
     expect(arranged.deps.fields.ofItem(arranged.itemId)).toHaveLength(1)
   })
+
+  it('records the removal of a people Field with a reach after that leaves out who was only there', async () => {
+    await arranged.addParticipants(4)
+    await arranged.chooseAudience()
+    const carId = await arranged.addPeopleField('Carro 1 - EC', [4])
+
+    await remove(ANA, carId)
+
+    expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+      expect.objectContaining({
+        before: { fieldId: carId, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [4] },
+        after: null,
+        reachBefore: [ANA.id, 4],
+        reachAfter: [ANA.id],
+      }),
+    ])
+  })
 })

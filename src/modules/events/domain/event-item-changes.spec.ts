@@ -30,7 +30,7 @@ const PEOPLE: ItemReachContext = {
 
 describe('eventItemChanges', () => {
   it('gives one Change for the time that changed, with its before, after and the reach of the reach rule', () => {
-    const changes = eventItemChanges(SOUNDCHECK, { ...SOUNDCHECK, time: '16:00' }, PEOPLE)
+    const changes = eventItemChanges(SOUNDCHECK, { ...SOUNDCHECK, time: '16:00' }, PEOPLE, [])
 
     expect(changes).toEqual([
       {
@@ -51,7 +51,7 @@ describe('eventItemChanges', () => {
       place: { name: 'Teatro Amazonas', address: null, timezone: null },
     }
 
-    expect(eventItemChanges(null, created, PEOPLE)).toEqual([
+    expect(eventItemChanges(null, created, PEOPLE, [])).toEqual([
       {
         eventItemId: 9,
         attribute: 'item',
@@ -71,7 +71,7 @@ describe('eventItemChanges', () => {
   })
 
   it('gives one Change of the item on its removal, reaching no one after it', () => {
-    expect(eventItemChanges(SOUNDCHECK, null, PEOPLE)).toEqual([
+    expect(eventItemChanges(SOUNDCHECK, null, PEOPLE, [])).toEqual([
       expect.objectContaining({
         eventItemId: 9,
         attribute: 'item',
@@ -90,7 +90,7 @@ describe('eventItemChanges', () => {
   })
 
   it('gives no Change when nothing changed', () => {
-    expect(eventItemChanges(SOUNDCHECK, { ...SOUNDCHECK }, PEOPLE)).toEqual([])
+    expect(eventItemChanges(SOUNDCHECK, { ...SOUNDCHECK }, PEOPLE, [])).toEqual([])
   })
 
   it('gives one Change per attribute when several change at once, in a fixed order', () => {
@@ -102,7 +102,7 @@ describe('eventItemChanges', () => {
       date: '2026-11-15',
     }
 
-    const changes = eventItemChanges(SOUNDCHECK, after, PEOPLE)
+    const changes = eventItemChanges(SOUNDCHECK, after, PEOPLE, [])
 
     expect(changes.map((c) => [c.attribute, c.before, c.after])).toEqual([
       ['name', 'Passagem de som', 'Passagem de som (banda)'],
@@ -115,7 +115,7 @@ describe('eventItemChanges', () => {
   it('gives one Change of the state when a Draft is published, reaching the Owners before and the Participants too after', () => {
     const draft: EventItemSnapshot = { ...SOUNDCHECK, state: 'DRAFT' }
 
-    expect(eventItemChanges(draft, SOUNDCHECK, PEOPLE)).toEqual([
+    expect(eventItemChanges(draft, SOUNDCHECK, PEOPLE, [])).toEqual([
       {
         eventItemId: 9,
         attribute: 'state',
@@ -135,7 +135,7 @@ describe('eventItemChanges', () => {
       audience: { kind: 'SELECTED', userIds: [2] },
     }
 
-    expect(eventItemChanges(SOUNDCHECK, chosen, PEOPLE)).toEqual([
+    expect(eventItemChanges(SOUNDCHECK, chosen, PEOPLE, [])).toEqual([
       {
         eventItemId: 9,
         attribute: 'audience',
@@ -155,12 +155,17 @@ describe('eventItemChanges', () => {
     }
 
     expect(
-      eventItemChanges(chosen, { ...chosen, audience: { kind: 'SELECTED', userIds: [3] } }, PEOPLE),
+      eventItemChanges(
+        chosen,
+        { ...chosen, audience: { kind: 'SELECTED', userIds: [3] } },
+        PEOPLE,
+        [],
+      ),
     ).toEqual([])
   })
 
   it('keeps the Audience out of the Change of a creation, which everyone it reaches sees', () => {
-    const [created] = eventItemChanges(null, SOUNDCHECK, PEOPLE)
+    const [created] = eventItemChanges(null, SOUNDCHECK, PEOPLE, [])
 
     expect(created?.after).not.toHaveProperty('audience')
   })
@@ -173,22 +178,30 @@ describe('eventItemChanges', () => {
       before,
       { ...before, place: { ...place, timezone: 'America/Manaus' } },
       PEOPLE,
+      [],
     )
 
     expect(changes.map((c) => c.attribute)).toEqual(['place'])
-    expect(eventItemChanges(before, { ...before, place: { ...place } }, PEOPLE)).toEqual([])
+    expect(eventItemChanges(before, { ...before, place: { ...place } }, PEOPLE, [])).toEqual([])
   })
 
   it('reaches only the Owners in an Event in Draft, and no Viewer who is not a Participant', () => {
     const rename = { ...SOUNDCHECK, name: 'Som' }
 
     expect(
-      eventItemChanges(SOUNDCHECK, rename, {
-        ...PEOPLE,
-        event: { state: 'DRAFT', cancelledFrom: null },
-      })[0],
+      eventItemChanges(
+        SOUNDCHECK,
+        rename,
+        {
+          ...PEOPLE,
+          event: { state: 'DRAFT', cancelledFrom: null },
+        },
+        [],
+      )[0],
     ).toMatchObject({ reachBefore: [2, 7], reachAfter: [2, 7] })
-    expect(eventItemChanges(SOUNDCHECK, rename, { ...PEOPLE, participants: [] })[0]).toMatchObject({
+    expect(
+      eventItemChanges(SOUNDCHECK, rename, { ...PEOPLE, participants: [] }, [])[0],
+    ).toMatchObject({
       reachBefore: [2, 7],
       reachAfter: [2, 7],
     })

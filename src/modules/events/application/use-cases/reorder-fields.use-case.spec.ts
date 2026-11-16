@@ -32,7 +32,7 @@ describe('ReorderFieldsUseCase', () => {
   it('lets an Owner put the Fields of an item in a new order, and answers them in it', async () => {
     const fields = await reorder([contact, flight, notes])
 
-    expect(fields.map((f) => f.name)).toEqual(['Contato', 'Voo', 'Obs'])
+    expect(fields.map((f) => f.field.name)).toEqual(['Contato', 'Voo', 'Obs'])
     expect(names()).toEqual(['Contato', 'Voo', 'Obs'])
   })
 

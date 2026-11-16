@@ -1,14 +1,17 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { ItemReachContext } from '../domain/event-item-reach.js'
 import type { EventItem } from '../domain/event-item.entity.js'
+import type { Field } from '../domain/field.entity.js'
 import type { ActingUser } from './actor.js'
 import { requireEventsEditor } from './event-access.js'
 import { lockEventItem } from './event-item-lock.js'
 import type { EventItemWriteDeps } from './event-item-write-deps.js'
 
-/** What a write of a Field works on: its Event item, held, and what the reach rule weighs. */
+/** What a write of a Field works on: its Event item, held, its Fields as they stand and what the reach rule weighs. */
 export interface FieldWriteContext {
   item: EventItem
+  /** The Fields of the item, in the order of the production, read under its lock. */
+  fields: Field[]
   reach: ItemReachContext
 }
 
@@ -32,13 +35,13 @@ export async function writeFieldsOf<T>(
   await requireEventsEditor(actor, event.groupId, deps.directory)
 
   return deps.unitOfWork.run(async () => {
-    const { item, reach } = await lockEventItem(deps, {
+    const { item, fields, reach } = await lockEventItem(deps, {
       groupId: event.groupId,
       eventId: event.id,
       itemId: target.itemId,
     })
     // A cancel of the item that came first freezes its Fields: EVENT_ITEM_CANCELLED.
     item.assertWritable()
-    return write({ item, reach })
+    return write({ item, fields, reach })
   })
 }

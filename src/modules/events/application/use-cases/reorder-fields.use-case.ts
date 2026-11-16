@@ -1,8 +1,8 @@
 import { byOrderOfTheProduction } from '../../domain/event-item-order.js'
 import { reorderFields } from '../../domain/field-changes.js'
-import type { Field } from '../../domain/field.entity.js'
 import type { ActingUser } from '../actor.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
+import { type FieldView, viewFields } from '../field-view.js'
 import { writeFieldsOf } from '../field-write.js'
 
 export interface ReorderFieldsInput {
@@ -14,7 +14,7 @@ export interface ReorderFieldsInput {
 }
 
 /** The Fields of the item, in the new order. */
-export type ReorderFieldsOutput = Field[]
+export type ReorderFieldsOutput = FieldView[]
 
 /**
  * An Owner of its Group, or the Super admin, puts the Fields of an Event item
@@ -29,25 +29,30 @@ export class ReorderFieldsUseCase {
 
   async execute(input: ReorderFieldsInput): Promise<ReorderFieldsOutput> {
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
-    return writeFieldsOf(this.deps, input.actor, input, async ({ item, reach }) => {
-      const fields = await this.deps.fields.findAllInItem(item.id)
-      const { positions, changes } = reorderFields(
-        fields.map((field) => field.snapshot()),
-        input.fieldIds,
-        item.snapshot(),
-        reach,
-      )
-      if (changes.length > 0) {
-        const byId = new Map(fields.map((field) => [field.id, field]))
-        for (const { id, position } of positions) {
-          const field = byId.get(id)
-          if (!field) continue
-          field.moveTo(position, stamp)
-          await this.deps.fields.save(field)
+    const fields = await writeFieldsOf(
+      this.deps,
+      input.actor,
+      input,
+      async ({ item, fields, reach }) => {
+        const { positions, changes } = reorderFields(
+          fields.map((field) => field.snapshot()),
+          input.fieldIds,
+          item.snapshot(),
+          reach,
+        )
+        if (changes.length > 0) {
+          const byId = new Map(fields.map((field) => [field.id, field]))
+          for (const { id, position } of positions) {
+            const field = byId.get(id)
+            if (!field) continue
+            field.moveTo(position, stamp)
+            await this.deps.fields.save(field)
+          }
+          await this.deps.changeLog.create(item.eventId, changes, stamp)
         }
-        await this.deps.changeLog.create(item.eventId, changes, stamp)
-      }
-      return [...fields].sort(byOrderOfTheProduction)
-    })
+        return [...fields].sort(byOrderOfTheProduction)
+      },
+    )
+    return viewFields(fields, this.deps.users)
   }
 }

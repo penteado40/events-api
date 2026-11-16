@@ -7,6 +7,7 @@ import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
+import { FieldName } from '../../domain/field.entity.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
@@ -24,13 +25,14 @@ describe('EditEventItemUseCase', () => {
   let items: InMemoryEventItemRepository
   let changeLog: InMemoryChangeRepository
   let participants: InMemoryParticipantRepository
+  let fields: ReturnType<typeof inMemoryEventItemWriteDeps>['fields']
   let editItem: EditEventItemUseCase
   let eventId: number
   let itemId: number
 
   beforeEach(async () => {
     const deps = inMemoryEventItemWriteDeps(NOW)
-    ;({ directory, events, items, changeLog, participants } = deps)
+    ;({ directory, events, items, changeLog, participants, fields } = deps)
     directory.addGroup(1)
     editItem = new EditEventItemUseCase(deps)
     const event = await events.create(
@@ -280,6 +282,33 @@ describe('EditEventItemUseCase', () => {
         reachBefore: [ANA.id, BIA],
         reachAfter: [ANA.id, BIA, DUDA],
       })
+    })
+
+    it('keeps whoever is in a people Field of the item in the reach of an Audience that leaves them out', async () => {
+      await fields.create(
+        {
+          eventItemId: itemId,
+          name: FieldName.create('Carro 1 - EC'),
+          value: { kind: 'PEOPLE', userIds: [DUDA] },
+          position: 1,
+        },
+        { by: null, at: CREATED_AT },
+      )
+
+      await editItem.execute({
+        actor: ANA,
+        eventId,
+        itemId,
+        audience: { kind: 'SELECTED', userIds: [BIA] },
+      })
+
+      expect(changeLog.ofEvent(eventId)).toEqual([
+        expect.objectContaining({
+          attribute: 'audience',
+          reachBefore: [ANA.id, BIA, DUDA],
+          reachAfter: [ANA.id, BIA, DUDA],
+        }),
+      ])
     })
 
     it('refuses choosing who is not a Participant with NOT_A_PARTICIPANT, writing nothing', async () => {

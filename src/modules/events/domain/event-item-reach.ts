@@ -47,30 +47,39 @@ export function standingOf(actor: EventActor, userId: number, participant: boole
  * people on its list, which holds only Participants (and, later, Event
  * guests): every path that takes someone off the Participants also takes
  * them off the Audiences chosen (EventItemRepository.removeFromAudiences),
- * so the list is not checked against the Participants here. Pure: it never reads, so the reach of before and of
- * after come from it alike.
+ * so the list is not checked against the Participants here. Whoever is in
+ * a people Field of the item is in its Audience too, while in the Field and
+ * a Participant: who left the Event stays in the Field, but out of the
+ * Event, and does not count (CONTEXT.md, Audience). Pure: it never reads,
+ * so the reach of before and of after come from it alike.
  */
 export function eventItemReaches(
   item: EventItemSnapshot,
   event: ReachEvent,
   standing: EventStanding,
+  /** The User ids in the people Fields of the item (peopleInFields). */
+  peopleInFields: readonly number[],
 ): boolean {
   if (standing.production) return true
   if (!isReleased(event) || item.state === 'DRAFT') return false
-  return item.audience.kind === 'ALL'
-    ? standing.participant
-    : item.audience.userIds.includes(standing.userId)
+  if (item.audience.kind === 'ALL') return standing.participant
+  return (
+    item.audience.userIds.includes(standing.userId) ||
+    (standing.participant && peopleInFields.includes(standing.userId))
+  )
 }
 
 /**
  * Who an Event item reaches: the ids of the Group members it reaches, in the
- * order of the members given, by eventItemReaches. An Owner is the production
+ * order of the members given, by eventItemReaches, its people Fields weighed. An Owner is the production
  * whether or not a Participant. An item that does not exist (not yet created,
  * or already deleted) reaches no one.
  */
 export function eventItemReach(
   item: EventItemSnapshot | null,
   context: ItemReachContext,
+  /** The User ids in the people Fields of the item (peopleInFields). */
+  peopleInFields: readonly number[],
 ): number[] {
   if (item === null) return []
   return context.members
@@ -83,6 +92,7 @@ export function eventItemReach(
           m.userId,
           context.participants.includes(m.userId),
         ),
+        peopleInFields,
       ),
     )
     .map((m) => m.userId)

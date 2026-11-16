@@ -6,6 +6,7 @@ import {
   type EventItemAudienceValues,
 } from '../../domain/event-item-audience.vo.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
+import { peopleInFields } from '../../domain/field.entity.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
 import type { ActingUser } from '../actor.js'
@@ -69,7 +70,7 @@ export class EditEventItemUseCase {
 
     return this.deps.unitOfWork.run(async () => {
       // Under the locks, the edit starts from what the last write left (lockEventItem).
-      const { item, reach } = await lockEventItem(this.deps, {
+      const { item, fields, reach } = await lockEventItem(this.deps, {
         groupId,
         eventId: event.id,
         itemId: input.itemId,
@@ -78,7 +79,7 @@ export class EditEventItemUseCase {
       edit.audience?.assertWithin(reach.participants)
       const before = item.snapshot()
       item.edit(edit, stamp)
-      const changes = eventItemChanges(before, item.snapshot(), reach)
+      const changes = eventItemChanges(before, item.snapshot(), reach, peopleInFields(fields))
       if (changes.length > 0) {
         await this.deps.items.save(item)
         await this.deps.changeLog.create(event.id, changes, stamp)

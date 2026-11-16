@@ -5,9 +5,9 @@ import { assembleSchedule, type Schedule } from '../../domain/schedule.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsReader } from '../event-access.js'
 import type { EventScheduleReader } from '../ports/event-schedule-reader.js'
-import { namesOf } from '../field-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
 import type { UserDirectory } from '../ports/user-directory.js'
+import { namesOf } from '../user-names.js'
 
 export interface GetScheduleInput {
   actor: ActingUser

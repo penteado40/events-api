@@ -192,6 +192,14 @@ describe('EditFieldUseCase', () => {
       })
     })
 
+    it('keeps who left the Event in the Field while someone else comes in', async () => {
+      await arranged.deps.participants.remove(arranged.eventId, MATIAS_ID)
+
+      const { field } = await editCar([MATIAS_ID, JACQUE_ID])
+
+      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [MATIAS_ID, JACQUE_ID] })
+    })
+
     it('refuses a text value for a people Field with VALIDATION_ERROR', async () => {
       await expect(edit({ value: 'Matias' }, ANA, carId)).rejects.toEqual(
         new AppError('VALIDATION_ERROR'),

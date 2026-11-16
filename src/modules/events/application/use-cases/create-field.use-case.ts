@@ -54,7 +54,7 @@ export class CreateFieldUseCase {
       input,
       async ({ item, fields, reach }) => {
         // The Participants are held with the Event: one taken off meanwhile does not go in.
-        people?.assertWithin(reach.participants)
+        people?.assertWithin(reach.participants, [])
         const field = await this.deps.fields.create(
           { eventItemId: item.id, name, value, position: positionAfter(fields) },
           stamp,

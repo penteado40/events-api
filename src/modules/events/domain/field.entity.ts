@@ -59,9 +59,15 @@ export class FieldPeople {
     return new FieldPeople([...userIds])
   }
 
-  /** Refuses anyone who is not a Participant of the Event (NOT_A_PARTICIPANT). */
-  assertWithin(participants: readonly number[]): void {
-    if (this.userIds.some((id) => !participants.includes(id))) {
+  /**
+   * Refuses anyone put in who is not a Participant of the Event
+   * (NOT_A_PARTICIPANT). Who was already in the Field stays even after
+   * leaving the Event, until the production reorganizes it (CONTEXT.md,
+   * Participant), so only the people coming in are checked.
+   */
+  assertWithin(participants: readonly number[], alreadyIn: readonly number[]): void {
+    const comingIn = this.userIds.filter((id) => !alreadyIn.includes(id))
+    if (comingIn.some((id) => !participants.includes(id))) {
       throw new AppError('NOT_A_PARTICIPANT')
     }
   }

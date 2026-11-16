@@ -23,8 +23,9 @@ export type EditFieldOutput = FieldView
 /**
  * An Owner of its Group, or the Super admin, edits the name or the value of a
  * Field of an Event item: the text of a text Field, or the people of a
- * people Field, the whole list in its new order, only Participants of the
- * Event (NOT_A_PARTICIPANT); what is left out stays as it is, and a value of
+ * people Field, the whole list in its new order: whoever comes in must be a
+ * Participant of the Event (NOT_A_PARTICIPANT), and who was already in stays
+ * even after leaving the Event; what is left out stays as it is, and a value of
  * the other type is VALIDATION_ERROR. A Field of another item is NOT_FOUND.
  * Frozen in a Cancelled Event or item (writeFieldsOf). The edit is a Change
  * of the item, with the Field and the reach before and after (fieldChanges):
@@ -51,7 +52,9 @@ export class EditFieldUseCase {
         if (!field) throw new AppError('NOT_FOUND')
         const before = field.snapshot()
         // Only of a people Field: people for a text Field are refused by Field.edit, as VALIDATION_ERROR.
-        if (field.value.kind === 'PEOPLE') edit.people?.assertWithin(reach.participants)
+        if (field.value.kind === 'PEOPLE') {
+          edit.people?.assertWithin(reach.participants, field.value.userIds)
+        }
         // An edit that changes nothing writes nothing: no row, no Change.
         if (!field.edit(edit, stamp)) return field
         await this.deps.fields.save(field)

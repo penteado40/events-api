@@ -10,9 +10,9 @@ import type { FieldRepository } from '../../domain/field.repository.js'
 import { assembleSchedule, type Schedule } from '../../domain/schedule.js'
 import type { ActingUser } from '../actor.js'
 import { requireEventsEditor } from '../event-access.js'
-import { namesOf } from '../field-view.js'
 import type { GroupDirectory } from '../ports/group-directory.js'
 import type { UserDirectory } from '../ports/user-directory.js'
+import { namesOf } from '../user-names.js'
 
 export interface ReorderEventItemsInput {
   actor: ActingUser

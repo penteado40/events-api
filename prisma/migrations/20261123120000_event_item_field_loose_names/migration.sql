@@ -1,6 +1,6 @@
 -- Loose names in the people Fields (PROJ-203): an entry is a User (userId) or
 -- the loose name of someone with no login (name), exactly one of the two. The
--- entries there are are all Users and stay as they are.
+-- entries already there are all Users and stay as they are.
 -- AlterTable
 ALTER TABLE "event_item_field_people" ALTER COLUMN "userId" DROP NOT NULL,
 ADD COLUMN "name" TEXT;

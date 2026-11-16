@@ -26,6 +26,7 @@ export const EventItemPresenter = {
         date: day.date,
         items: day.items.map(scheduleItemJson),
       })),
+      summary: schedule.summary.map(scheduleItemJson),
     }
   },
 }

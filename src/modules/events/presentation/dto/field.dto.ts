@@ -25,6 +25,12 @@ const fieldTextSchema = z.string().max(FIELD_TEXT_MAX_LENGTH).meta({
   example: 'despachar som',
 })
 
+const fieldHighlightSchema = z.boolean().meta({
+  description:
+    'Se o Field está em Highlight: o Highlight o leva para o Summary do Event, independente da hora do item.',
+  example: true,
+})
+
 const personEntrySchema = z.union([
   z.strictObject({ userId: z.number().int().positive().meta({ example: 2 }) }),
   z.strictObject({
@@ -75,6 +81,7 @@ export const fieldJsonSchema = z.object({
     example: 'TEXT',
   }),
   name: z.string().meta({ example: 'Obs' }),
+  highlight: fieldHighlightSchema,
   value: z.union([z.string(), z.array(fieldPersonJsonSchema)]).meta({
     description:
       'O valor do Field: num TEXT, o texto como escrito; num PEOPLE, as pessoas na ordem, um User com userId e nome, um nome solto só com o nome.',
@@ -119,6 +126,7 @@ export class EditFieldDto extends createZodDto(
       name: fieldNameSchema.optional(),
       value: fieldTextSchema.optional(),
       people: fieldPeopleSchema.optional(),
+      highlight: fieldHighlightSchema.optional(),
     })
     .refine((body) => Object.keys(body).length > 0, { message: 'Envie ao menos um campo.' })
     .refine((body) => body.value === undefined || body.people === undefined, {

@@ -27,7 +27,9 @@ export interface NewChange {
    * userIds }`; only the production sees it), `field` for a Field created,
    * edited or removed (before and after `{ fieldId, kind, name, value }`, null
    * where it does not exist), `fieldOrder` for a new order of its Fields (the
-   * ids before and after; only the production sees it), or `item` for its
+   * ids before and after; only the production sees it), `fieldHighlight` for a
+   * Field put in Highlight or taken out of it (before and after `{ fieldId,
+   * highlight }`; only the production sees it), or `item` for its
    * creation (before null) and its removal (after null).
    */
   attribute: string

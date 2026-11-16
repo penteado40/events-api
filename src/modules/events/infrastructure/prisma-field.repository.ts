@@ -56,6 +56,7 @@ export class PrismaFieldRepository extends FieldRepository {
         eventItemId: props.eventItemId,
         name: props.name.value,
         position: props.position,
+        highlight: props.highlight ?? false,
         ...valueColumns(props.value),
         people: {
           create: peopleOf(props.value).map((entry, i) => ({
@@ -78,6 +79,7 @@ export class PrismaFieldRepository extends FieldRepository {
       data: {
         name: field.name,
         position: field.position,
+        highlight: field.highlight,
         ...valueColumns(field.value),
         updatedAt: field.updatedAt,
         updatedById: field.updatedById,
@@ -152,6 +154,7 @@ export function fieldSnapshotOf(row: FieldRow): FieldSnapshot {
         ? { kind: 'TEXT', text: row.textValue ?? '' }
         : { kind: 'PEOPLE', people: row.people.map(entryOf) },
     position: row.position,
+    highlight: row.highlight,
   }
 }
 

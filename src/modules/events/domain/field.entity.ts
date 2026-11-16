@@ -176,6 +176,8 @@ export interface FieldProps {
   value: FieldValue
   /** Its place in the order of the production among the Fields of the item. */
   position: number
+  /** The mark that takes it to the Summary (CONTEXT.md, Highlight). */
+  highlight: boolean
   createdAt: Date
   updatedAt: Date
   createdById: number | null
@@ -188,18 +190,21 @@ export interface NewFieldProps {
   value: FieldValue
   /** Last among the Fields of the item (positionAfter). */
   position: number
+  /** A new Field is born out of the Summary unless given. */
+  highlight?: boolean
 }
 
 /**
  * What an edit of a Field may change: the name, and the value of its own
  * type, the text of a text Field or the people of a people Field (a new list
  * of Users and loose names, in its order; renaming a loose name is a new list
- * too); what is left out stays as it is.
+ * too), and the Highlight; what is left out stays as it is.
  */
 export interface FieldEdit {
   name?: FieldName
   text?: FieldText
   people?: FieldPeople
+  highlight?: boolean
 }
 
 /** A Field as plain data (ADR-0019): what the schedule shows and the Changes keep. */
@@ -209,6 +214,7 @@ export interface FieldSnapshot {
   name: string
   value: FieldValue
   position: number
+  highlight: boolean
 }
 
 /**
@@ -238,6 +244,9 @@ export class Field {
   get position(): number {
     return this.props.position
   }
+  get highlight(): boolean {
+    return this.props.highlight
+  }
   get createdAt(): Date {
     return this.props.createdAt
   }
@@ -252,17 +261,26 @@ export class Field {
   }
 
   /**
-   * Changes the name or the value. The type never changes: a Field never
-   * mixes types, so a value of the other type is VALIDATION_ERROR, before
-   * anything changes. Answers whether anything changed: an edit that changes
-   * nothing keeps the last Author and is no write.
+   * Changes the name, the value or the Highlight. The type never changes: a
+   * Field never mixes types, so a value of the other type is
+   * VALIDATION_ERROR, before anything changes. Answers whether anything
+   * changed: an edit that changes nothing keeps the last Author and is no
+   * write.
    */
   edit(edit: FieldEdit, stamp: Stamp): boolean {
     const name = edit.name?.value ?? this.props.name
     const value = this.valueAfter(edit)
-    if (name === this.props.name && sameValue(value, this.props.value)) return false
+    const highlight = edit.highlight ?? this.props.highlight
+    if (
+      name === this.props.name &&
+      sameValue(value, this.props.value) &&
+      highlight === this.props.highlight
+    ) {
+      return false
+    }
     this.props.name = name
     this.props.value = value
+    this.props.highlight = highlight
     this.touch(stamp)
     return true
   }
@@ -297,6 +315,7 @@ export class Field {
       name: this.props.name,
       value: copyOf(this.props.value),
       position: this.props.position,
+      highlight: this.props.highlight,
     }
   }
 }

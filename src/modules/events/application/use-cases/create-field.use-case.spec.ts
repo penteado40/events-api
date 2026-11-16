@@ -146,6 +146,7 @@ describe('CreateFieldUseCase', () => {
         id: field.id,
         kind: 'PEOPLE',
         name: 'Carro 1 - EC',
+        highlight: false,
         value: [
           { userId: MATIAS_ID, name: 'Matias' },
           { userId: JACQUE_ID, name: 'Jacque' },

@@ -25,13 +25,15 @@ export interface EditFieldInput {
    * in its new order.
    */
   people?: PersonEntry[]
+  /** Whether the Field is in Highlight: in the Summary. */
+  highlight?: boolean
 }
 
 export type EditFieldOutput = FieldView
 
 /**
- * An Owner of its Group, or the Super admin, edits the name or the value of a
- * Field of an Event item: the text of a text Field, or the people of a
+ * An Owner of its Group, or the Super admin, edits the name, the value or the
+ * Highlight of a Field of an Event item: the text of a text Field, or the people of a
  * people Field, the whole list in its new order, Users and loose names (a
  * loose name renamed is the list with the new name): every User who comes in
  * must be a Participant of the Event (NOT_A_PARTICIPANT), and who was
@@ -42,7 +44,8 @@ export type EditFieldOutput = FieldView
  * of the item, with the Field and the reach before and after (fieldChanges):
  * whoever is put in a people Field starts being reached by the item, whoever
  * is taken out stops, written in the same unit of work (amendment of
- * ADR-0010); an edit that changes nothing writes nothing.
+ * ADR-0010); putting it in Highlight or taking it out is a Change of its own,
+ * that only the production sees; an edit that changes nothing writes nothing.
  */
 export class EditFieldUseCase {
   constructor(private readonly deps: EventItemWriteDeps) {}
@@ -52,6 +55,7 @@ export class EditFieldUseCase {
       name: input.name === undefined ? undefined : FieldName.create(input.name),
       text: input.value === undefined ? undefined : FieldText.create(input.value),
       people: input.people === undefined ? undefined : FieldPeople.create(input.people),
+      highlight: input.highlight,
     }
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
     const field = await writeFieldsOf(

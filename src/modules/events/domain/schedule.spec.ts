@@ -186,6 +186,7 @@ describe('assembleSchedule', () => {
     ).toEqual({
       generalInfo: [],
       timeline: [],
+      summary: [],
     })
   })
 
@@ -196,6 +197,7 @@ describe('assembleSchedule', () => {
       name,
       value: { kind: 'TEXT' as const, text: `${name} do item ${eventItemId}` },
       position,
+      highlight: false,
     })
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
@@ -211,10 +213,24 @@ describe('assembleSchedule', () => {
 
     expect(generalInfo.map((i) => i.fields)).toEqual([
       [
-        { id: 11, kind: 'TEXT', name: 'Documentos', value: 'Documentos do item 1' },
-        { id: 10, kind: 'TEXT', name: 'Roupa', value: 'Roupa do item 1' },
+        {
+          id: 11,
+          kind: 'TEXT',
+          name: 'Documentos',
+          value: 'Documentos do item 1',
+          highlight: false,
+        },
+        { id: 10, kind: 'TEXT', name: 'Roupa', value: 'Roupa do item 1', highlight: false },
       ],
-      [{ id: 12, kind: 'TEXT', name: 'Produção', value: 'Produção do item 2' }],
+      [
+        {
+          id: 12,
+          kind: 'TEXT',
+          name: 'Produção',
+          value: 'Produção do item 2',
+          highlight: false,
+        },
+      ],
     ])
   })
 
@@ -232,6 +248,7 @@ describe('assembleSchedule', () => {
             people: [{ userId: 7 }, { name: 'Seu Raimundo' }, { userId: 3 }],
           },
           position: 1,
+          highlight: true,
         },
       ],
       names: new Map([
@@ -245,12 +262,39 @@ describe('assembleSchedule', () => {
         id: 10,
         kind: 'PEOPLE',
         name: 'Carro 1 - EC',
+        highlight: true,
         value: [
           { userId: 7, name: 'Matias' },
           { name: 'Seu Raimundo' },
           { userId: 3, name: 'Jacque' },
         ],
       },
+    ])
+  })
+
+  it('assembles the Summary from the same items, with only the Fields in Highlight', () => {
+    const field = (id: number, eventItemId: number, highlight: boolean) => ({
+      id,
+      eventItemId,
+      name: `Field ${id}`,
+      value: { kind: 'TEXT' as const, text: '' },
+      position: id,
+      highlight,
+    })
+    const { summary } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [
+        item(1, 'Show', { date: '2026-11-14', time: '19:00' }),
+        item(2, 'O que levar'),
+        item(3, 'Passagem de som', { date: '2026-11-14', time: '15:00' }),
+      ],
+      fields: [field(10, 1, true), field(11, 2, true), field(12, 2, false), field(13, 3, false)],
+      names: NO_NAMES,
+    })
+
+    expect(summary.map((card) => [card.name, card.fields.map((f) => f.id)])).toEqual([
+      ['O que levar', [11]],
+      ['Show', [10]],
     ])
   })
 })

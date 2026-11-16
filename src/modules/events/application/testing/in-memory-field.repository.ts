@@ -29,6 +29,7 @@ export class InMemoryFieldRepository extends FieldRepository {
       name: props.name.value,
       value: props.value,
       position: props.position,
+      highlight: props.highlight ?? false,
       ...createdWith(stamp),
     })
     this.fields.set(field.id, field)

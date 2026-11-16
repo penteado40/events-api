@@ -15,7 +15,8 @@ import type { FieldSnapshot } from './field.entity.js'
  * attribute `field`, with the Field as it was before and as it is after
  * (`{ fieldId, kind, name, value }`), null on the side where it does not
  * exist, so a creation, an edit of the name or the value and a removal are
- * one Change each. An edit that changes nothing is none. The people the item
+ * one Change each (an edit that changes nothing is no write: Field.edit).
+ * The people the item
  * reaches see it: its reach, before and after, is the item's, which the Field
  * does not change.
  */
@@ -26,7 +27,6 @@ export function fieldChanges(
   reach: ItemReachContext,
 ): NewChange[] {
   if (before === null && after === null) return []
-  if (before !== null && after !== null && sameContent(before, after)) return []
   const reachOfItem = eventItemReach(item, reach)
   return [
     {
@@ -98,8 +98,4 @@ export function reorderFields(
 function fieldValue(field: FieldSnapshot | null): ChangeValue {
   if (field === null) return null
   return { fieldId: field.id, kind: field.value.kind, name: field.name, value: field.value.text }
-}
-
-function sameContent(a: FieldSnapshot, b: FieldSnapshot): boolean {
-  return a.name === b.name && a.value.kind === b.value.kind && a.value.text === b.value.text
 }

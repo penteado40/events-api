@@ -38,12 +38,14 @@ export class EditFieldUseCase {
       const field = fields.find((f) => f.id === input.fieldId)
       if (!field) throw new AppError('NOT_FOUND')
       const before = field.snapshot()
-      field.edit(edit, stamp)
-      const changes = fieldChanges(before, field.snapshot(), item.snapshot(), reach)
-      if (changes.length > 0) {
-        await this.deps.fields.save(field)
-        await this.deps.changeLog.create(item.eventId, changes, stamp)
-      }
+      // An edit that changes nothing writes nothing: no row, no Change.
+      if (!field.edit(edit, stamp)) return field
+      await this.deps.fields.save(field)
+      await this.deps.changeLog.create(
+        item.eventId,
+        fieldChanges(before, field.snapshot(), item.snapshot(), reach),
+        stamp,
+      )
       return field
     })
   }

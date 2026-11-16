@@ -124,15 +124,17 @@ export class Field {
 
   /**
    * Changes the name or the text. The type never changes: a Field never mixes
-   * types. An edit that changes nothing keeps the last Author.
+   * types. Answers whether anything changed: an edit that changes nothing
+   * keeps the last Author and is no write.
    */
-  edit(edit: FieldEdit, stamp: Stamp): void {
+  edit(edit: FieldEdit, stamp: Stamp): boolean {
     const name = edit.name?.value ?? this.props.name
     const text = edit.text?.value ?? this.props.value.text
-    if (name === this.props.name && text === this.props.value.text) return
+    if (name === this.props.name && text === this.props.value.text) return false
     this.props.name = name
     this.props.value = { kind: 'TEXT', text }
     this.touch(stamp)
+    return true
   }
 
   /** Takes a new place among the Fields of the item; its Author is who reordered (ADR-0013). */

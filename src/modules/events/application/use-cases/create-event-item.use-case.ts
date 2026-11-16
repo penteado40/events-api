@@ -55,7 +55,7 @@ export class CreateEventItemUseCase {
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
 
     return this.deps.unitOfWork.run(async () => {
-      // Locks go Group, then Event, always (see EditEventItemUseCase).
+      // Locks go Group, then Event, always (see lockEventItem).
       const members = await this.deps.directory.lockMembers(event.groupId)
       // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
       const frozen = await this.deps.events.lockById(event.id)

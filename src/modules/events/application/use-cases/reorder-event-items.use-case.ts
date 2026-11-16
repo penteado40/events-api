@@ -51,7 +51,7 @@ export class ReorderEventItemsUseCase {
     await requireEventsEditor(input.actor, event.groupId, this.directory)
     const stamp = { by: input.actor.id, at: this.clock.now() }
     return this.unitOfWork.run(async () => {
-      // Locks go Group, then Event, always (see EditEventItemUseCase).
+      // Locks go Group, then Event, always (see lockEventItem).
       const members = await this.directory.lockMembers(event.groupId)
       // Under the Event's lock, a cancel that came first freezes the order: EVENT_CANCELLED.
       const frozen = await this.events.lockById(event.id)

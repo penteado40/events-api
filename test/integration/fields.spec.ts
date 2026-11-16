@@ -244,6 +244,33 @@ describe('Fields of an Event item', () => {
     ).toBe(401)
   })
 
+  it('removes the Fields with their Event item, and the schedule no longer shows them', async () => {
+    await addField('Voo', 'G3 1234')
+    await addField('Obs', 'despachar som')
+    const kept = await t
+      .http()
+      .post(`/api/v1/events/${eventId}/items`)
+      .auth(ownerToken, { type: 'bearer' })
+      .send({ name: 'Show', date: '2026-11-14', time: '19:00' })
+    await t
+      .http()
+      .post(fieldsUrl(kept.body.data.id))
+      .auth(ownerToken, { type: 'bearer' })
+      .send({ kind: 'TEXT', name: 'Figurino', value: 'preto' })
+      .expect(201)
+
+    await t
+      .http()
+      .delete(`/api/v1/events/${eventId}/items/${itemId}`)
+      .auth(ownerToken, { type: 'bearer' })
+      .expect(204)
+
+    expect(await testPrisma().eventItemField.count({ where: { eventItemId: itemId } })).toBe(0)
+    expect(await fieldsInSchedule()).toEqual([
+      [{ id: expect.any(Number), kind: 'TEXT', name: 'Figurino', value: 'preto' }],
+    ])
+  })
+
   it('freezes the Fields of a Cancelled item with 409 EVENT_ITEM_CANCELLED', async () => {
     const flight = await addField('Voo', 'G3 1234')
     await publishEvent()

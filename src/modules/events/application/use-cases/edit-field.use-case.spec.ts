@@ -19,7 +19,12 @@ describe('EditFieldUseCase', () => {
   })
 
   const edit = (
-    change: { name?: string; value?: string; people?: ({ userId: number } | { name: string })[] },
+    change: {
+      name?: string
+      value?: string
+      people?: ({ userId: number } | { name: string })[]
+      highlight?: boolean
+    },
     actor = ANA,
     id = fieldId,
   ) =>
@@ -71,6 +76,64 @@ describe('EditFieldUseCase', () => {
 
   it('writes nothing and keeps the last Author when nothing changed', async () => {
     const { field } = await edit({ name: 'Voo', value: 'G3 1234' })
+
+    expect(field.updatedById).toBeNull()
+    expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])
+  })
+
+  it('puts the Field in Highlight, as its Author', async () => {
+    const { field } = await edit({ highlight: true })
+
+    expect(field.highlight).toBe(true)
+    expect(field).toMatchObject({ updatedById: ANA.id, updatedAt: NOW })
+  })
+
+  it('records the Highlight as a Change only the production sees, with the same reach', async () => {
+    await edit({ highlight: true })
+
+    expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+      expect.objectContaining({
+        eventItemId: arranged.itemId,
+        attribute: 'fieldHighlight',
+        before: { fieldId, highlight: false },
+        after: { fieldId, highlight: true },
+        productionOnly: true,
+        reachBefore: [ANA.id],
+        reachAfter: [ANA.id],
+        by: ANA.id,
+      }),
+    ])
+  })
+
+  it('records a new name and the Highlight together as two Changes', async () => {
+    await edit({ name: 'Voo de ida', highlight: true })
+
+    expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+      expect.objectContaining({
+        attribute: 'field',
+        after: expect.objectContaining({ name: 'Voo de ida' }),
+        productionOnly: false,
+      }),
+      expect.objectContaining({ attribute: 'fieldHighlight', productionOnly: true }),
+    ])
+  })
+
+  it('takes the Field out of Highlight as a Change too', async () => {
+    await edit({ highlight: true })
+    await edit({ highlight: false })
+
+    expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+      expect.objectContaining({ attribute: 'fieldHighlight' }),
+      expect.objectContaining({
+        attribute: 'fieldHighlight',
+        before: { fieldId, highlight: true },
+        after: { fieldId, highlight: false },
+      }),
+    ])
+  })
+
+  it('writes nothing when the Highlight given is the one it has', async () => {
+    const { field } = await edit({ highlight: false })
 
     expect(field.updatedById).toBeNull()
     expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])

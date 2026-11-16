@@ -22,6 +22,13 @@ import { type FieldSnapshot, peopleInFields } from './field.entity.js'
  * reaches see it: its reach before is the item's with its Fields as they
  * stood, and after, with this Field as it is now, so putting someone in a
  * people Field, or taking them out, moves the reach (CONTEXT.md, Audience).
+ *
+ * The Highlight is not in that Change: putting a Field in Highlight or taking
+ * it out is a Change of its own (attribute `fieldHighlight`, before and after
+ * `{ fieldId, highlight }`) that only the production sees (CONTEXT.md,
+ * Change), with the reach of the item as it is after, the same before and
+ * after, as a new order of the Fields. An edit of the name and the Highlight
+ * together is two Changes; an edit of the Highlight alone, only that one.
  */
 export function fieldChanges(
   before: FieldSnapshot | null,
@@ -35,17 +42,33 @@ export function fieldChanges(
   if (changed === null) return []
   const fieldsAfter = fieldsBefore.filter((field) => field.id !== changed.id)
   if (after !== null) fieldsAfter.push(after)
-  return [
-    {
+  const changes: NewChange[] = []
+  const valueBefore = fieldValue(before)
+  const valueAfter = fieldValue(after)
+  if (JSON.stringify(valueBefore) !== JSON.stringify(valueAfter)) {
+    changes.push({
       eventItemId: item.id,
       attribute: 'field',
-      before: fieldValue(before),
-      after: fieldValue(after),
+      before: valueBefore,
+      after: valueAfter,
       productionOnly: false,
       reachBefore: eventItemReach(item, reach, peopleInFields(fieldsBefore)),
       reachAfter: eventItemReach(item, reach, peopleInFields(fieldsAfter)),
-    },
-  ]
+    })
+  }
+  if (before !== null && after !== null && before.highlight !== after.highlight) {
+    const reachOfItem = eventItemReach(item, reach, peopleInFields(fieldsAfter))
+    changes.push({
+      eventItemId: item.id,
+      attribute: 'fieldHighlight',
+      before: { fieldId: before.id, highlight: before.highlight },
+      after: { fieldId: after.id, highlight: after.highlight },
+      productionOnly: true,
+      reachBefore: reachOfItem,
+      reachAfter: [...reachOfItem],
+    })
+  }
+  return changes
 }
 
 export interface FieldReorder {

@@ -106,6 +106,7 @@ describe('Fields of an Event item', () => {
       eventItemId: itemId,
       kind: 'TEXT',
       name: 'Obs',
+      highlight: false,
       value: 'despachar som',
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
@@ -128,8 +129,8 @@ describe('Fields of an Event item', () => {
 
     const expected = [
       [
-        { id: flight, kind: 'TEXT', name: 'Voo', value: 'G3 1234' },
-        { id: notes, kind: 'TEXT', name: 'Obs', value: 'despachar som' },
+        { id: flight, kind: 'TEXT', name: 'Voo', highlight: false, value: 'G3 1234' },
+        { id: notes, kind: 'TEXT', name: 'Obs', highlight: false, value: 'despachar som' },
       ],
     ]
     expect(await fieldsInSchedule()).toEqual(expected)
@@ -267,7 +268,15 @@ describe('Fields of an Event item', () => {
 
     expect(await testPrisma().eventItemField.count({ where: { eventItemId: itemId } })).toBe(0)
     expect(await fieldsInSchedule()).toEqual([
-      [{ id: expect.any(Number), kind: 'TEXT', name: 'Figurino', value: 'preto' }],
+      [
+        {
+          id: expect.any(Number),
+          kind: 'TEXT',
+          name: 'Figurino',
+          highlight: false,
+          value: 'preto',
+        },
+      ],
     ])
   })
 

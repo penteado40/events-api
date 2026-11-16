@@ -840,7 +840,7 @@ describe('Event items and the schedule', () => {
       const res = await t.http().get(scheduleUrl(otherEventId)).auth(adminToken, { type: 'bearer' })
 
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
+      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [], summary: [] } })
     })
 
     const asViewer = () => t.http().get(scheduleUrl()).auth(viewerToken, { type: 'bearer' })
@@ -894,7 +894,7 @@ describe('Event items and the schedule', () => {
       const res = await asViewer()
 
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
+      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [], summary: [] } })
     })
 
     it('gives a Viewer who is not a Participant an empty schedule, even of a published Event', async () => {
@@ -903,7 +903,7 @@ describe('Event items and the schedule', () => {
       const res = await asViewer()
 
       expect(res.status).toBe(200)
-      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [] } })
+      expect(res.body).toEqual({ data: { generalInfo: [], timeline: [], summary: [] } })
     })
 
     it('records in the Changes of an item the reach of the reach rule, the Viewer Participant included once published', async () => {

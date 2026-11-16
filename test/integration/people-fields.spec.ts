@@ -112,6 +112,7 @@ describe('People Fields of an Event item', () => {
       eventItemId: itemId,
       kind: 'PEOPLE',
       name: 'Carro 1 - EC',
+      highlight: false,
       value: [
         { userId: jacqueId, name: 'Jacque' },
         { userId: matiasId, name: 'Matias' },
@@ -166,6 +167,7 @@ describe('People Fields of an Event item', () => {
         id: car,
         kind: 'PEOPLE',
         name: 'Carro 1 - EC',
+        highlight: false,
         value: [{ userId: matiasId, name: 'Matias' }],
       },
     ])

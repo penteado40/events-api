@@ -29,6 +29,8 @@ export class InMemoryFieldRepository extends FieldRepository {
       name: props.name.value,
       value: props.value,
       position: props.position,
+      // A new Field is born out of the Highlight, as the column's default.
+      highlight: false,
       ...createdWith(stamp),
     })
     this.fields.set(field.id, field)

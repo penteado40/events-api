@@ -142,6 +142,10 @@ const scheduleJsonSchema = z.object({
       description:
         'Só os dias com Event items, em ordem de data, mesmo fora do período. Em cada dia, primeiro os sem hora, na ordem da produção, depois os com hora, pela hora e, na mesma hora, na ordem da produção.',
     }),
+  summary: z.array(scheduleItemJsonSchema).meta({
+    description:
+      'O Summary: um cartão por Event item da programação acima que tenha algum Field com Highlight, só com esses Fields, na ordem da produção; primeiro os da General info, depois os da Timeline, na mesma ordem. Só entram os itens que alcançam a pessoa.',
+  }),
 })
 
 export type ScheduleJson = z.infer<typeof scheduleJsonSchema>

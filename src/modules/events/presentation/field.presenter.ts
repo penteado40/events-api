@@ -16,6 +16,6 @@ export const FieldPresenter = {
   /** A Field as the schedule shows it. */
   scheduleToJson(field: ScheduleField): FieldJson {
     const value = field.kind === 'TEXT' ? field.value : field.value.map((p) => ({ ...p }))
-    return { id: field.id, kind: field.kind, name: field.name, value }
+    return { id: field.id, kind: field.kind, name: field.name, highlight: field.highlight, value }
   },
 }

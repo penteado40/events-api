@@ -151,8 +151,8 @@ describe('GetScheduleUseCase', () => {
       )
     }
     const fieldsOfTheShow = [
-      { id: 2, kind: 'TEXT', name: 'Voo', value: 'G3 1234' },
-      { id: 1, kind: 'TEXT', name: 'Obs', value: 'despachar som' },
+      { id: 2, kind: 'TEXT', name: 'Voo', value: 'G3 1234', highlight: false },
+      { id: 1, kind: 'TEXT', name: 'Obs', value: 'despachar som', highlight: false },
     ]
 
     for (const actor of [ANA, { id: 3, isSuperAdmin: false }]) {
@@ -197,6 +197,7 @@ describe('GetScheduleUseCase', () => {
           id: 1,
           kind: 'PEOPLE',
           name: 'Carro 1 - EC',
+          highlight: false,
           value: [
             { userId: MATIAS_ID, name: 'Matias' },
             { userId: ANA.id, name: 'Ana' },
@@ -221,6 +222,7 @@ describe('GetScheduleUseCase', () => {
     expect(await getSchedule.execute({ actor: ANA, eventId })).toEqual({
       generalInfo: [],
       timeline: [],
+      summary: [],
     })
   })
 
@@ -232,6 +234,7 @@ describe('GetScheduleUseCase', () => {
     expect(await getSchedule.execute({ actor: ANA, eventId })).toEqual({
       generalInfo: [],
       timeline: [],
+      summary: [],
     })
   })
 

@@ -2,6 +2,7 @@ import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { byOrderOfTheProduction } from './event-item-order.js'
 import { type FieldSnapshot, isUserEntry } from './field.entity.js'
+import { assembleSummary, type SummaryCard } from './summary.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -18,9 +19,10 @@ export type FieldPerson = { userId: number; name: string } | { name: string }
 
 /**
  * A Field as the schedule shows it: its type, name and value, the text of a
- * text Field or the people of a people Field, by name, in their order.
+ * text Field or the people of a people Field, by name, in their order, and
+ * whether it is in Highlight (it goes to the Summary).
  */
-export type ScheduleField = { id: number; name: string } & (
+export type ScheduleField = { id: number; name: string; highlight: boolean } & (
   { kind: 'TEXT'; value: string } | { kind: 'PEOPLE'; value: FieldPerson[] }
 )
 
@@ -31,7 +33,7 @@ export type ScheduleField = { id: number; name: string } & (
  * shown without it.
  */
 export function showField(field: FieldSnapshot, names: ReadonlyMap<number, string>): ScheduleField {
-  const shown = { id: field.id, name: field.name }
+  const shown = { id: field.id, name: field.name, highlight: field.highlight }
   if (field.value.kind === 'TEXT') return { ...shown, kind: 'TEXT', value: field.value.text }
   return {
     ...shown,
@@ -65,6 +67,8 @@ export interface TimelineDay {
 export interface Schedule {
   generalInfo: ScheduleItem[]
   timeline: TimelineDay[]
+  /** The cards of the Summary, from the General info and the Timeline above (assembleSummary). */
+  summary: SummaryCard[]
 }
 
 /**
@@ -99,7 +103,8 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  * where two share one; it only breaks ties, never passes over the time. The
  * day of an item is its calendar date, with no exception: the 00:40 transfer
  * after Saturday's show is Sunday's. Each item brings its Fields, in the
- * order of the production, the people of a people Field by name. Pure (ADR-0019).
+ * order of the production, the people of a people Field by name. The Summary
+ * comes from the same items (assembleSummary). Pure (ADR-0019).
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
   const fieldsByItem = new Map<number, ScheduleField[]>()
@@ -132,7 +137,7 @@ export function assembleSchedule(source: ScheduleSource): Schedule {
     // Zero-padded `YYYY-MM-DD` orders like the calendar, and so does `HH:mm`.
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, items]) => ({ date, items: items.sort(byTimeUntimedFirst) }))
-  return { generalInfo, timeline }
+  return { generalInfo, timeline, summary: assembleSummary({ generalInfo, timeline }) }
 }
 
 /** Items with no time first; then by time. Ties keep the order of the production (the sort is stable). */

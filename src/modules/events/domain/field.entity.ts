@@ -190,8 +190,6 @@ export interface NewFieldProps {
   value: FieldValue
   /** Last among the Fields of the item (positionAfter). */
   position: number
-  /** A new Field is born out of the Summary unless given. */
-  highlight?: boolean
 }
 
 /**

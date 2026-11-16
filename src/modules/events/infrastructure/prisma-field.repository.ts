@@ -56,7 +56,6 @@ export class PrismaFieldRepository extends FieldRepository {
         eventItemId: props.eventItemId,
         name: props.name.value,
         position: props.position,
-        highlight: props.highlight ?? false,
         ...valueColumns(props.value),
         people: {
           create: peopleOf(props.value).map((entry, i) => ({

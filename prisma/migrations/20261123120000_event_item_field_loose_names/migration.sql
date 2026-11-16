@@ -8,5 +8,7 @@ ADD COLUMN "name" TEXT;
 -- A User or a loose name, never both and never neither.
 ALTER TABLE "event_item_field_people" ADD CONSTRAINT "event_item_field_people_user_or_name_check" CHECK (("userId" IS NULL) <> ("name" IS NULL));
 
--- A loose name once per Field, like a User (fieldId, userId).
-CREATE UNIQUE INDEX "event_item_field_people_fieldId_name_key" ON "event_item_field_people"("fieldId", "name");
+-- A loose name once per Field ignoring case ("Raimundo" and "raimundo"
+-- collide), like a User (fieldId, userId). Prisma cannot model an expression
+-- index in schema.prisma, so it lives only here.
+CREATE UNIQUE INDEX "event_item_field_people_fieldId_lower_name_key" ON "event_item_field_people"("fieldId", lower("name"));

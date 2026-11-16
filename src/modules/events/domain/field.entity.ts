@@ -56,7 +56,8 @@ export function isUserEntry(entry: PersonEntry): entry is { userId: number } {
  * The people of a people Field ("Carro 1 - EC: Matias, Jacque, Seu
  * Raimundo"), Users and loose names in one list, in the order the production
  * gives, up to 100. Each User once; a loose name is trimmed, from 1 to 100
- * characters, each once in the Field. It may be empty: an Item template
+ * characters, each once in the Field, ignoring case ("Raimundo" and
+ * "raimundo" are the same name). It may be empty: an Item template
  * brings Fields with or without a value. Only Participants of the Event go in
  * as Users (assertWithin), checked by who writes them, under the Event's lock.
  */
@@ -67,7 +68,7 @@ export class FieldPeople {
     if (raw.length > FIELD_PEOPLE_MAX) throw new AppError('VALIDATION_ERROR')
     const entries = raw.map(entryOf)
     const userIds = entries.filter(isUserEntry).map((entry) => entry.userId)
-    const names = entries.flatMap((entry) => (isUserEntry(entry) ? [] : [entry.name]))
+    const names = entries.flatMap((entry) => (isUserEntry(entry) ? [] : [looseNameKey(entry.name)]))
     if (new Set(userIds).size !== userIds.length || new Set(names).size !== names.length) {
       throw new AppError('VALIDATION_ERROR')
     }
@@ -100,6 +101,14 @@ function entryOf(entry: PersonEntry): PersonEntry {
     throw new AppError('VALIDATION_ERROR')
   }
   return { name }
+}
+
+/**
+ * What makes two loose names the same in a Field: the name ignoring case, as
+ * the unique index on (fieldId, lower(name)) does.
+ */
+function looseNameKey(name: string): string {
+  return name.toLowerCase()
 }
 
 /** The User ids among the entries, in their order; the loose names left out. */

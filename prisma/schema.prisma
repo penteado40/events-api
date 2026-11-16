@@ -320,8 +320,10 @@ model EventItemField {
 // An entry of a people Field (kind PEOPLE), in the order the production gives
 // (position): a User (userId), a Participant of its Event when put there,
 // once per Field; or a loose name (name) of someone with no login, who only
-// shows there, once per Field. Exactly one of the two (a CHECK in the
-// migration).
+// shows there, once per Field ignoring case. Exactly one of the two (a CHECK
+// in the migration). The case-insensitive unique index on (fieldId,
+// lower(name)) lives only in the migration: Prisma cannot model expression
+// indexes.
 model EventItemFieldPerson {
   id          Int      @id @default(autoincrement())
   fieldId     Int
@@ -339,7 +341,6 @@ model EventItemFieldPerson {
   user  User?          @relation("EventItemFieldPersonUser", fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([fieldId, userId])
-  @@unique([fieldId, name])
   @@index([userId])
   @@map("event_item_field_people")
 }

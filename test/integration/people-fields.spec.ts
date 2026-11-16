@@ -326,6 +326,52 @@ describe('People Fields of an Event item', () => {
       expect(rows.map((p) => [p.userId, p.name, p.position])).toEqual([[matiasId, null, 1]])
     })
 
+    it('refuses the same loose name twice, ignoring case, with 400, writing nothing', async () => {
+      const res = await createCar([{ name: 'Raimundo' }, { name: 'raimundo' }])
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('VALIDATION_ERROR')
+      expect(await testPrisma().eventItemField.count()).toBe(0)
+    })
+
+    it('keeps a loose name once per Field in the database, ignoring case', async () => {
+      const car = (await createCar([{ name: 'Raimundo' }])).body.data.id as number
+
+      await expect(
+        testPrisma().eventItemFieldPerson.create({
+          data: { fieldId: car, name: 'raimundo', position: 2 },
+        }),
+      ).rejects.toThrow()
+    })
+
+    it('renames a loose name by its case alone, as a Change', async () => {
+      const car = (await createCar([{ name: 'raimundo' }, { userId: matiasId }])).body.data
+        .id as number
+
+      const res = await editField(car, { people: [{ name: 'Raimundo' }, { userId: matiasId }] })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.value).toEqual([
+        { name: 'Raimundo' },
+        { userId: matiasId, name: 'Matias' },
+      ])
+      const rows = await testPrisma().eventItemFieldPerson.findMany({
+        where: { fieldId: car },
+        orderBy: { position: 'asc' },
+      })
+      expect(rows.map((p) => [p.userId, p.name, p.position])).toEqual([
+        [null, 'Raimundo', 1],
+        [matiasId, null, 2],
+      ])
+      const [, renamed] = await fieldChanges()
+      expect(renamed).toEqual(
+        expect.objectContaining({
+          before: expect.objectContaining({ value: [{ name: 'raimundo' }, { userId: matiasId }] }),
+          after: expect.objectContaining({ value: [{ name: 'Raimundo' }, { userId: matiasId }] }),
+        }),
+      )
+    })
+
     it('refuses an empty loose name with 400, writing nothing', async () => {
       expect((await createCar([{ name: '   ' }])).status).toBe(400)
       expect((await createCar([{ name: '' }])).status).toBe(400)

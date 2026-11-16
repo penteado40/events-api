@@ -242,11 +242,14 @@ describe('CreateFieldUseCase', () => {
       ])
     })
 
-    it('refuses an empty loose name, or the same one twice, with VALIDATION_ERROR', async () => {
+    it('refuses an empty loose name, or the same one twice ignoring case, with VALIDATION_ERROR', async () => {
       await expect(createPeople([{ name: '   ' }])).rejects.toEqual(
         new AppError('VALIDATION_ERROR'),
       )
       await expect(createPeople([{ name: 'Raimundo' }, { name: ' Raimundo' }])).rejects.toEqual(
+        new AppError('VALIDATION_ERROR'),
+      )
+      await expect(createPeople([{ name: 'Raimundo' }, { name: 'raimundo ' }])).rejects.toEqual(
         new AppError('VALIDATION_ERROR'),
       )
       expect(arranged.deps.fields.ofItem(arranged.itemId)).toEqual([])

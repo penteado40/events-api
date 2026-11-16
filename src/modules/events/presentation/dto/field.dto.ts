@@ -37,9 +37,9 @@ const personEntrySchema = z.union([
   }),
 ])
 
-/** Each User once, and each loose name once. */
+/** Each User once, and each loose name once, ignoring case. */
 function eachPersonOnce(people: readonly PersonEntry[]): boolean {
-  const keys = people.map((p) => (isUserEntry(p) ? `u:${p.userId}` : `n:${p.name}`))
+  const keys = people.map((p) => (isUserEntry(p) ? `u:${p.userId}` : `n:${p.name.toLowerCase()}`))
   return new Set(keys).size === keys.length
 }
 

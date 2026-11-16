@@ -32,6 +32,12 @@ enum EventItemState {
   CANCELLED
 }
 
+// The type of a Field, for good. A new type adds a value here and keeps its
+// own value apart, so the Fields there are never migrate.
+enum FieldKind {
+  TEXT // Text, a list, a phone and a link too: in textValue
+}
+
 enum EventItemAudienceKind {
   ALL // "Todos": follows the list of Participants
   SELECTED // The people chosen, in event_item_audience_members
@@ -90,6 +96,8 @@ model User {
   updatedParticipants    Participant[]             @relation("ParticipantUpdated")
   createdAudienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberCreated")
   updatedAudienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberUpdated")
+  createdFields          EventItemField[]          @relation("EventItemFieldCreated")
+  updatedFields          EventItemField[]          @relation("EventItemFieldUpdated")
 
   groupMembers    GroupMember[]             @relation("GroupMemberUser")
   participants    Participant[]             @relation("ParticipantUser")
@@ -214,7 +222,7 @@ model Change {
   eventId        Int
   // The Event item that changed; null for a Change of the Event. No foreign key: the Change outlives the item.
   eventItemId    Int?
-  attribute      String // Event: name, place, period, state, itemOrder, participant; Event item: item (created, deleted), name, date, time, place, state, audience
+  attribute      String // Event: name, place, period, state, itemOrder, participant; Event item: item (created, deleted), name, date, time, place, state, audience, field, fieldOrder
   before         Json
   after          Json
   productionOnly Boolean // Only the production sees it in the Change log
@@ -275,9 +283,33 @@ model EventItem {
 
   event           Event                     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   audienceMembers EventItemAudienceMember[]
+  fields          EventItemField[]
 
   @@index([eventId])
   @@map("event_items")
+}
+
+// A Field of an Event item: a name and a value of one type only. Each type
+// keeps its value in its own column or table (TEXT in textValue), so a new
+// type comes with its own and never migrates the Fields there are.
+model EventItemField {
+  id          Int       @id @default(autoincrement())
+  eventItemId Int
+  kind        FieldKind
+  name        String
+  textValue   String? // The value of a TEXT Field; may be empty
+  position    Int // Order of the production among the item's Fields. Last on create
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?     @relation("EventItemFieldCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?     @relation("EventItemFieldUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  eventItem EventItem @relation(fields: [eventItemId], references: [id], onDelete: Cascade)
+
+  @@index([eventItemId])
+  @@map("event_item_fields")
 }
 
 // A person chosen in the Audience of an Event item (audienceKind SELECTED),

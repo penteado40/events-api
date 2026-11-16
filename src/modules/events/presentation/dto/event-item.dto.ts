@@ -8,6 +8,7 @@ import {
   EVENT_ITEM_PLACE_NAME_MAX_LENGTH,
 } from '../../domain/event-item-place.vo.js'
 import { timezoneSchema } from './event.dto.js'
+import { fieldJsonSchema } from './field.dto.js'
 
 // The domain checks them again (EventItemName, EventItemStart, EventItemPlace); here they are for the 400 and the docs.
 const itemNameSchema = z
@@ -109,12 +110,15 @@ const scheduleItemJsonSchema = z.object({
       'DRAFT: a produção ainda não o liberou, só os Owners o veem (nasce assim num Event publicado); PUBLISHED: liberado (nasce assim num Event em Draft); CANCELLED: não vai mais acontecer, continua visível com o selo de cancelado e congelado até ser descancelado.',
     example: 'PUBLISHED',
   }),
+  fields: z
+    .array(fieldJsonSchema)
+    .meta({ description: 'Os Fields do Event item, na ordem da produção.' }),
 })
 
 export type ScheduleItemJson = z.infer<typeof scheduleItemJsonSchema>
 
-/** Public shape of an Event item, as a write returns it. */
-const eventItemJsonSchema = scheduleItemJsonSchema.extend({
+/** Public shape of an Event item, as a write returns it: its Fields come in the schedule and in their own routes. */
+const eventItemJsonSchema = scheduleItemJsonSchema.omit({ fields: true }).extend({
   eventId: z.number().int().meta({ example: 1 }),
   audience: audienceSchema,
   createdAt: z.iso.datetime(),

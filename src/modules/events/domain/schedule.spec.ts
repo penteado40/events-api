@@ -39,7 +39,7 @@ const MANAUS_ITEMS: EventItemSnapshot[] = [
 ]
 
 describe('assembleSchedule', () => {
-  const schedule = assembleSchedule({ timezone: 'America/Manaus', items: MANAUS_ITEMS })
+  const schedule = assembleSchedule({ timezone: 'America/Manaus', items: MANAUS_ITEMS, fields: [] })
 
   it('puts the undated Event items in the General info, in the order of the production', () => {
     expect(schedule.generalInfo.map((i) => i.name)).toEqual(['O que levar', 'Contatos da produção'])
@@ -49,6 +49,7 @@ describe('assembleSchedule', () => {
       when: null,
       place: null,
       state: 'PUBLISHED',
+      fields: [],
     })
   })
 
@@ -97,6 +98,7 @@ describe('assembleSchedule', () => {
   it('puts the General info in the order of the production, its manual position', () => {
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
+      fields: [],
       items: [
         item(1, 'O que levar', { position: 3 }),
         item(2, 'Contatos da produção', { position: 1 }),
@@ -114,6 +116,7 @@ describe('assembleSchedule', () => {
   it('puts the items of a day with no time in the order of the production', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
+      fields: [],
       items: [
         item(1, 'Almoço', { date: '2026-11-14', position: 2 }),
         item(2, 'Show', { date: '2026-11-14', time: '19:00', position: 0 }),
@@ -131,6 +134,7 @@ describe('assembleSchedule', () => {
   it('puts two items at the same time in the order of the production', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
+      fields: [],
       items: [
         item(1, 'Van 1', { date: '2026-11-13', time: '10:00', position: 5 }),
         item(2, 'Van 2', { date: '2026-11-13', time: '10:00', position: 4 }),
@@ -144,6 +148,7 @@ describe('assembleSchedule', () => {
   it('never lets the order of the production pass over the time: 9h comes before 10h', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
+      fields: [],
       items: [
         item(1, 'Passagem de som', { date: '2026-11-14', time: '10:00', position: 1 }),
         item(2, 'Café da manhã', { date: '2026-11-14', time: '09:00', position: 2 }),
@@ -156,6 +161,7 @@ describe('assembleSchedule', () => {
   it('breaks a tie of the same position by the order of creation', () => {
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
+      fields: [],
       items: [item(7, 'Contatos', { position: 1 }), item(4, 'O que levar', { position: 1 })],
     })
 
@@ -163,9 +169,37 @@ describe('assembleSchedule', () => {
   })
 
   it('gives an empty General info and Timeline for an Event with no items', () => {
-    expect(assembleSchedule({ timezone: 'America/Manaus', items: [] })).toEqual({
+    expect(assembleSchedule({ timezone: 'America/Manaus', items: [], fields: [] })).toEqual({
       generalInfo: [],
       timeline: [],
     })
+  })
+
+  it('brings the Fields of each item, in the order of the production, and only of the items given', () => {
+    const field = (id: number, eventItemId: number, name: string, position: number) => ({
+      id,
+      eventItemId,
+      name,
+      value: { kind: 'TEXT' as const, text: `${name} do item ${eventItemId}` },
+      position,
+    })
+    const { generalInfo } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [item(1, 'O que levar'), item(2, 'Contatos da produção')],
+      fields: [
+        field(10, 1, 'Roupa', 2),
+        field(11, 1, 'Documentos', 1),
+        field(12, 2, 'Produção', 1),
+        field(13, 99, 'De um item que a pessoa não vê', 1),
+      ],
+    })
+
+    expect(generalInfo.map((i) => i.fields)).toEqual([
+      [
+        { id: 11, kind: 'TEXT', name: 'Documentos', value: 'Documentos do item 1' },
+        { id: 10, kind: 'TEXT', name: 'Roupa', value: 'Roupa do item 1' },
+      ],
+      [{ id: 12, kind: 'TEXT', name: 'Produção', value: 'Produção do item 2' }],
+    ])
   })
 })

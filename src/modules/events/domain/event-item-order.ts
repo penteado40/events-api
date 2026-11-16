@@ -4,38 +4,64 @@ import type { GroupMemberRole } from './event-access-policy.js'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { eventReach } from './event-reach.js'
 
+/** Something the production puts in order: an Event item, or a Field among those of its item. */
+export interface ManuallyOrdered {
+  id: number
+  position: number
+}
+
 /** The order of the production: the manual position, then the order of creation. */
-export function byOrderOfTheProduction(a: EventItemSnapshot, b: EventItemSnapshot): number {
+export function byOrderOfTheProduction(a: ManuallyOrdered, b: ManuallyOrdered): number {
   return a.position - b.position || a.id - b.id
 }
 
 /**
- * The position of a new Event item: after every item of the Event, so last in
- * its tie group, whatever order the Owners gave. Read under the Event's lock,
- * so two creations never take the same one.
+ * The position of something new: after every one there is, so last, whatever
+ * order the Owners gave. For an Event item, after every item of the Event, so
+ * last in its tie group, read under the Event's lock; for a Field, after the
+ * Fields of its item, read under the item's lock. Two creations never take
+ * the same one.
  */
 export function positionAfter(items: readonly { position: number }[]): number {
   return Math.max(0, ...items.map((item) => item.position)) + 1
 }
 
 /**
- * A new order names each Event item once. The one rule, checked by
- * reorderEventItems and, for the 400 before the access and the docs, by the
- * request body.
+ * A new order names each Event item, or each Field, once. The one rule,
+ * checked by reorderEventItems and reorderFields and, for the 400 before the
+ * access and the docs, by the request bodies.
  */
 export function namesEachItemOnce(ids: readonly number[]): boolean {
   return new Set(ids).size === ids.length
 }
 
-/** An Event item's new manual position. */
-export interface EventItemPosition {
-  id: number
-  position: number
+/** A new manual position, of an Event item or a Field. */
+export type ManualPosition = ManuallyOrdered
+
+/**
+ * Deals the positions the ones given already hold (in the order of the
+ * production) again in the new order, so nothing else moves. Answers only
+ * the ones whose position changes.
+ */
+export function dealPositions(
+  current: readonly ManuallyOrdered[],
+  orderedIds: readonly number[],
+): ManualPosition[] {
+  const held = new Map(current.map((one) => [one.id, one.position]))
+  // The slots, apart: a tie of the position (two equal) would let the new order slip.
+  const slots: number[] = []
+  for (const one of current) {
+    const last = slots.at(-1)
+    slots.push(last === undefined || one.position > last ? one.position : last + 1)
+  }
+  return orderedIds
+    .map((id, i) => ({ id, position: slots[i] as number }))
+    .filter(({ id, position }) => held.get(id) !== position)
 }
 
 export interface EventItemReorder {
   /** Only the items whose position changes; empty when the order is the same. */
-  positions: EventItemPosition[]
+  positions: ManualPosition[]
   /** The Change of the new order, only for the production; empty when the order is the same. */
   changes: NewChange[]
 }
@@ -85,15 +111,7 @@ export function reorderEventItems(
   const before = group.map((item) => item.id)
   if (before.every((id, i) => id === orderedIds[i])) return { positions: [], changes: [] }
 
-  // The group's slots, apart: a tie of the position (two equal) would let the new order slip.
-  const slots: number[] = []
-  for (const item of group) {
-    const last = slots.at(-1)
-    slots.push(last === undefined || item.position > last ? item.position : last + 1)
-  }
-  const positions = ordered
-    .map((item, i) => ({ id: item.id, position: slots[i] as number }))
-    .filter(({ id, position }) => byId.get(id)?.position !== position)
+  const positions = dealPositions(group, orderedIds)
   const reach = eventReach(members)
   return {
     positions,

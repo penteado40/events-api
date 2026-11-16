@@ -1,7 +1,7 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
-import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
+import { lockEventItem } from '../event-item-lock.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { requireEventsEditor } from '../event-access.js'
 
@@ -30,16 +30,12 @@ export class DeleteEventItemUseCase {
     await requireEventsEditor(input.actor, event.groupId, this.deps.directory)
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
     await this.deps.unitOfWork.run(async () => {
-      // Locks go Group, Event, item, always (see EditEventItemUseCase).
-      const members = await this.deps.directory.lockMembers(event.groupId)
-      // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
-      const frozen = await this.deps.events.lockById(event.id)
-      if (!frozen) throw new AppError('NOT_FOUND')
-      frozen.assertWritable()
-      const reach = await itemReachContext(frozen, members, this.deps.participants)
-      // Under the lock, a delete or an edit that came first leaves it gone: NOT_FOUND.
-      const item = await this.deps.items.lockInEvent(event.id, input.itemId)
-      if (!item) throw new AppError('NOT_FOUND')
+      // Under the locks, a delete that came first leaves it gone: NOT_FOUND (lockEventItem).
+      const { item, reach } = await lockEventItem(this.deps, {
+        groupId: event.groupId,
+        eventId: event.id,
+        itemId: input.itemId,
+      })
       // A Cancelled item is frozen until uncancelled: EVENT_ITEM_CANCELLED.
       item.assertWritable()
       await this.deps.items.delete(item.id)

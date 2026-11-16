@@ -814,6 +814,7 @@ describe('Event items and the schedule', () => {
         when: { date: '2026-11-12', time: '08:00', timezone: 'America/Sao_Paulo' },
         place: { name: 'Aeroporto de Guarulhos', address: null, timezone: 'America/Sao_Paulo' },
         state: 'PUBLISHED',
+        fields: [],
       })
     })
 

@@ -8,8 +8,8 @@ import {
 import { eventItemChanges } from '../../domain/event-item-changes.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemPlace, type EventItemPlaceInput } from '../../domain/event-item-place.vo.js'
-import { itemReachContext } from '../item-reach-context.js'
 import type { ActingUser } from '../actor.js'
+import { lockEventItem } from '../event-item-lock.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
 import { requireEventsEditor } from '../event-access.js'
 import { type EventItemView, itemViewOf } from '../event-item-view.js'
@@ -68,19 +68,14 @@ export class EditEventItemUseCase {
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
 
     return this.deps.unitOfWork.run(async () => {
-      // The roster is held until commit (ADR-0014), so the reach is the one
-      // that stands when the Changes land. Locks go Group, Event, item, always.
-      const members = await this.deps.directory.lockMembers(groupId)
-      // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
-      const frozen = await this.deps.events.lockById(event.id)
-      if (!frozen) throw new AppError('NOT_FOUND')
-      frozen.assertWritable()
-      const reach = await itemReachContext(frozen, members, this.deps.participants)
+      // Under the locks, the edit starts from what the last write left (lockEventItem).
+      const { item, reach } = await lockEventItem(this.deps, {
+        groupId,
+        eventId: event.id,
+        itemId: input.itemId,
+      })
       // The Participants are held with the Event: one taken off meanwhile is not chosen.
       edit.audience?.assertWithin(reach.participants)
-      // Under the lock, the edit starts from what the last write left; a delete leaves NOT_FOUND.
-      const item = await this.deps.items.lockInEvent(event.id, input.itemId)
-      if (!item) throw new AppError('NOT_FOUND')
       const before = item.snapshot()
       item.edit(edit, stamp)
       const changes = eventItemChanges(before, item.snapshot(), reach)

@@ -13,9 +13,12 @@ import { CancelEventItemUseCase } from './application/use-cases/cancel-event-ite
 import { CreateEventItemUseCase } from './application/use-cases/create-event-item.use-case.js'
 import { CancelEventUseCase } from './application/use-cases/cancel-event.use-case.js'
 import { CreateEventUseCase } from './application/use-cases/create-event.use-case.js'
+import { CreateFieldUseCase } from './application/use-cases/create-field.use-case.js'
 import { DeleteEventItemUseCase } from './application/use-cases/delete-event-item.use-case.js'
+import { DeleteFieldUseCase } from './application/use-cases/delete-field.use-case.js'
 import { EditEventItemUseCase } from './application/use-cases/edit-event-item.use-case.js'
 import { EditEventUseCase } from './application/use-cases/edit-event.use-case.js'
+import { EditFieldUseCase } from './application/use-cases/edit-field.use-case.js'
 import { GetEventUseCase } from './application/use-cases/get-event.use-case.js'
 import { GetScheduleUseCase } from './application/use-cases/get-schedule.use-case.js'
 import { ListEventsUseCase } from './application/use-cases/list-events.use-case.js'
@@ -24,11 +27,13 @@ import { PublishEventItemUseCase } from './application/use-cases/publish-event-i
 import { PublishEventUseCase } from './application/use-cases/publish-event.use-case.js'
 import { RemoveParticipantUseCase } from './application/use-cases/remove-participant.use-case.js'
 import { ReorderEventItemsUseCase } from './application/use-cases/reorder-event-items.use-case.js'
+import { ReorderFieldsUseCase } from './application/use-cases/reorder-fields.use-case.js'
 import { UncancelEventItemUseCase } from './application/use-cases/uncancel-event-item.use-case.js'
 import { UncancelEventUseCase } from './application/use-cases/uncancel-event.use-case.js'
 import { ChangeRepository } from './domain/change.repository.js'
 import { EventItemRepository } from './domain/event-item.repository.js'
 import { EventRepository } from './domain/event.repository.js'
+import { FieldRepository } from './domain/field.repository.js'
 import { EventsPersistenceModule } from './events-persistence.module.js'
 import { ParticipantRepository } from './domain/participant.repository.js'
 import { InProcessGroupDirectory } from './infrastructure/in-process-group-directory.js'
@@ -37,17 +42,20 @@ import { PrismaChangeRepository } from './infrastructure/prisma-change.repositor
 import { PrismaEventItemRepository } from './infrastructure/prisma-event-item.repository.js'
 import { PrismaEventScheduleReader } from './infrastructure/prisma-event-schedule-reader.js'
 import { PrismaEventRepository } from './infrastructure/prisma-event.repository.js'
+import { PrismaFieldRepository } from './infrastructure/prisma-field.repository.js'
 import { EventItemsController } from './presentation/event-items.controller.js'
 import { EventsController } from './presentation/events.controller.js'
+import { FieldsController } from './presentation/fields.controller.js'
 
-/** Composition root of the events context: Events, with where and when, their Participants, adjusted by the production, their publication, cancel, their Changes and their Event items, with their Draft, their cancel and the order of the production. Roles come from groups; names and phones, from identity. */
+/** Composition root of the events context: Events, with where and when, their Participants, adjusted by the production, their publication, cancel, their Changes and their Event items, with their Draft, their cancel, the order of the production and their Fields. Roles come from groups; names and phones, from identity. */
 @Module({
   imports: [EventsPersistenceModule, GroupsQueriesModule, IdentityQueriesModule],
-  controllers: [EventsController, EventItemsController],
+  controllers: [EventsController, EventItemsController, FieldsController],
   providers: [
     { provide: EventRepository, useClass: PrismaEventRepository },
     { provide: ChangeRepository, useClass: PrismaChangeRepository },
     { provide: EventItemRepository, useClass: PrismaEventItemRepository },
+    { provide: FieldRepository, useClass: PrismaFieldRepository },
     { provide: EventScheduleReader, useClass: PrismaEventScheduleReader },
     {
       provide: GroupDirectory,
@@ -186,6 +194,7 @@ import { EventsController } from './presentation/events.controller.js'
         events: EventRepository,
         items: EventItemRepository,
         participants: ParticipantRepository,
+        fields: FieldRepository,
         changeLog: ChangeRepository,
         unitOfWork: UnitOfWork,
         clock: Clock,
@@ -194,6 +203,7 @@ import { EventsController } from './presentation/events.controller.js'
         events,
         items,
         participants,
+        fields,
         changeLog,
         unitOfWork,
         clock,
@@ -203,6 +213,7 @@ import { EventsController } from './presentation/events.controller.js'
         EventRepository,
         EventItemRepository,
         ParticipantRepository,
+        FieldRepository,
         ChangeRepository,
         UnitOfWork,
         Clock,
@@ -244,18 +255,49 @@ import { EventsController } from './presentation/events.controller.js'
         directory: GroupDirectory,
         events: EventRepository,
         items: EventItemRepository,
+        fields: FieldRepository,
         changeLog: ChangeRepository,
         unitOfWork: UnitOfWork,
         clock: Clock,
-      ) => new ReorderEventItemsUseCase(directory, events, items, changeLog, unitOfWork, clock),
+      ) =>
+        new ReorderEventItemsUseCase(
+          directory,
+          events,
+          items,
+          fields,
+          changeLog,
+          unitOfWork,
+          clock,
+        ),
       inject: [
         GroupDirectory,
         EventRepository,
         EventItemRepository,
+        FieldRepository,
         ChangeRepository,
         UnitOfWork,
         Clock,
       ],
+    },
+    {
+      provide: CreateFieldUseCase,
+      useFactory: (deps: EventItemWriteDeps) => new CreateFieldUseCase(deps),
+      inject: [EventItemWriteDeps],
+    },
+    {
+      provide: EditFieldUseCase,
+      useFactory: (deps: EventItemWriteDeps) => new EditFieldUseCase(deps),
+      inject: [EventItemWriteDeps],
+    },
+    {
+      provide: DeleteFieldUseCase,
+      useFactory: (deps: EventItemWriteDeps) => new DeleteFieldUseCase(deps),
+      inject: [EventItemWriteDeps],
+    },
+    {
+      provide: ReorderFieldsUseCase,
+      useFactory: (deps: EventItemWriteDeps) => new ReorderFieldsUseCase(deps),
+      inject: [EventItemWriteDeps],
     },
     {
       provide: GetScheduleUseCase,

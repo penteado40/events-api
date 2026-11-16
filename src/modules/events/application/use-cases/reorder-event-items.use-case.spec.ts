@@ -15,6 +15,7 @@ import { InMemoryChangeRepository } from '../testing/in-memory-change.repository
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventScheduleReader } from '../testing/in-memory-event-schedule-reader.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
+import { InMemoryFieldRepository } from '../testing/in-memory-field.repository.js'
 import { InMemoryParticipantRepository } from '../testing/in-memory-participant.repository.js'
 import { ReorderEventItemsUseCase } from './reorder-event-items.use-case.js'
 
@@ -64,6 +65,7 @@ describe('ReorderEventItemsUseCase', () => {
       directory,
       events,
       items,
+      new InMemoryFieldRepository(items),
       changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),

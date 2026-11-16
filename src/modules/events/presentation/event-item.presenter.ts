@@ -1,6 +1,7 @@
 import type { EventItemView } from '../application/event-item-view.js'
 import type { Schedule, ScheduleItem } from '../domain/schedule.js'
 import type { EventItemJson, ScheduleItemJson, ScheduleJson } from './dto/event-item.dto.js'
+import { FieldPresenter } from './field.presenter.js'
 
 export const EventItemPresenter = {
   /** Date and time go out as written, never converted; technical instants in ISO 8601 UTC. */
@@ -30,5 +31,12 @@ export const EventItemPresenter = {
 }
 
 function scheduleItemJson(item: ScheduleItem): ScheduleItemJson {
-  return { id: item.id, name: item.name, when: item.when, place: item.place, state: item.state }
+  return {
+    id: item.id,
+    name: item.name,
+    when: item.when,
+    place: item.place,
+    state: item.state,
+    fields: item.fields.map(FieldPresenter.scheduleToJson),
+  }
 }

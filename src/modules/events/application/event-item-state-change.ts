@@ -3,7 +3,7 @@ import type { Stamp } from '../../../shared/domain/stamp.js'
 import { eventItemChanges } from '../domain/event-item-changes.js'
 import type { EventItem } from '../domain/event-item.entity.js'
 import type { EventItemWriteDeps } from './event-item-write-deps.js'
-import { itemReachContext } from './item-reach-context.js'
+import { lockEventItem } from './event-item-lock.js'
 import type { ActingUser } from './actor.js'
 import { requireEventsEditor } from './event-access.js'
 import { type EventItemView, itemViewOf } from './event-item-view.js'
@@ -30,16 +30,12 @@ export async function changeEventItemState(
   await requireEventsEditor(actor, event.groupId, deps.directory)
 
   return deps.unitOfWork.run(async () => {
-    // Locks go Group, Event, item, always (see EditEventItemUseCase).
-    const members = await deps.directory.lockMembers(event.groupId)
-    // Under the Event's lock, a cancel that came first freezes the item: EVENT_CANCELLED.
-    const frozen = await deps.events.lockById(event.id)
-    if (!frozen) throw new AppError('NOT_FOUND')
-    frozen.assertWritable()
-    // Under the lock, of two moves that race, the second sees the first's state; a delete leaves NOT_FOUND.
-    const item = await deps.items.lockInEvent(event.id, target.itemId)
-    if (!item) throw new AppError('NOT_FOUND')
-    const reach = await itemReachContext(frozen, members, deps.participants)
+    // Under the item's lock, of two moves that race, the second sees the first's state.
+    const { item, reach } = await lockEventItem(deps, {
+      groupId: event.groupId,
+      eventId: event.id,
+      itemId: target.itemId,
+    })
     const before = item.snapshot()
     move(item, stamp)
     await deps.items.save(item)

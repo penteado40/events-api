@@ -16,7 +16,9 @@ import { type FieldSnapshot, peopleInFields } from './field.entity.js'
  * (`{ fieldId, kind, name, value }`), null on the side where it does not
  * exist, so a creation, an edit of the name or the value and a removal are
  * one Change each (an edit that changes nothing is no write: Field.edit).
- * The value of a people Field is its User ids, in order. The people the item
+ * The value of a people Field is its entries in order, `{ userId }` or a loose
+ * `{ name }`, so putting, renaming and taking out a loose name are Changes too,
+ * that move no reach: a loose name reaches no one. The people the item
  * reaches see it: its reach before is the item's with its Fields as they
  * stood, and after, with this Field as it is now, so putting someone in a
  * people Field, or taking them out, moves the reach (CONTEXT.md, Audience).
@@ -102,6 +104,9 @@ export function reorderFields(
 /** The Field as its Change keeps it: what it was, with its id, never its position. */
 function fieldValue(field: FieldSnapshot | null): ChangeValue {
   if (field === null) return null
-  const value = field.value.kind === 'TEXT' ? field.value.text : [...field.value.userIds]
+  const value =
+    field.value.kind === 'TEXT'
+      ? field.value.text
+      : field.value.people.map((entry) => ({ ...entry }))
   return { fieldId: field.id, kind: field.value.kind, name: field.name, value }
 }

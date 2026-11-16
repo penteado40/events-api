@@ -218,7 +218,7 @@ describe('assembleSchedule', () => {
     ])
   })
 
-  it('shows the people of a people Field by name, in their order', () => {
+  it('shows the people of a people Field by name, in their order, a loose name with its name only', () => {
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
       items: [item(1, 'Saída terrestre')],
@@ -227,7 +227,10 @@ describe('assembleSchedule', () => {
           id: 10,
           eventItemId: 1,
           name: 'Carro 1 - EC',
-          value: { kind: 'PEOPLE', userIds: [7, 3] },
+          value: {
+            kind: 'PEOPLE',
+            people: [{ userId: 7 }, { name: 'Seu Raimundo' }, { userId: 3 }],
+          },
           position: 1,
         },
       ],
@@ -244,6 +247,7 @@ describe('assembleSchedule', () => {
         name: 'Carro 1 - EC',
         value: [
           { userId: 7, name: 'Matias' },
+          { name: 'Seu Raimundo' },
           { userId: 3, name: 'Jacque' },
         ],
       },

@@ -127,20 +127,21 @@ describe('CreateFieldUseCase', () => {
         .add({ id: JACQUE_ID, name: 'Jacque', phone: '+5592999990005' })
     })
 
-    const createPeople = (userIds: number[]) =>
+    const createPeople = (people: ({ userId: number } | { name: string })[]) =>
       createField.execute({
         actor: ANA,
         eventId: arranged.eventId,
         itemId: arranged.itemId,
         kind: 'PEOPLE',
         name: 'Carro 1 - EC',
-        userIds,
+        people,
       })
+    const users = (...ids: number[]) => ids.map((userId) => ({ userId }))
 
     it('adds the people in the order given, and answers them by name', async () => {
-      const { field, shown } = await createPeople([MATIAS_ID, JACQUE_ID])
+      const { field, shown } = await createPeople(users(MATIAS_ID, JACQUE_ID))
 
-      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [MATIAS_ID, JACQUE_ID] })
+      expect(field.value).toEqual({ kind: 'PEOPLE', people: users(MATIAS_ID, JACQUE_ID) })
       expect(shown).toEqual({
         id: field.id,
         kind: 'PEOPLE',
@@ -155,13 +156,18 @@ describe('CreateFieldUseCase', () => {
     it('records a Change whose reach after takes in who is in the Field, out of the Audience chosen', async () => {
       await arranged.chooseAudience(JACQUE_ID)
 
-      const { field } = await createPeople([MATIAS_ID])
+      const { field } = await createPeople(users(MATIAS_ID))
 
       expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
         expect.objectContaining({
           attribute: 'field',
           before: null,
-          after: { fieldId: field.id, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [MATIAS_ID] },
+          after: {
+            fieldId: field.id,
+            kind: 'PEOPLE',
+            name: 'Carro 1 - EC',
+            value: users(MATIAS_ID),
+          },
           productionOnly: false,
           reachBefore: [ANA.id, JACQUE_ID],
           reachAfter: [ANA.id, MATIAS_ID, JACQUE_ID],
@@ -170,13 +176,15 @@ describe('CreateFieldUseCase', () => {
     })
 
     it('refuses who is not a Participant with NOT_A_PARTICIPANT, writing nothing', async () => {
-      await expect(createPeople([MATIAS_ID, 99])).rejects.toEqual(new AppError('NOT_A_PARTICIPANT'))
+      await expect(createPeople(users(MATIAS_ID, 99))).rejects.toEqual(
+        new AppError('NOT_A_PARTICIPANT'),
+      )
       expect(arranged.deps.fields.ofItem(arranged.itemId)).toEqual([])
       expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])
     })
 
     it('refuses a person twice, or a text value, with VALIDATION_ERROR', async () => {
-      await expect(createPeople([MATIAS_ID, MATIAS_ID])).rejects.toEqual(
+      await expect(createPeople(users(MATIAS_ID, MATIAS_ID))).rejects.toEqual(
         new AppError('VALIDATION_ERROR'),
       )
       await expect(
@@ -194,7 +202,54 @@ describe('CreateFieldUseCase', () => {
     it('accepts a people Field with no one yet', async () => {
       const { field } = await createPeople([])
 
-      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [] })
+      expect(field.value).toEqual({ kind: 'PEOPLE', people: [] })
+    })
+
+    it('puts a loose name among the Users, in the order given, shown with the name only', async () => {
+      const { field, shown } = await createPeople([
+        { userId: MATIAS_ID },
+        { name: '  Seu Raimundo (motorista) ' },
+      ])
+
+      expect(field.value).toEqual({
+        kind: 'PEOPLE',
+        people: [{ userId: MATIAS_ID }, { name: 'Seu Raimundo (motorista)' }],
+      })
+      expect(shown.value).toEqual([
+        { userId: MATIAS_ID, name: 'Matias' },
+        { name: 'Seu Raimundo (motorista)' },
+      ])
+    })
+
+    it('records the loose name in the Change, leaving the reach as the Users make it', async () => {
+      await arranged.chooseAudience(JACQUE_ID)
+
+      const { field } = await createPeople([{ name: 'Seu Raimundo' }])
+
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+        expect.objectContaining({
+          attribute: 'field',
+          before: null,
+          after: {
+            fieldId: field.id,
+            kind: 'PEOPLE',
+            name: 'Carro 1 - EC',
+            value: [{ name: 'Seu Raimundo' }],
+          },
+          reachBefore: [ANA.id, JACQUE_ID],
+          reachAfter: [ANA.id, JACQUE_ID],
+        }),
+      ])
+    })
+
+    it('refuses an empty loose name, or the same one twice, with VALIDATION_ERROR', async () => {
+      await expect(createPeople([{ name: '   ' }])).rejects.toEqual(
+        new AppError('VALIDATION_ERROR'),
+      )
+      await expect(createPeople([{ name: 'Raimundo' }, { name: ' Raimundo' }])).rejects.toEqual(
+        new AppError('VALIDATION_ERROR'),
+      )
+      expect(arranged.deps.fields.ofItem(arranged.itemId)).toEqual([])
     })
   })
 })

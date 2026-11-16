@@ -5,6 +5,7 @@ import {
   type FieldKind,
   FieldName,
   FieldPeople,
+  type PersonEntry,
   FieldText,
   type FieldValue,
   peopleValue,
@@ -24,8 +25,8 @@ export interface CreateFieldInput {
   name: string
   /** The text of a TEXT Field; it may be empty. Only for TEXT. */
   value?: string
-  /** The User ids of a PEOPLE Field, in order; it may be empty. Only for PEOPLE. */
-  userIds?: number[]
+  /** The people of a PEOPLE Field, Users and loose names, in order; it may be empty. Only for PEOPLE. */
+  people?: PersonEntry[]
 }
 
 export type CreateFieldOutput = FieldView
@@ -35,8 +36,9 @@ export type CreateFieldOutput = FieldView
  * last among its Fields: of text ("Obs: despachar som", "Voo G3 1234"; a
  * list, a phone and a link are text too) or of people ("Carro 1 - EC:
  * Matias, Jacque", in the order given). Only Participants of the Event go in
- * a people Field (NOT_A_PARTICIPANT), read under the Event's lock; whoever is
- * in it is in the item's Audience while there. Frozen in a Cancelled Event or
+ * a people Field as Users (NOT_A_PARTICIPANT), read under the Event's lock;
+ * whoever is in it is in the item's Audience while there. A loose name of
+ * someone with no login goes in too, never becoming a User nor reaching anyone. Frozen in a Cancelled Event or
  * item (writeFieldsOf). The new Field is a Change of the item that the people
  * it reaches see, with the reach before and after (fieldChanges), written in
  * the same unit of work (amendment of ADR-0010).
@@ -80,14 +82,14 @@ export class CreateFieldUseCase {
 /** The value of the new Field, of its own type only: the other type's value is VALIDATION_ERROR. */
 function newValue(input: CreateFieldInput): { value: FieldValue; people: FieldPeople | null } {
   if (input.kind === 'TEXT') {
-    if (input.value === undefined || input.userIds !== undefined) {
+    if (input.value === undefined || input.people !== undefined) {
       throw new AppError('VALIDATION_ERROR')
     }
     return { value: textValue(FieldText.create(input.value)), people: null }
   }
-  if (input.userIds === undefined || input.value !== undefined) {
+  if (input.people === undefined || input.value !== undefined) {
     throw new AppError('VALIDATION_ERROR')
   }
-  const people = FieldPeople.create(input.userIds)
+  const people = FieldPeople.create(input.people)
   return { value: peopleValue(people), people }
 }

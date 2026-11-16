@@ -1,7 +1,7 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { byOrderOfTheProduction } from './event-item-order.js'
-import type { FieldSnapshot } from './field.entity.js'
+import { type FieldSnapshot, isUserEntry } from './field.entity.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -10,11 +10,11 @@ export interface EventItemWhen {
   timezone: string
 }
 
-/** A person of a people Field as the schedule shows them: who they are, by name. */
-export interface FieldPerson {
-  userId: number
-  name: string
-}
+/**
+ * A person of a people Field as the schedule shows them: a User, who they
+ * are, by name; or a loose name, the name only, with no phone and no User.
+ */
+export type FieldPerson = { userId: number; name: string } | { name: string }
 
 /**
  * A Field as the schedule shows it: its type, name and value, the text of a
@@ -26,8 +26,9 @@ export type ScheduleField = { id: number; name: string } & (
 
 /**
  * A Field as it is shown, with the names of the people in it (the names
- * given, by User id). A User is never deleted (ADR-0013), so a person always
- * has a name; one missing is left out, never shown without it.
+ * given, by User id); a loose name shows as written. A User is never deleted
+ * (ADR-0013), so a person always has a name; one missing is left out, never
+ * shown without it.
  */
 export function showField(field: FieldSnapshot, names: ReadonlyMap<number, string>): ScheduleField {
   const shown = { id: field.id, name: field.name }
@@ -35,9 +36,10 @@ export function showField(field: FieldSnapshot, names: ReadonlyMap<number, strin
   return {
     ...shown,
     kind: 'PEOPLE',
-    value: field.value.userIds.flatMap((userId) => {
-      const name = names.get(userId)
-      return name === undefined ? [] : [{ userId, name }]
+    value: field.value.people.flatMap((entry): FieldPerson[] => {
+      if (!isUserEntry(entry)) return [{ name: entry.name }]
+      const name = names.get(entry.userId)
+      return name === undefined ? [] : [{ userId: entry.userId, name }]
     }),
   }
 }

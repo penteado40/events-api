@@ -29,7 +29,7 @@ describe('CreateFieldUseCase', () => {
   it('lets an Owner add a text Field to an Event item, as its Author', async () => {
     arranged.deps.directory.addMember(1, ANA.id, 'OWNER')
 
-    const field = await create()
+    const { field } = await create()
 
     expect(field.snapshot()).toMatchObject({
       eventItemId: arranged.itemId,
@@ -52,7 +52,7 @@ describe('CreateFieldUseCase', () => {
     arranged.deps.directory.addMember(1, ANA.id, 'OWNER').addMember(1, BRUNO_ID, 'VIEWER')
     await arranged.deps.participants.create(arranged.eventId, [BRUNO_ID], { by: null, at: NOW })
 
-    const field = await create()
+    const { field } = await create()
 
     expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
       expect.objectContaining({
@@ -70,7 +70,7 @@ describe('CreateFieldUseCase', () => {
   })
 
   it('accepts a Field with no value yet', async () => {
-    const field = await create(SUPER_ADMIN, 'Contato', '')
+    const { field } = await create(SUPER_ADMIN, 'Contato', '')
 
     expect(field.value).toEqual({ kind: 'TEXT', text: '' })
   })
@@ -113,5 +113,88 @@ describe('CreateFieldUseCase', () => {
 
     await expect(create(SUPER_ADMIN)).rejects.toEqual(new AppError('EVENT_ITEM_CANCELLED'))
     expect(arranged.deps.fields.ofItem(arranged.itemId)).toEqual([])
+  })
+
+  describe('a people Field', () => {
+    const MATIAS_ID = 4
+    const JACQUE_ID = 5
+
+    beforeEach(async () => {
+      arranged.deps.directory.addMember(1, ANA.id, 'OWNER')
+      await arranged.addParticipants(MATIAS_ID, JACQUE_ID)
+      arranged.deps.users
+        .add({ id: MATIAS_ID, name: 'Matias', phone: '+5592999990004' })
+        .add({ id: JACQUE_ID, name: 'Jacque', phone: '+5592999990005' })
+    })
+
+    const createPeople = (userIds: number[]) =>
+      createField.execute({
+        actor: ANA,
+        eventId: arranged.eventId,
+        itemId: arranged.itemId,
+        kind: 'PEOPLE',
+        name: 'Carro 1 - EC',
+        userIds,
+      })
+
+    it('adds the people in the order given, and answers them by name', async () => {
+      const { field, shown } = await createPeople([MATIAS_ID, JACQUE_ID])
+
+      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [MATIAS_ID, JACQUE_ID] })
+      expect(shown).toEqual({
+        id: field.id,
+        kind: 'PEOPLE',
+        name: 'Carro 1 - EC',
+        value: [
+          { userId: MATIAS_ID, name: 'Matias' },
+          { userId: JACQUE_ID, name: 'Jacque' },
+        ],
+      })
+    })
+
+    it('records a Change whose reach after takes in who is in the Field, out of the Audience chosen', async () => {
+      await arranged.chooseAudience(JACQUE_ID)
+
+      const { field } = await createPeople([MATIAS_ID])
+
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([
+        expect.objectContaining({
+          attribute: 'field',
+          before: null,
+          after: { fieldId: field.id, kind: 'PEOPLE', name: 'Carro 1 - EC', value: [MATIAS_ID] },
+          productionOnly: false,
+          reachBefore: [ANA.id, JACQUE_ID],
+          reachAfter: [ANA.id, MATIAS_ID, JACQUE_ID],
+        }),
+      ])
+    })
+
+    it('refuses who is not a Participant with NOT_A_PARTICIPANT, writing nothing', async () => {
+      await expect(createPeople([MATIAS_ID, 99])).rejects.toEqual(new AppError('NOT_A_PARTICIPANT'))
+      expect(arranged.deps.fields.ofItem(arranged.itemId)).toEqual([])
+      expect(arranged.deps.changeLog.ofEvent(arranged.eventId)).toEqual([])
+    })
+
+    it('refuses a person twice, or a text value, with VALIDATION_ERROR', async () => {
+      await expect(createPeople([MATIAS_ID, MATIAS_ID])).rejects.toEqual(
+        new AppError('VALIDATION_ERROR'),
+      )
+      await expect(
+        createField.execute({
+          actor: ANA,
+          eventId: arranged.eventId,
+          itemId: arranged.itemId,
+          kind: 'PEOPLE',
+          name: 'Carro 1 - EC',
+          value: 'Matias',
+        }),
+      ).rejects.toEqual(new AppError('VALIDATION_ERROR'))
+    })
+
+    it('accepts a people Field with no one yet', async () => {
+      const { field } = await createPeople([])
+
+      expect(field.value).toEqual({ kind: 'PEOPLE', userIds: [] })
+    })
   })
 })

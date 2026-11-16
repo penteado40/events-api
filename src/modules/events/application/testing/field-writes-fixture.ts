@@ -1,9 +1,10 @@
+import { EventItemAudience } from '../../domain/event-item-audience.vo.js'
 import { EventItemName } from '../../domain/event-item-name.vo.js'
 import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
-import { FieldName } from '../../domain/field.entity.js'
+import { FieldName, type FieldValue } from '../../domain/field.entity.js'
 import { MANAUS_PERIOD } from './events-fixtures.js'
 import { inMemoryEventItemWriteDeps } from './in-memory-event-item-write-deps.js'
 
@@ -41,23 +42,41 @@ export async function arrangeFieldWrites(now: Date) {
   )
   const eventId = event.id
   const itemId = item.id
+  async function addFieldOf(name: string, value: FieldValue): Promise<number> {
+    const fields = deps.fields.ofItem(itemId)
+    const field = await deps.fields.create(
+      {
+        eventItemId: itemId,
+        name: FieldName.create(name),
+        value,
+        position: Math.max(0, ...fields.map((f) => f.position)) + 1,
+      },
+      { by: null, at: CREATED_AT },
+    )
+    return field.id
+  }
   return {
     deps,
     eventId,
     itemId,
     /** A text Field already in the item, written before the spec. */
     async addField(name: string, text = ''): Promise<number> {
-      const fields = deps.fields.ofItem(itemId)
-      const field = await deps.fields.create(
-        {
-          eventItemId: itemId,
-          name: FieldName.create(name),
-          value: { kind: 'TEXT', text },
-          position: Math.max(0, ...fields.map((f) => f.position)) + 1,
-        },
-        { by: null, at: CREATED_AT },
-      )
-      return field.id
+      return addFieldOf(name, { kind: 'TEXT', text })
+    },
+    /** A people Field already in the item, written before the spec. */
+    async addPeopleField(name: string, userIds: number[]): Promise<number> {
+      return addFieldOf(name, { kind: 'PEOPLE', userIds })
+    },
+    /** Viewers who are Participants of the Event, by id. */
+    async addParticipants(...userIds: number[]): Promise<void> {
+      for (const userId of userIds) deps.directory.addMember(1, userId, 'VIEWER')
+      await deps.participants.create(eventId, userIds, { by: null, at: CREATED_AT })
+    },
+    /** The item's Audience becomes the people chosen. */
+    async chooseAudience(...userIds: number[]): Promise<void> {
+      const item = (await deps.items.lockInEvent(eventId, itemId))!
+      item.edit({ audience: EventItemAudience.selected(userIds) }, { by: null, at: CREATED_AT })
+      await deps.items.save(item)
     },
     async cancelEvent(): Promise<void> {
       const frozen = (await deps.events.findById(eventId))!

@@ -1,6 +1,7 @@
 import { AppError } from '../../../shared/domain/app-error.js'
 import type { Stamp } from '../../../shared/domain/stamp.js'
 import { eventItemChanges } from '../domain/event-item-changes.js'
+import { peopleInFields } from '../domain/field.entity.js'
 import type { EventItem } from '../domain/event-item.entity.js'
 import type { EventItemWriteDeps } from './event-item-write-deps.js'
 import { lockEventItem } from './event-item-lock.js'
@@ -31,7 +32,7 @@ export async function changeEventItemState(
 
   return deps.unitOfWork.run(async () => {
     // Under the item's lock, of two moves that race, the second sees the first's state.
-    const { item, reach } = await lockEventItem(deps, {
+    const { item, fields, reach } = await lockEventItem(deps, {
       groupId: event.groupId,
       eventId: event.id,
       itemId: target.itemId,
@@ -39,7 +40,11 @@ export async function changeEventItemState(
     const before = item.snapshot()
     move(item, stamp)
     await deps.items.save(item)
-    await deps.changeLog.create(event.id, eventItemChanges(before, item.snapshot(), reach), stamp)
+    await deps.changeLog.create(
+      event.id,
+      eventItemChanges(before, item.snapshot(), reach, peopleInFields(fields)),
+      stamp,
+    )
     return itemViewOf(item, event.period.timezone.value)
   })
 }

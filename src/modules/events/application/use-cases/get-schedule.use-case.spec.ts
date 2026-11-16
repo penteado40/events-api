@@ -6,9 +6,11 @@ import { EventItemStart } from '../../domain/event-item-start.vo.js'
 import { EventName } from '../../domain/event-name.vo.js'
 import { EventPeriod } from '../../domain/event-period.vo.js'
 import { EventPlace } from '../../domain/event-place.vo.js'
+import { EventItemAudience } from '../../domain/event-item-audience.vo.js'
 import { FieldName } from '../../domain/field.entity.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { FakeUserDirectory } from '../testing/fake-user-directory.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventScheduleReader } from '../testing/in-memory-event-schedule-reader.js'
 import { InMemoryEventRepository } from '../testing/in-memory-event.repository.js'
@@ -36,6 +38,9 @@ describe('GetScheduleUseCase', () => {
     getSchedule = new GetScheduleUseCase(
       directory,
       new InMemoryEventScheduleReader(events, items, participants, fields),
+      new FakeUserDirectory()
+        .add({ id: ANA.id, name: 'Ana', phone: '+5511999990001' })
+        .add({ id: 3, name: 'Matias', phone: '+5511999990003' }),
     )
     eventId = (
       await events.create(
@@ -155,6 +160,58 @@ describe('GetScheduleUseCase', () => {
       expect(schedule.timeline[0]?.items[0]?.fields).toEqual(fieldsOfTheShow)
       expect(schedule.generalInfo[0]?.fields).toEqual([])
     }
+  })
+
+  describe('with a people Field', () => {
+    const MATIAS_ID = 3
+
+    beforeEach(async () => {
+      directory.addMember(1, ANA.id, 'VIEWER').addMember(1, MATIAS_ID, 'VIEWER')
+      await participants.create(eventId, [ANA.id, MATIAS_ID], { by: null, at: AT })
+      await publishEvent()
+      // The Show is only for whom the production chooses: no one.
+      const show = (await items.findInEvent(eventId, 2))!
+      show.edit({ audience: EventItemAudience.selected([]) }, { by: null, at: AT })
+      await items.save(show)
+    })
+
+    const putInCar = (userIds: number[]) =>
+      fields.create(
+        {
+          eventItemId: 2,
+          name: FieldName.create('Carro 1 - EC'),
+          value: { kind: 'PEOPLE', userIds },
+          position: 1,
+        },
+        { by: null, at: AT },
+      )
+
+    it('reaches a Viewer left off the Audience chosen who is in it, with its people by name, in order', async () => {
+      await putInCar([MATIAS_ID, ANA.id])
+
+      const schedule = await getSchedule.execute({ actor: ANA, eventId })
+
+      expect(namesIn(schedule)).toEqual(['O que levar', 'Show', 'Passeio de barco'])
+      expect(schedule.timeline[0]?.items[0]?.fields).toEqual([
+        {
+          id: 1,
+          kind: 'PEOPLE',
+          name: 'Carro 1 - EC',
+          value: [
+            { userId: MATIAS_ID, name: 'Matias' },
+            { userId: ANA.id, name: 'Ana' },
+          ],
+        },
+      ])
+    })
+
+    it('does not reach a Viewer left off the Audience chosen and out of the Field', async () => {
+      await putInCar([MATIAS_ID])
+
+      const schedule = await getSchedule.execute({ actor: ANA, eventId })
+
+      expect(namesIn(schedule)).toEqual(['O que levar', 'Passeio de barco'])
+    })
   })
 
   it('gives a Viewer Participant of an Event in Draft an empty schedule', async () => {

@@ -36,6 +36,7 @@ enum EventItemState {
 // own value apart, so the Fields there are never migrate.
 enum FieldKind {
   TEXT // Text, a list, a phone and a link too: in textValue
+  PEOPLE // People: in event_item_field_people, in order
 }
 
 enum EventItemAudienceKind {
@@ -98,10 +99,13 @@ model User {
   updatedAudienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberUpdated")
   createdFields          EventItemField[]          @relation("EventItemFieldCreated")
   updatedFields          EventItemField[]          @relation("EventItemFieldUpdated")
+  createdFieldPeople     EventItemFieldPerson[]    @relation("EventItemFieldPersonCreated")
+  updatedFieldPeople     EventItemFieldPerson[]    @relation("EventItemFieldPersonUpdated")
 
   groupMembers    GroupMember[]             @relation("GroupMemberUser")
   participants    Participant[]             @relation("ParticipantUser")
   audienceMembers EventItemAudienceMember[] @relation("EventItemAudienceMemberUser")
+  fieldPeople     EventItemFieldPerson[]    @relation("EventItemFieldPersonUser")
 
   @@map("users")
 }
@@ -306,10 +310,33 @@ model EventItemField {
   createdBy   User?     @relation("EventItemFieldCreated", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy   User?     @relation("EventItemFieldUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
 
-  eventItem EventItem @relation(fields: [eventItemId], references: [id], onDelete: Cascade)
+  eventItem EventItem              @relation(fields: [eventItemId], references: [id], onDelete: Cascade)
+  people    EventItemFieldPerson[]
 
   @@index([eventItemId])
   @@map("event_item_fields")
+}
+
+// A person in a people Field (kind PEOPLE), a Participant of its Event when
+// put there, once per Field, in the order the production gives (position).
+model EventItemFieldPerson {
+  id          Int      @id @default(autoincrement())
+  fieldId     Int
+  userId      Int
+  position    Int // Order in the Field, from 1
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int? // Author (ADR-0013)
+  updatedById Int?
+  createdBy   User?    @relation("EventItemFieldPersonCreated", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?    @relation("EventItemFieldPersonUpdated", fields: [updatedById], references: [id], onDelete: Restrict)
+
+  field EventItemField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user  User           @relation("EventItemFieldPersonUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([fieldId, userId])
+  @@index([userId])
+  @@map("event_item_field_people")
 }
 
 // A person chosen in the Audience of an Event item (audienceKind SELECTED),

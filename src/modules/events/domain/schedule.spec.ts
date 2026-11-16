@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { EventItemSnapshot } from './event-item.entity.js'
 import { assembleSchedule } from './schedule.js'
 
+const NO_NAMES = new Map<number, string>()
+
 /**
  * A published Event item with no date and no place, to be overridden. Its
  * position is its id unless given: the order of creation, the default order
@@ -39,7 +41,12 @@ const MANAUS_ITEMS: EventItemSnapshot[] = [
 ]
 
 describe('assembleSchedule', () => {
-  const schedule = assembleSchedule({ timezone: 'America/Manaus', items: MANAUS_ITEMS, fields: [] })
+  const schedule = assembleSchedule({
+    timezone: 'America/Manaus',
+    items: MANAUS_ITEMS,
+    fields: [],
+    names: NO_NAMES,
+  })
 
   it('puts the undated Event items in the General info, in the order of the production', () => {
     expect(schedule.generalInfo.map((i) => i.name)).toEqual(['O que levar', 'Contatos da produção'])
@@ -99,6 +106,7 @@ describe('assembleSchedule', () => {
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
       fields: [],
+      names: NO_NAMES,
       items: [
         item(1, 'O que levar', { position: 3 }),
         item(2, 'Contatos da produção', { position: 1 }),
@@ -117,6 +125,7 @@ describe('assembleSchedule', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
       fields: [],
+      names: NO_NAMES,
       items: [
         item(1, 'Almoço', { date: '2026-11-14', position: 2 }),
         item(2, 'Show', { date: '2026-11-14', time: '19:00', position: 0 }),
@@ -135,6 +144,7 @@ describe('assembleSchedule', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
       fields: [],
+      names: NO_NAMES,
       items: [
         item(1, 'Van 1', { date: '2026-11-13', time: '10:00', position: 5 }),
         item(2, 'Van 2', { date: '2026-11-13', time: '10:00', position: 4 }),
@@ -149,6 +159,7 @@ describe('assembleSchedule', () => {
     const { timeline } = assembleSchedule({
       timezone: 'America/Manaus',
       fields: [],
+      names: NO_NAMES,
       items: [
         item(1, 'Passagem de som', { date: '2026-11-14', time: '10:00', position: 1 }),
         item(2, 'Café da manhã', { date: '2026-11-14', time: '09:00', position: 2 }),
@@ -162,6 +173,7 @@ describe('assembleSchedule', () => {
     const { generalInfo } = assembleSchedule({
       timezone: 'America/Manaus',
       fields: [],
+      names: NO_NAMES,
       items: [item(7, 'Contatos', { position: 1 }), item(4, 'O que levar', { position: 1 })],
     })
 
@@ -169,7 +181,9 @@ describe('assembleSchedule', () => {
   })
 
   it('gives an empty General info and Timeline for an Event with no items', () => {
-    expect(assembleSchedule({ timezone: 'America/Manaus', items: [], fields: [] })).toEqual({
+    expect(
+      assembleSchedule({ timezone: 'America/Manaus', items: [], fields: [], names: NO_NAMES }),
+    ).toEqual({
       generalInfo: [],
       timeline: [],
     })
@@ -192,6 +206,7 @@ describe('assembleSchedule', () => {
         field(12, 2, 'Produção', 1),
         field(13, 99, 'De um item que a pessoa não vê', 1),
       ],
+      names: NO_NAMES,
     })
 
     expect(generalInfo.map((i) => i.fields)).toEqual([
@@ -200,6 +215,38 @@ describe('assembleSchedule', () => {
         { id: 10, kind: 'TEXT', name: 'Roupa', value: 'Roupa do item 1' },
       ],
       [{ id: 12, kind: 'TEXT', name: 'Produção', value: 'Produção do item 2' }],
+    ])
+  })
+
+  it('shows the people of a people Field by name, in their order', () => {
+    const { generalInfo } = assembleSchedule({
+      timezone: 'America/Manaus',
+      items: [item(1, 'Saída terrestre')],
+      fields: [
+        {
+          id: 10,
+          eventItemId: 1,
+          name: 'Carro 1 - EC',
+          value: { kind: 'PEOPLE', userIds: [7, 3] },
+          position: 1,
+        },
+      ],
+      names: new Map([
+        [3, 'Jacque'],
+        [7, 'Matias'],
+      ]),
+    })
+
+    expect(generalInfo[0]?.fields).toEqual([
+      {
+        id: 10,
+        kind: 'PEOPLE',
+        name: 'Carro 1 - EC',
+        value: [
+          { userId: 7, name: 'Matias' },
+          { userId: 3, name: 'Jacque' },
+        ],
+      },
     ])
   })
 })

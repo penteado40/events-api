@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { EventItemWriteDeps } from '../../src/modules/events/application/event-item-write-deps.js'
 import { GroupDirectory } from '../../src/modules/events/application/ports/group-directory.js'
+import { UserDirectory } from '../../src/modules/events/application/ports/user-directory.js'
 import { CreateEventItemUseCase } from '../../src/modules/events/application/use-cases/create-event-item.use-case.js'
 import { DeleteEventItemUseCase } from '../../src/modules/events/application/use-cases/delete-event-item.use-case.js'
 import { EditEventItemUseCase } from '../../src/modules/events/application/use-cases/edit-event-item.use-case.js'
@@ -190,6 +191,7 @@ describe('Changes of an Event item', () => {
         t.app.get(EventRepository),
         t.app.get(EventItemRepository),
         t.app.get(FieldRepository),
+        t.app.get(UserDirectory),
         failing,
         t.app.get(UnitOfWork),
         clock,

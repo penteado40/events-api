@@ -20,38 +20,40 @@ const VIEWER_NOT_PARTICIPANT = { userId: 12, production: false, participant: fal
 describe('eventItemReaches', () => {
   it('reaches the production with every item, Draft included, in an Event in Draft too', () => {
     for (const state of ['DRAFT', 'PUBLISHED', 'CANCELLED'] as const) {
-      expect(eventItemReaches(item(state), DRAFT, OWNER)).toBe(true)
-      expect(eventItemReaches(item(state), PUBLISHED, OWNER)).toBe(true)
+      expect(eventItemReaches(item(state), DRAFT, OWNER, [])).toBe(true)
+      expect(eventItemReaches(item(state), PUBLISHED, OWNER, [])).toBe(true)
     }
   })
 
   it('reaches a Viewer Participant with a published item of a published Event', () => {
-    expect(eventItemReaches(item('PUBLISHED'), PUBLISHED, VIEWER_PARTICIPANT)).toBe(true)
+    expect(eventItemReaches(item('PUBLISHED'), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(true)
   })
 
   it('reaches a Viewer Participant with a Cancelled item of a published Event, shown with its seal', () => {
-    expect(eventItemReaches(item('CANCELLED'), PUBLISHED, VIEWER_PARTICIPANT)).toBe(true)
+    expect(eventItemReaches(item('CANCELLED'), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(true)
   })
 
   it('never reaches a Viewer with an item in Draft', () => {
-    expect(eventItemReaches(item('DRAFT'), PUBLISHED, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('DRAFT'), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(false)
   })
 
   it('reaches no Viewer with any item of an Event in Draft', () => {
-    expect(eventItemReaches(item('PUBLISHED'), DRAFT, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('PUBLISHED'), DRAFT, VIEWER_PARTICIPANT, [])).toBe(false)
   })
 
   it('never reaches a Viewer who is not a Participant', () => {
-    expect(eventItemReaches(item('PUBLISHED'), PUBLISHED, VIEWER_NOT_PARTICIPANT)).toBe(false)
-    expect(eventItemReaches(item('CANCELLED'), PUBLISHED, VIEWER_NOT_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('PUBLISHED'), PUBLISHED, VIEWER_NOT_PARTICIPANT, [])).toBe(false)
+    expect(eventItemReaches(item('CANCELLED'), PUBLISHED, VIEWER_NOT_PARTICIPANT, [])).toBe(false)
   })
 
   it('keeps reaching the Participants in a Cancelled Event that had been published, and not in one cancelled from Draft', () => {
     const cancelledPublished: ReachEvent = { state: 'CANCELLED', cancelledFrom: 'PUBLISHED' }
     const cancelledDraft: ReachEvent = { state: 'CANCELLED', cancelledFrom: 'DRAFT' }
 
-    expect(eventItemReaches(item('PUBLISHED'), cancelledPublished, VIEWER_PARTICIPANT)).toBe(true)
-    expect(eventItemReaches(item('PUBLISHED'), cancelledDraft, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('PUBLISHED'), cancelledPublished, VIEWER_PARTICIPANT, [])).toBe(
+      true,
+    )
+    expect(eventItemReaches(item('PUBLISHED'), cancelledDraft, VIEWER_PARTICIPANT, [])).toBe(false)
   })
 })
 
@@ -59,26 +61,67 @@ describe('eventItemReaches with the Audience chosen', () => {
   const chosen = (...userIds: number[]): EventItemAudienceValues => ({ kind: 'SELECTED', userIds })
 
   it('reaches a Viewer Participant on the list', () => {
-    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(
       true,
     )
   })
 
   it('never reaches a Viewer Participant left off the list', () => {
-    expect(eventItemReaches(item('PUBLISHED', chosen(13)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(
+    expect(eventItemReaches(item('PUBLISHED', chosen(13)), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(
       false,
     )
-    expect(eventItemReaches(item('CANCELLED', chosen()), PUBLISHED, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('CANCELLED', chosen()), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(
+      false,
+    )
   })
 
   it('still reaches the production, on the list or not', () => {
-    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, OWNER)).toBe(true)
-    expect(eventItemReaches(item('DRAFT', chosen()), DRAFT, OWNER)).toBe(true)
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), PUBLISHED, OWNER, [])).toBe(true)
+    expect(eventItemReaches(item('DRAFT', chosen()), DRAFT, OWNER, [])).toBe(true)
   })
 
   it('keeps Draft and an Event in Draft from a Viewer on the list', () => {
-    expect(eventItemReaches(item('DRAFT', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT)).toBe(false)
-    expect(eventItemReaches(item('PUBLISHED', chosen(11)), DRAFT, VIEWER_PARTICIPANT)).toBe(false)
+    expect(eventItemReaches(item('DRAFT', chosen(11)), PUBLISHED, VIEWER_PARTICIPANT, [])).toBe(
+      false,
+    )
+    expect(eventItemReaches(item('PUBLISHED', chosen(11)), DRAFT, VIEWER_PARTICIPANT, [])).toBe(
+      false,
+    )
+  })
+})
+
+describe('eventItemReaches with the people in the Fields', () => {
+  const chosen = (...userIds: number[]): EventItemAudienceValues => ({ kind: 'SELECTED', userIds })
+
+  it('reaches a Viewer Participant left off the Audience chosen while in a people Field of the item', () => {
+    expect(
+      eventItemReaches(item('PUBLISHED', chosen(13)), PUBLISHED, VIEWER_PARTICIPANT, [11]),
+    ).toBe(true)
+    expect(eventItemReaches(item('CANCELLED', chosen()), PUBLISHED, VIEWER_PARTICIPANT, [11])).toBe(
+      true,
+    )
+  })
+
+  it('stops reaching them once out of the Fields', () => {
+    expect(
+      eventItemReaches(item('PUBLISHED', chosen(13)), PUBLISHED, VIEWER_PARTICIPANT, [13]),
+    ).toBe(false)
+  })
+
+  it('never reaches someone in a Field who is no longer a Participant', () => {
+    expect(
+      eventItemReaches(item('PUBLISHED', chosen()), PUBLISHED, VIEWER_NOT_PARTICIPANT, [12]),
+    ).toBe(false)
+    expect(eventItemReaches(item('PUBLISHED'), PUBLISHED, VIEWER_NOT_PARTICIPANT, [12])).toBe(false)
+  })
+
+  it('keeps Draft and an Event in Draft from someone in a Field', () => {
+    expect(eventItemReaches(item('DRAFT', chosen()), PUBLISHED, VIEWER_PARTICIPANT, [11])).toBe(
+      false,
+    )
+    expect(eventItemReaches(item('PUBLISHED', chosen()), DRAFT, VIEWER_PARTICIPANT, [11])).toBe(
+      false,
+    )
   })
 })
 
@@ -91,29 +134,44 @@ describe('eventItemReach', () => {
 
   it('lists the Owners and the Viewers it reaches, in the order of the members given', () => {
     expect(
-      eventItemReach(item('PUBLISHED'), { event: PUBLISHED, members, participants: [11, 10] }),
+      eventItemReach(item('PUBLISHED'), { event: PUBLISHED, members, participants: [11, 10] }, []),
     ).toEqual([10, 11])
   })
 
   it('lists only the Owners for an item in Draft, even when they are not Participants', () => {
     expect(
-      eventItemReach(item('DRAFT'), { event: PUBLISHED, members, participants: [11, 12] }),
+      eventItemReach(item('DRAFT'), { event: PUBLISHED, members, participants: [11, 12] }, []),
     ).toEqual([10])
   })
 
   it('lists the Owners and only the Viewers chosen, for an item with the Audience chosen', () => {
     expect(
-      eventItemReach(item('PUBLISHED', { kind: 'SELECTED', userIds: [12] }), {
-        event: PUBLISHED,
-        members,
-        participants: [10, 11, 12],
-      }),
+      eventItemReach(
+        item('PUBLISHED', { kind: 'SELECTED', userIds: [12] }),
+        {
+          event: PUBLISHED,
+          members,
+          participants: [10, 11, 12],
+        },
+        [],
+      ),
     ).toEqual([10, 12])
   })
 
+  it('adds the Viewers in its people Fields to the Audience chosen, while they are Participants', () => {
+    const selected = item('PUBLISHED', { kind: 'SELECTED', userIds: [] })
+
+    expect(
+      eventItemReach(selected, { event: PUBLISHED, members, participants: [11, 12] }, [12]),
+    ).toEqual([10, 12])
+    expect(
+      eventItemReach(selected, { event: PUBLISHED, members, participants: [11] }, [12]),
+    ).toEqual([10])
+  })
+
   it('reaches no one with an item that does not exist', () => {
-    expect(eventItemReach(null, { event: PUBLISHED, members, participants: [10, 11, 12] })).toEqual(
-      [],
-    )
+    expect(
+      eventItemReach(null, { event: PUBLISHED, members, participants: [10, 11, 12] }, [12]),
+    ).toEqual([])
   })
 })

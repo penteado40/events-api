@@ -8,7 +8,7 @@ import {
   type ManualPosition,
   namesEachItemOnce,
 } from './event-item-order.js'
-import type { FieldSnapshot } from './field.entity.js'
+import { type FieldSnapshot, peopleInFields } from './field.entity.js'
 
 /**
  * The Change of a Field, a Change of its Event item (CONTEXT.md, Change):
@@ -16,18 +16,23 @@ import type { FieldSnapshot } from './field.entity.js'
  * (`{ fieldId, kind, name, value }`), null on the side where it does not
  * exist, so a creation, an edit of the name or the value and a removal are
  * one Change each (an edit that changes nothing is no write: Field.edit).
- * The people the item
- * reaches see it: its reach, before and after, is the item's, which the Field
- * does not change.
+ * The value of a people Field is its User ids, in order. The people the item
+ * reaches see it: its reach before is the item's with its Fields as they
+ * stood, and after, with this Field as it is now, so putting someone in a
+ * people Field, or taking them out, moves the reach (CONTEXT.md, Audience).
  */
 export function fieldChanges(
   before: FieldSnapshot | null,
   after: FieldSnapshot | null,
   item: EventItemSnapshot,
+  /** Every Field of the item as it stood before the write, this one included if it existed. */
+  fieldsBefore: readonly FieldSnapshot[],
   reach: ItemReachContext,
 ): NewChange[] {
-  if (before === null && after === null) return []
-  const reachOfItem = eventItemReach(item, reach)
+  const changed = after ?? before
+  if (changed === null) return []
+  const fieldsAfter = fieldsBefore.filter((field) => field.id !== changed.id)
+  if (after !== null) fieldsAfter.push(after)
   return [
     {
       eventItemId: item.id,
@@ -35,8 +40,8 @@ export function fieldChanges(
       before: fieldValue(before),
       after: fieldValue(after),
       productionOnly: false,
-      reachBefore: reachOfItem,
-      reachAfter: [...reachOfItem],
+      reachBefore: eventItemReach(item, reach, peopleInFields(fieldsBefore)),
+      reachAfter: eventItemReach(item, reach, peopleInFields(fieldsAfter)),
     },
   ]
 }
@@ -77,7 +82,7 @@ export function reorderFields(
   if (before.every((id, i) => id === orderedIds[i])) return { positions: [], changes: [] }
 
   const positions = dealPositions(current, orderedIds)
-  const reachOfItem = eventItemReach(item, reach)
+  const reachOfItem = eventItemReach(item, reach, peopleInFields(fields))
   return {
     positions,
     changes: [
@@ -97,5 +102,6 @@ export function reorderFields(
 /** The Field as its Change keeps it: what it was, with its id, never its position. */
 function fieldValue(field: FieldSnapshot | null): ChangeValue {
   if (field === null) return null
-  return { fieldId: field.id, kind: field.value.kind, name: field.name, value: field.value.text }
+  const value = field.value.kind === 'TEXT' ? field.value.text : [...field.value.userIds]
+  return { fieldId: field.id, kind: field.value.kind, name: field.name, value }
 }

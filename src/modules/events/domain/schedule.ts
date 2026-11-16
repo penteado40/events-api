@@ -1,7 +1,7 @@
 import type { EventItemPlaceValues } from './event-item-place.vo.js'
 import type { EventItemSnapshot, EventItemState } from './event-item.entity.js'
 import { byOrderOfTheProduction } from './event-item-order.js'
-import type { FieldKind, FieldSnapshot } from './field.entity.js'
+import type { FieldSnapshot } from './field.entity.js'
 
 /** When an Event item starts, as it travels: never converted, in the zone of its place (ADR-0016). */
 export interface EventItemWhen {
@@ -10,12 +10,36 @@ export interface EventItemWhen {
   timezone: string
 }
 
-/** A Field as the schedule shows it: its type, name and value. */
-export interface ScheduleField {
-  id: number
-  kind: FieldKind
+/** A person of a people Field as the schedule shows them: who they are, by name. */
+export interface FieldPerson {
+  userId: number
   name: string
-  value: string
+}
+
+/**
+ * A Field as the schedule shows it: its type, name and value, the text of a
+ * text Field or the people of a people Field, by name, in their order.
+ */
+export type ScheduleField = { id: number; name: string } & (
+  { kind: 'TEXT'; value: string } | { kind: 'PEOPLE'; value: FieldPerson[] }
+)
+
+/**
+ * A Field as it is shown, with the names of the people in it (the names
+ * given, by User id). A User is never deleted (ADR-0013), so a person always
+ * has a name; one missing is left out, never shown without it.
+ */
+export function showField(field: FieldSnapshot, names: ReadonlyMap<number, string>): ScheduleField {
+  const shown = { id: field.id, name: field.name }
+  if (field.value.kind === 'TEXT') return { ...shown, kind: 'TEXT', value: field.value.text }
+  return {
+    ...shown,
+    kind: 'PEOPLE',
+    value: field.value.userIds.flatMap((userId) => {
+      const name = names.get(userId)
+      return name === undefined ? [] : [{ userId, name }]
+    }),
+  }
 }
 
 /** An Event item as the schedule shows it. */
@@ -43,12 +67,15 @@ export interface Schedule {
 
 /**
  * What the schedule is assembled from: the Event's default zone, its items
- * and their Fields, in any order. A Field of an item not given is left out.
+ * and their Fields, in any order, and the names of the people in them. A
+ * Field of an item not given is left out.
  */
 export interface ScheduleSource {
   timezone: string
   items: readonly EventItemSnapshot[]
   fields: readonly FieldSnapshot[]
+  /** The names of the people in the people Fields, by User id. */
+  names: ReadonlyMap<number, string>
 }
 
 /**
@@ -70,13 +97,13 @@ export function whenOf(item: EventItemSnapshot, eventTimezone: string): EventIte
  * where two share one; it only breaks ties, never passes over the time. The
  * day of an item is its calendar date, with no exception: the 00:40 transfer
  * after Saturday's show is Sunday's. Each item brings its Fields, in the
- * order of the production. Pure (ADR-0019).
+ * order of the production, the people of a people Field by name. Pure (ADR-0019).
  */
 export function assembleSchedule(source: ScheduleSource): Schedule {
   const fieldsByItem = new Map<number, ScheduleField[]>()
   for (const field of [...source.fields].sort(byOrderOfTheProduction)) {
     const shown = fieldsByItem.get(field.eventItemId) ?? []
-    shown.push({ id: field.id, kind: field.value.kind, name: field.name, value: field.value.text })
+    shown.push(showField(field, source.names))
     fieldsByItem.set(field.eventItemId, shown)
   }
   const generalInfo: ScheduleItem[] = []

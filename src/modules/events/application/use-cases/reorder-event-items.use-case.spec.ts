@@ -11,6 +11,7 @@ import { EventPlace } from '../../domain/event-place.vo.js'
 import { assembleSchedule } from '../../domain/schedule.js'
 import { ANA, MANAUS_PERIOD, SUPER_ADMIN } from '../testing/events-fixtures.js'
 import { FakeGroupDirectory } from '../testing/fake-group-directory.js'
+import { FakeUserDirectory } from '../testing/fake-user-directory.js'
 import { InMemoryChangeRepository } from '../testing/in-memory-change.repository.js'
 import { InMemoryEventItemRepository } from '../testing/in-memory-event-item.repository.js'
 import { InMemoryEventScheduleReader } from '../testing/in-memory-event-schedule-reader.js'
@@ -53,7 +54,7 @@ describe('ReorderEventItemsUseCase', () => {
       items,
       new InMemoryParticipantRepository(events),
     ).load(eventId)
-    return assembleSchedule(data!)
+    return assembleSchedule({ ...data!, names: new Map() })
   }
 
   beforeEach(async () => {
@@ -66,6 +67,7 @@ describe('ReorderEventItemsUseCase', () => {
       events,
       items,
       new InMemoryFieldRepository(items),
+      new FakeUserDirectory(),
       changeLog,
       new InMemoryUnitOfWork(),
       new FixedClock(NOW),

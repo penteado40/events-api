@@ -1,5 +1,6 @@
 import { AppError } from '../../../../shared/domain/app-error.js'
 import { eventItemChanges } from '../../domain/event-item-changes.js'
+import { peopleInFields } from '../../domain/field.entity.js'
 import type { ActingUser } from '../actor.js'
 import { lockEventItem } from '../event-item-lock.js'
 import type { EventItemWriteDeps } from '../event-item-write-deps.js'
@@ -31,7 +32,7 @@ export class DeleteEventItemUseCase {
     const stamp = { by: input.actor.id, at: this.deps.clock.now() }
     await this.deps.unitOfWork.run(async () => {
       // Under the locks, a delete that came first leaves it gone: NOT_FOUND (lockEventItem).
-      const { item, reach } = await lockEventItem(this.deps, {
+      const { item, fields, reach } = await lockEventItem(this.deps, {
         groupId: event.groupId,
         eventId: event.id,
         itemId: input.itemId,
@@ -41,7 +42,7 @@ export class DeleteEventItemUseCase {
       await this.deps.items.delete(item.id)
       await this.deps.changeLog.create(
         event.id,
-        eventItemChanges(item.snapshot(), null, reach),
+        eventItemChanges(item.snapshot(), null, reach, peopleInFields(fields)),
         stamp,
       )
     })
